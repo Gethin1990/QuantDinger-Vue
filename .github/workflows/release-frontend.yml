@@ -1,12 +1,16 @@
 name: Publish frontend image to GHCR
 
 # Build the Vue SPA and publish a multi-arch nginx image to GitHub Container
-# Registry. Consumed by QuantDinger's docker-compose files as
+# Registry, then (for v* tags only) cut a GitHub Release with the auto-
+# generated changelog and a `dist.tar.gz` static-asset bundle attached.
+#
+# Consumed by QuantDinger's docker-compose files as
 #   ghcr.io/<owner>/quantdinger-frontend:<tag>
 #
 # Triggers:
-#   - push of a version tag matching `v*` (e.g. v3.0.9) -> semver + latest tags
-#   - manual workflow_dispatch -> short-SHA tag only (ad-hoc testing)
+#   - push of a version tag matching `v*` (e.g. v3.0.9) -> semver + latest
+#     tags pushed AND a GitHub Release published
+#   - manual workflow_dispatch -> short-SHA tag only, no Release
 #
 # First-time setup: after the first successful run, visit
 #   https://github.com/users/<owner>/packages/container/quantdinger-frontend/settings
@@ -23,8 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
-  packages: write
+  contents: write   # needed to create a GitHub Release
+  packages: write   # needed to push to GHCR
 
 jobs:
   publish:
@@ -71,3 +75,43 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
           provenance: false
+
+      # ----- Release-only steps (skipped on workflow_dispatch) -----
+
+      - name: Extract dist tarball from just-pushed image
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/quantdinger-frontend:${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/amd64 "$IMAGE"
+          CID=$(docker create --platform linux/amd64 "$IMAGE")
+          mkdir -p _dist
+          docker cp "$CID:/usr/share/nginx/html/." _dist/
+          docker rm "$CID" > /dev/null
+          tar -czf dist.tar.gz -C _dist .
+          sha256sum dist.tar.gz | tee dist.tar.gz.sha256
+          du -h dist.tar.gz
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist.tar.gz
+            dist.tar.gz.sha256
+          body: |
+            ## Frontend ${{ github.ref_name }}
+
+            **Docker image (multi-arch, amd64 + arm64):**
+
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/quantdinger-frontend:${{ github.ref_name }}
+            ```
+
+            Pinned in QuantDinger's `docker-compose.yml` via `IMAGE_TAG=${{ github.ref_name }}` in a project-root `.env`.
+
+            **Static bundle:** `dist.tar.gz` — extract into any nginx/static host as `/usr/share/nginx/html/` (verify with `dist.tar.gz.sha256`).
+
+            ---
