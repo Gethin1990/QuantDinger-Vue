@@ -80,10 +80,10 @@
           <div class="heatmap-box">
             <div class="box-header">
               <a-radio-group v-model="heatmapType" size="small" button-style="solid">
-                <a-radio-button value="crypto">{{ $t('globalMarket.cryptoHeatmap') }}</a-radio-button>
-                <a-radio-button value="commodities">{{ $t('globalMarket.commoditiesHeatmap') }}</a-radio-button>
                 <a-radio-button value="sectors">{{ $t('globalMarket.sectorHeatmap') }}</a-radio-button>
                 <a-radio-button value="forex">{{ $t('globalMarket.forexHeatmap') }}</a-radio-button>
+                <a-radio-button value="crypto">{{ $t('globalMarket.cryptoHeatmap') }}</a-radio-button>
+                <a-radio-button value="commodities">{{ $t('globalMarket.commoditiesHeatmap') }}</a-radio-button>
               </a-radio-group>
             </div>
             <div class="heatmap-grid">
@@ -829,7 +829,7 @@ export default {
   data () {
     return {
       loadingMarket: false,
-      heatmapType: 'crypto',
+      heatmapType: 'sectors',
       marketData: {
         fearGreed: null,
         vix: null,

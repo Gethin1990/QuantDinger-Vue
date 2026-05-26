@@ -100,7 +100,7 @@ export const broker = {
   mt5: makeBrokerClient('mt5')
 }
 
-export const BROKER_IDS = ['alpaca', 'ibkr', 'mt5']
+export const BROKER_IDS = ['ibkr', 'alpaca', 'mt5']
 
 /**
  * Static descriptor for each broker (logo color, market focus, connect form
