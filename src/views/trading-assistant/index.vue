@@ -435,12 +435,24 @@
                       </div>
                     </div>
 
-                    <!-- 生命周期状态 -->
+                    <!-- 生命周期：脚本页显示验证/回测；指标页引导去 IDE -->
                     <div v-if="selectedStrategy" class="strategy-lifecycle-tags">
-                      <a-tag v-if="isStrategyVerified(selectedStrategy)" color="green">{{ $t('strategyCenter.lifecycle.verified') }}</a-tag>
-                      <a-tag v-else color="orange">{{ $t('strategyCenter.lifecycle.unverified') }}</a-tag>
-                      <a-tag v-if="strategyHasBacktest" color="blue">{{ $t('strategyCenter.lifecycle.backtested') }}</a-tag>
-                      <a-tag v-else color="default">{{ $t('strategyCenter.lifecycle.notBacktested') }}</a-tag>
+                      <template v-if="isScriptStrategySelected">
+                        <a-tag v-if="isStrategyVerified(selectedStrategy)" color="green">{{ $t('strategyCenter.lifecycle.verified') }}</a-tag>
+                        <a-tag v-else color="orange">{{ $t('strategyCenter.lifecycle.unverified') }}</a-tag>
+                        <a-tag v-if="strategyHasBacktest" color="blue">{{ $t('strategyCenter.lifecycle.backtested') }}</a-tag>
+                        <a-tag v-else color="default">{{ $t('strategyCenter.lifecycle.notBacktested') }}</a-tag>
+                      </template>
+                      <a-button
+                        v-else-if="isIndicatorSignalOnlyPage"
+                        type="link"
+                        size="small"
+                        class="lifecycle-ide-btn"
+                        @click="goToIndicatorIdeForBacktest"
+                      >
+                        <a-icon type="line-chart" />
+                        {{ $t('trading-assistant.backtestInIde') }}
+                      </a-button>
                     </div>
 
                     <!-- 策略详情标签 -->
@@ -538,7 +550,7 @@
                       :strategy-id="selectedStrategy.id"
                       :is-dark="isDarkTheme" />
                   </a-tab-pane>
-                  <a-tab-pane key="backtest" :tab="$t('strategyCenter.tabs.backtest')">
+                  <a-tab-pane v-if="showStrategyDetailBacktest" key="backtest" :tab="$t('strategyCenter.tabs.backtest')">
                     <strategy-backtest-panel
                       v-if="selectedStrategy"
                       ref="strategyBacktestPanel"
@@ -1906,9 +1918,12 @@ export default {
     isScriptStrategiesOnlyPage () {
       return !!(this.$route.meta && this.$route.meta.scriptStrategiesOnly)
     },
-    /** 指标与脚本策略均支持服务端回测 */
+    /** 脚本/机器人策略页展示回测；指标策略页回测在指标 IDE */
     showStrategyListBacktest () {
-      return true
+      return !this.isIndicatorSignalOnlyPage
+    },
+    showStrategyDetailBacktest () {
+      return !this.isIndicatorSignalOnlyPage
     },
     isIndicatorSignalOnlyPage () {
       return !!(this.$route.meta && this.$route.meta.indicatorSignalOnly)
@@ -2070,6 +2085,11 @@ export default {
         }
       },
       deep: true
+    },
+    detailTab (tab) {
+      if (tab === 'backtest' && !this.showStrategyDetailBacktest) {
+        this.detailTab = 'positions'
+      }
     }
   },
   data () {
@@ -3406,8 +3426,18 @@ export default {
     },
     handleBacktestStrategy (strategy) {
       if (!strategy || !strategy.id) return
+      if (!this.showStrategyDetailBacktest) {
+        this.goToIndicatorIdeForBacktest(strategy)
+        return
+      }
       this.handleSelectStrategy(strategy)
       this.detailTab = 'backtest'
+    },
+    goToIndicatorIdeForBacktest (strategy) {
+      const st = strategy || this.selectedStrategy
+      const indId = st && st.indicator_config && st.indicator_config.indicator_id
+      const query = indId ? { indicator_id: String(indId) } : {}
+      this.$router.push({ path: '/indicator-ide', query })
     },
     isStrategyVerified (strategy) {
       const tc = (strategy && strategy.trading_config) || {}

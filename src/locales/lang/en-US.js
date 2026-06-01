@@ -162,6 +162,7 @@ const locale = {
   'community.tabBotPresets': 'Bot presets',
   'community.scriptTemplatesEmpty': 'No published strategy templates yet',
   'community.botPresetsEmpty': 'No bot presets yet. Create a bot under Trading Bots, then publish it to the marketplace.',
+  'trading-assistant.backtestInIde': 'Backtest in Indicator IDE',
   'community.createBotPreset': 'Create a bot',
   'community.useBotPreset': 'Configure & use',
   'community.botPresetPurchased': 'Purchase complete. A bot instance was created — bind an account before starting Live.',

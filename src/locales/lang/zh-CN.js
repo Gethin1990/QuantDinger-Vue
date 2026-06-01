@@ -163,6 +163,7 @@ const locale = {
   'community.tabBotPresets': '机器人预设',
   'community.scriptTemplatesEmpty': '暂无已发布的策略模板',
   'community.botPresetsEmpty': '暂无机器人预设。你可以先在「交易机器人」创建机器人，再发布到市场。',
+  'trading-assistant.backtestInIde': '在指标 IDE 中回测',
   'community.createBotPreset': '去创建机器人',
   'community.useBotPreset': '配置并使用',
   'community.botPresetPurchased': '购买成功，已为你创建机器人实例，请绑定账户后启动',
