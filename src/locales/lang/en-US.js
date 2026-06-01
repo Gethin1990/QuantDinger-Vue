@@ -5558,7 +5558,18 @@ const locale = {
   'profile.loginLogs.newDevice': 'New device',
   'profile.loginLogs.newRegion': 'New region',
   'profile.loginLogs.total': '{total} entries',
-  'profile.loginLogs.loadFailed': 'Failed to load login history'
+  'profile.loginLogs.loadFailed': 'Failed to load login history',
+
+  // Trading bot — grid ledger vs exchange
+  'trading-bot.detail.exchangeSnapshotTitle': 'Exchange holdings (live)',
+  'trading-bot.detail.ledgerExchangeMismatchTitle': 'Strategy ledger differs from exchange',
+  'trading-bot.detail.ledgerExchangeMismatchDesc':
+    'Cards above are ledger positions from fills; below is a live exchange query. On one-way mode, neutral grid initial long+short may net to zero on the exchange — switch to hedge/dual-side mode and restart.',
+  'trading-bot.detail.exchangePosMode.bitget_hedge_mode': 'Bitget hedge mode',
+  'trading-bot.detail.exchangePosMode.bitget_one_way_mode': 'Bitget one-way mode',
+  'trading-bot.detail.exchangePosMode.okx_long_short_mode': 'OKX long/short mode',
+  'trading-bot.detail.exchangePosMode.okx_net_mode': 'OKX net mode',
+  'trading-assistant.positions.strategyLedger': 'Strategy ledger'
 
 }
 

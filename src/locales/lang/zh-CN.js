@@ -5385,7 +5385,18 @@ const locale = {
   'profile.loginLogs.newDevice': '新设备',
   'profile.loginLogs.newRegion': '新地区',
   'profile.loginLogs.total': '共 {total} 条',
-  'profile.loginLogs.loadFailed': '加载登录日志失败'
+  'profile.loginLogs.loadFailed': '加载登录日志失败',
+
+  // 交易机器人 — 网格持仓对照
+  'trading-bot.detail.exchangeSnapshotTitle': '交易所实际持仓',
+  'trading-bot.detail.ledgerExchangeMismatchTitle': '策略账本与交易所不一致',
+  'trading-bot.detail.ledgerExchangeMismatchDesc':
+    '上方为策略成交账本累计持仓，下方为交易所实时查询。若 Bitget 为单向持仓，中性网格初始底仓可能在交易所被对冲为 0，请切换为双向持仓后重启策略。',
+  'trading-bot.detail.exchangePosMode.bitget_hedge_mode': 'Bitget 双向持仓',
+  'trading-bot.detail.exchangePosMode.bitget_one_way_mode': 'Bitget 单向持仓',
+  'trading-bot.detail.exchangePosMode.okx_long_short_mode': 'OKX 双向持仓',
+  'trading-bot.detail.exchangePosMode.okx_net_mode': 'OKX 单向净持仓',
+  'trading-assistant.positions.strategyLedger': '策略账本持仓'
 }
 
 export default {

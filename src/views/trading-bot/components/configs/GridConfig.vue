@@ -56,7 +56,7 @@
       </a-radio-group>
     </a-form-model-item>
     <a-form-model-item :label="$t('trading-bot.grid.direction')">
-      <a-radio-group v-model="form.gridDirection" @change="emit">
+      <a-radio-group v-model="form.gridDirection" @change="onGridDirectionChange">
         <a-radio value="neutral" :disabled="isSpotMarket">{{ $t('trading-bot.grid.neutral') }}</a-radio>
         <a-radio value="long">{{ $t('trading-bot.grid.long') }}</a-radio>
         <a-radio value="short" :disabled="isSpotMarket">{{ $t('trading-bot.grid.short') }}</a-radio>
@@ -334,12 +334,21 @@ export default {
       }
       callback()
     },
+    onGridDirectionChange () {
+      if (this.form.gridDirection === 'neutral') {
+        this.form.initialPositionPct = 0
+      }
+      this.emit()
+    },
     emit () {
       const payload = {
         ...this.form,
         waterfallDropPct: this.form.waterfallProtection
           ? roundTo(Number(this.form.waterfallDropPct || 3), 4) / 100
           : undefined
+      }
+      if (payload.gridDirection === 'neutral') {
+        payload.initialPositionPct = 0
       }
       delete payload.gridExecutionMode
       delete payload.grid_execution_mode

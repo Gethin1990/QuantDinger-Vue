@@ -5,6 +5,29 @@
         <span class="section-title">{{ $t('trading-assistant.positions.strategyLedger') }}</span>
       </div>
 
+      <a-alert
+        v-if="positionMetaHint"
+        type="info"
+        show-icon
+        class="position-ledger-hint"
+        :message="$t('trading-assistant.positions.strategyLedger')"
+        :description="positionMetaHint"
+      />
+      <div v-if="exchangeSnapshot" class="position-exchange-snapshot">
+        <span class="position-exchange-snapshot__label">{{ $t('trading-bot.detail.exchangeSnapshotTitle') }}:</span>
+        {{ $t('trading-assistant.table.long') }} {{ formatExchangeSize(exchangeSnapshot.long_size) }}
+        ·
+        {{ $t('trading-assistant.table.short') }} {{ formatExchangeSize(exchangeSnapshot.short_size) }}
+      </div>
+      <a-alert
+        v-if="ledgerExchangeMismatch"
+        type="warning"
+        show-icon
+        class="position-mismatch-alert"
+        :message="$t('trading-bot.detail.ledgerExchangeMismatchTitle')"
+        :description="$t('trading-bot.detail.ledgerExchangeMismatchDesc')"
+      />
+
       <div v-if="positions.length === 0 && !loading" class="empty-state strategy-tab-empty">
         <a-empty :description="$t('trading-assistant.table.noPositions')" />
       </div>
@@ -90,10 +113,35 @@ export default {
   },
   data () {
     return {
-      positions: []
+      positions: [],
+      positionMeta: null,
+      exchangeSnapshot: null
     }
   },
   computed: {
+    positionMetaHint () {
+      const meta = this.positionMeta
+      if (!meta || typeof meta !== 'object') return ''
+      const loc = String((this.$i18n && this.$i18n.locale) || 'zh-CN').toLowerCase()
+      if (loc.startsWith('zh')) return meta.hint_zh || meta.hint_en || ''
+      return meta.hint_en || meta.hint_zh || ''
+    },
+    ledgerExchangeMismatch () {
+      if (!this.exchangeSnapshot) return false
+      const exLong = parseFloat(this.exchangeSnapshot.long_size || 0)
+      const exShort = parseFloat(this.exchangeSnapshot.short_size || 0)
+      const eps = 1e-8
+      const exFlat = exLong <= eps && exShort <= eps
+      let ledgerLong = 0
+      let ledgerShort = 0
+      for (const p of this.positions) {
+        const side = String(p.side || '').toLowerCase()
+        const sz = parseFloat(p.size || 0)
+        if (side === 'long') ledgerLong += sz
+        if (side === 'short') ledgerShort += sz
+      }
+      return exFlat && (ledgerLong > eps || ledgerShort > eps)
+    },
     isLiveMode () {
       return String(this.executionMode || '').trim().toLowerCase() === 'live'
     },
@@ -182,6 +230,8 @@ export default {
         const res = await getStrategyPositions(this.strategyId)
         if (res.code === 1) {
           const rawPositions = res.data.positions || res.data.items || []
+          this.positionMeta = res.data.position_meta || null
+          this.exchangeSnapshot = res.data.exchange_snapshot || null
 
           this.positions = rawPositions.map((position, index) => {
             const mt = String(this.marketType || 'swap').toLowerCase()
@@ -230,6 +280,11 @@ export default {
       const ep = parseFloat(record.entry_price || 0)
       if (size > 0 && ep > 0) return size * ep
       return 0
+    },
+    formatExchangeSize (value) {
+      const sz = parseFloat(value || 0)
+      if (!sz || sz <= 0) return '—'
+      return sz.toFixed(6)
     },
     startPolling () {
       this.stopPolling()
