@@ -266,6 +266,11 @@
               </div>
             </a-tab-pane>
 
+            <!-- My Agent Token -->
+            <a-tab-pane key="agentTokens" :tab="$t('profile.agentTokens.tab') || '我的 Agent Token'">
+              <profile-agent-tokens :is-dark-theme="isDarkTheme" />
+            </a-tab-pane>
+
             <!-- Change Password Tab -->
             <a-tab-pane key="password" :tab="$t('profile.changePassword') || 'Change Password'">
               <a-form :form="passwordForm" layout="vertical" class="password-form">
@@ -612,6 +617,38 @@
                 </template>
               </a-table>
             </a-tab-pane>
+
+            <!-- Login Logs Tab (last) -->
+            <a-tab-pane key="loginLogs" :tab="$t('profile.loginLogs.title') || '账户登录日志'">
+              <a-alert
+                :message="$t('profile.loginLogs.hint') || '记录密码、验证码与第三方登录；新设备或新地区登录时会通过邮件与站内通知提醒您。'"
+                type="info"
+                showIcon
+                style="margin-bottom: 16px"
+              />
+              <a-table
+                :columns="loginLogColumns"
+                :dataSource="loginLogs"
+                :loading="loginLogsLoading"
+                :pagination="loginLogsPagination"
+                :rowKey="record => record.id"
+                size="small"
+                @change="handleLoginLogsChange"
+              >
+                <template slot="flags" slot-scope="text, record">
+                  <a-tag v-if="record.is_new_device" color="orange" style="margin-right: 4px;">
+                    {{ $t('profile.loginLogs.newDevice') || '新设备' }}
+                  </a-tag>
+                  <a-tag v-if="record.is_new_region" color="red">
+                    {{ $t('profile.loginLogs.newRegion') || '新地区' }}
+                  </a-tag>
+                  <span v-if="!record.is_new_device && !record.is_new_region">—</span>
+                </template>
+                <template slot="created_at" slot-scope="text">
+                  {{ formatTime(text) }}
+                </template>
+              </a-table>
+            </a-tab-pane>
           </a-tabs>
         </a-card>
       </a-col>
@@ -636,18 +673,19 @@
 </template>
 
 <script>
-import { getProfile, updateProfile, getMyCreditsLog, getMyReferrals, getNotificationSettings, updateNotificationSettings, testNotificationSettings } from '@/api/user'
+import { getProfile, updateProfile, getLoginLogs, getMyCreditsLog, getMyReferrals, getNotificationSettings, updateNotificationSettings, testNotificationSettings } from '@/api/user'
 import { getSettingsValues } from '@/api/settings'
 import { listExchangeCredentials, deleteExchangeCredential } from '@/api/credentials'
 import { baseMixin } from '@/store/app-mixin'
 import ExchangeAccountModal from '@/components/ExchangeAccountModal/ExchangeAccountModal.vue'
 import ExchangeSignupModal from '@/components/ExchangeSignupModal/ExchangeSignupModal.vue'
 import RenameCredentialModal from '@/components/RenameCredentialModal/RenameCredentialModal.vue'
+import ProfileAgentTokens from '@/views/profile/components/ProfileAgentTokens.vue'
 import { formatBrowserLocalDateTime } from '@/utils/userTime'
 
 export default {
   name: 'Profile',
-  components: { ExchangeAccountModal, ExchangeSignupModal, RenameCredentialModal },
+  components: { ExchangeAccountModal, ExchangeSignupModal, RenameCredentialModal, ProfileAgentTokens },
   mixins: [baseMixin],
   data () {
     return {
@@ -691,6 +729,14 @@ export default {
         'Australia/Sydney',
         'Pacific/Auckland'
       ],
+      // Login logs
+      loginLogs: [],
+      loginLogsLoading: false,
+      loginLogsPagination: {
+        current: 1,
+        pageSize: 10,
+        total: 0
+      },
       // Credits log
       creditsLog: [],
       creditsLogLoading: false,
@@ -759,6 +805,43 @@ export default {
       if (!this.billing.vip_expires_at) return false
       const expiresAt = new Date(this.billing.vip_expires_at)
       return expiresAt > new Date()
+    },
+    loginLogColumns () {
+      return [
+        {
+          title: this.$t('profile.loginLogs.time') || '时间',
+          dataIndex: 'created_at',
+          width: 170,
+          scopedSlots: { customRender: 'created_at' }
+        },
+        {
+          title: this.$t('profile.loginLogs.method') || '方式',
+          dataIndex: 'method',
+          width: 120
+        },
+        {
+          title: this.$t('profile.loginLogs.device') || '设备',
+          dataIndex: 'device',
+          ellipsis: true
+        },
+        {
+          title: this.$t('profile.loginLogs.location') || '位置',
+          dataIndex: 'location',
+          width: 160,
+          ellipsis: true,
+          customRender: (text) => text || '—'
+        },
+        {
+          title: this.$t('profile.loginLogs.ip') || 'IP',
+          dataIndex: 'ip_address',
+          width: 130
+        },
+        {
+          title: this.$t('profile.loginLogs.flags') || '提醒',
+          width: 140,
+          scopedSlots: { customRender: 'flags' }
+        }
+      ]
     },
     creditsLogColumns () {
       return [
@@ -930,6 +1013,9 @@ export default {
   },
   watch: {
     activeTab (val) {
+      if (val === 'loginLogs' && this.loginLogs.length === 0) {
+        this.loadLoginLogs()
+      }
       if (val === 'credits' && this.creditsLog.length === 0) {
         this.loadCreditsLog()
       }
@@ -983,7 +1069,7 @@ export default {
     // Whitelist of tabs we accept from ``?tab=xxx``. Anything else is a no-op
     // so a malformed link can't put the page in a weird state.
     applyTabFromQuery (rawTab) {
-      const allowed = ['basic', 'exchange', 'password', 'credits', 'notifications', 'referrals']
+      const allowed = ['basic', 'exchange', 'password', 'credits', 'notifications', 'referrals', 'loginLogs']
       if (rawTab && allowed.includes(rawTab) && this.activeTab !== rawTab) {
         this.activeTab = rawTab
       }
@@ -1168,6 +1254,7 @@ export default {
           if (res.code === 1) {
             this.$message.success(res.msg || 'Password changed successfully')
             this.passwordForm.resetFields()
+            this.$store.dispatch('FetchUserInfo').catch(() => {})
           } else {
             this.$message.error(res.msg || 'Change password failed')
           }
@@ -1205,6 +1292,29 @@ export default {
 
     formatCreditsLogTime (timestamp) {
       return formatBrowserLocalDateTime(timestamp, { fallback: '' })
+    },
+
+    async loadLoginLogs () {
+      this.loginLogsLoading = true
+      try {
+        const res = await getLoginLogs({
+          page: this.loginLogsPagination.current,
+          page_size: this.loginLogsPagination.pageSize
+        })
+        if (res.code === 1) {
+          this.loginLogs = res.data.items || []
+          this.loginLogsPagination.total = res.data.total || 0
+        }
+      } catch (e) {
+        this.$message.error(this.$t('profile.loginLogs.loadFailed') || '加载登录日志失败')
+      } finally {
+        this.loginLogsLoading = false
+      }
+    },
+
+    handleLoginLogsChange (pagination) {
+      this.loginLogsPagination.current = pagination.current
+      this.loadLoginLogs()
     },
 
     // Credits log methods

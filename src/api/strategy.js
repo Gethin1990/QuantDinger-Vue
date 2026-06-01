@@ -24,6 +24,7 @@ const api = {
   aiGenerate: '/api/strategies/ai-generate',
   performance: '/api/strategies/performance',
   logs: '/api/strategies/logs',
+  gridRestingOrders: '/api/strategies/grid-resting-orders',
   backtest: '/api/strategies/backtest',
   backtestHistory: '/api/strategies/backtest/history',
   backtestGet: '/api/strategies/backtest/get'
@@ -198,11 +199,13 @@ export function testExchangeConnection (exchangeConfig) {
  * 获取策略交易记录
  * @param {number} id - 策略ID
  */
-export function getStrategyTrades (id) {
+export function getStrategyTrades (id, lang) {
+  const params = { id }
+  if (lang) params.lang = lang
   return request({
     url: api.trades,
     method: 'get',
-    params: { id }
+    params
   })
 }
 
@@ -215,6 +218,24 @@ export function getStrategyPositions (id) {
     url: api.positions,
     method: 'get',
     params: { id }
+  })
+}
+
+/**
+ * 获取网格 resting 限价单（Live 预挂）
+ * @param {number} id - 策略ID
+ * @param {Object} [opts]
+ * @param {string} [opts.status='open'] - open | all | filled | cancelled ...
+ * @param {number} [opts.limit=200]
+ */
+export function getGridRestingOrders (id, opts = {}) {
+  const params = { id }
+  if (opts.status) params.status = opts.status
+  if (opts.limit) params.limit = opts.limit
+  return request({
+    url: api.gridRestingOrders,
+    method: 'get',
+    params
   })
 }
 

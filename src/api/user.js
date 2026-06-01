@@ -195,6 +195,18 @@ export function deleteChartTemplate (templateId) {
 }
 
 /**
+ * Get current user's login history (password / email code / OAuth)
+ * @param {Object} params - { page, page_size }
+ */
+export function getLoginLogs (params) {
+  return request({
+    url: '/api/users/login-logs',
+    method: 'get',
+    params
+  })
+}
+
+/**
  * Get current user's credits log
  * @param {Object} params - { page, page_size }
  */
@@ -265,6 +277,20 @@ export function getSystemStrategies (params) {
     url: '/api/users/system-strategies',
     method: 'get',
     params
+  })
+}
+
+/**
+ * Admin: start/stop any strategy (admin only)
+ * @param {Number} strategyId
+ * @param {String} action - optional: 'start' | 'stop' (omit to toggle)
+ */
+export function adminToggleStrategy (strategyId, action) {
+  return request({
+    url: '/api/users/system-strategies/toggle',
+    method: 'post',
+    params: { id: strategyId },
+    data: action ? { action } : {}
   })
 }
 

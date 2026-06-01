@@ -86,7 +86,7 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       proxy: {
         '/api': {
-          target: env.VITE_DEV_PROXY_TARGET || 'http://localhost:5000',
+          target: env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:5000',
           ws: true,
           changeOrigin: true,
           timeout: 600000,

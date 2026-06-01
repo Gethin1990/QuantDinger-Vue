@@ -78,6 +78,61 @@
       </div>
     </a-card>
 
+    <a-card
+      v-if="isGridLikeBot"
+      :bordered="false"
+      class="hedge-summary-card"
+      style="margin-top: 12px;"
+    >
+      <div class="hedge-summary">
+        <div class="hedge-summary__title">
+          <a-icon type="thunderbolt" />
+          <span>{{ $t('trading-bot.detail.hedgeSummary') }}</span>
+          <a-tooltip :title="$t('trading-bot.detail.hedgeSummaryHint')">
+            <a-icon type="question-circle" class="hedge-summary__tip" />
+          </a-tooltip>
+          <a-button size="small" type="link" @click="refreshHedgeSummary" :loading="hedgeLoading">
+            <a-icon type="reload" />
+          </a-button>
+        </div>
+        <div class="hedge-summary__grid">
+          <div class="hedge-cell hedge-cell--long">
+            <div class="hedge-cell__label">{{ $t('trading-bot.detail.longLeg') }}</div>
+            <div class="hedge-cell__size">{{ formatLegSize(longLeg) }}</div>
+            <div class="hedge-cell__sub">
+              {{ $t('trading-assistant.table.entryPrice') }}: {{ formatPrice(longLeg.entry_price) }}
+              <span class="hedge-cell__pnl" :class="legPnlClass(longLeg)">
+                {{ formatPnl(legPnl(longLeg)) }}
+              </span>
+            </div>
+          </div>
+          <div class="hedge-cell hedge-cell--short">
+            <div class="hedge-cell__label">{{ $t('trading-bot.detail.shortLeg') }}</div>
+            <div class="hedge-cell__size">{{ formatLegSize(shortLeg) }}</div>
+            <div class="hedge-cell__sub">
+              {{ $t('trading-assistant.table.entryPrice') }}: {{ formatPrice(shortLeg.entry_price) }}
+              <span class="hedge-cell__pnl" :class="legPnlClass(shortLeg)">
+                {{ formatPnl(legPnl(shortLeg)) }}
+              </span>
+            </div>
+          </div>
+          <div class="hedge-cell hedge-cell--grid">
+            <div class="hedge-cell__label">{{ $t('trading-bot.detail.totalGridProfit') }}</div>
+            <div class="hedge-cell__size">
+              <span :class="totalGridProfit > 0 ? 'profit' : totalGridProfit < 0 ? 'loss' : ''">
+                {{ formatPnl(totalGridProfit) }}
+              </span>
+            </div>
+            <div class="hedge-cell__sub">
+              {{ $t('trading-bot.detail.matchedPairs') }}: {{ matchedPairCount }}
+              <span class="hedge-cell__sub-divider">·</span>
+              {{ $t('trading-bot.detail.tickInterval') }}: {{ tickIntervalDisplay }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </a-card>
+
     <a-card :bordered="false" class="detail-tabs-card" style="margin-top: 12px;">
       <a-tabs v-model="activeTab" :animated="false">
         <!-- 参数 Tab -->
@@ -101,7 +156,7 @@
                     </a-tag>
                   </span>
                 </div>
-                <div class="param-item">
+                <div class="param-item" v-if="needsTimeframe">
                   <span class="param-label">{{ $t('trading-bot.wizard.timeframe') }}</span>
                   <span class="param-value">{{ tc.timeframe || '-' }}</span>
                 </div>
@@ -189,11 +244,22 @@
                 <span class="ov-label">{{ $t('trading-bot.detail.gridProfitPct') }}</span>
                 <span class="ov-value highlight">{{ gridProfitPctDisplay }}</span>
               </div>
+              <div
+                v-if="gp.gridDirection !== 'neutral' && gp.initialPositionPct > 0"
+                class="grid-overview__item"
+              >
+                <span class="ov-label">{{ $t('trading-bot.grid.initialPositionPct') }}</span>
+                <span class="ov-value">{{ gp.initialPositionPct }}%</span>
+              </div>
+              <div v-if="gp.boundaryAction" class="grid-overview__item">
+                <span class="ov-label">{{ $t('trading-bot.grid.boundaryAction') }}</span>
+                <span class="ov-value">{{ formatParamValue('boundaryAction', gp.boundaryAction) }}</span>
+              </div>
             </div>
 
             <div class="grid-note">
               <a-icon type="info-circle" />
-              <span>{{ $t('trading-bot.detail.gridNote') }}</span>
+              <span>{{ gridNoteText }}</span>
             </div>
 
             <!-- 左右两列：做多 | 做空 -->
@@ -287,6 +353,33 @@
           </div>
         </a-tab-pane>
 
+        <a-tab-pane
+          v-if="isGridBot"
+          key="restingOrders"
+          :tab="$t('trading-bot.tab.gridRestingOrders')"
+        >
+          <div v-if="activeTab === 'restingOrders'" class="resting-orders-panel">
+            <div class="resting-orders-toolbar">
+              <a-button size="small" type="link" @click="refreshRestingOrders" :loading="restingLoading">
+                <a-icon type="reload" />
+              </a-button>
+              <span v-if="bot.status !== 'running'" class="resting-orders-hint">
+                {{ $t('trading-bot.detail.restingOrdersStopped') }}
+              </span>
+            </div>
+            <a-table
+              v-if="restingOrderRows.length"
+              :columns="restingOrderColumns"
+              :data-source="restingOrderRows"
+              :pagination="false"
+              size="small"
+              row-key="id"
+              :scroll="{ x: 720 }"
+            />
+            <a-empty v-else :description="$t('trading-bot.detail.restingOrdersEmpty')" />
+          </div>
+        </a-tab-pane>
+
         <a-tab-pane key="positions" :tab="$t('trading-bot.tab.positions')">
           <position-records
             v-if="activeTab === 'positions'"
@@ -299,6 +392,7 @@
             v-if="activeTab === 'trades'"
             :strategyId="bot.id"
             :isDark="isDark"
+            :botType="bot && bot.bot_type"
           />
         </a-tab-pane>
         <a-tab-pane key="performance" :tab="$t('trading-bot.tab.performance')">
@@ -306,6 +400,7 @@
             v-if="activeTab === 'performance'"
             :strategyId="bot.id"
             :isDark="isDark"
+            :botType="bot && bot.bot_type"
           />
         </a-tab-pane>
         <a-tab-pane key="logs" :tab="$t('trading-bot.tab.logs')">
@@ -326,6 +421,7 @@ import PositionRecords from '@/views/trading-assistant/components/PositionRecord
 import PerformanceAnalysis from '@/views/trading-assistant/components/PerformanceAnalysis.vue'
 import StrategyLogs from '@/views/trading-assistant/components/StrategyLogs.vue'
 import request from '@/utils/request'
+import { getStrategyPositions, getStrategyTrades, getGridRestingOrders } from '@/api/strategy'
 
 const TYPE_META = {
   grid: { icon: 'bar-chart', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
@@ -343,6 +439,12 @@ const PARAM_LABEL_MAP = {
   amountPerGrid: 'trading-bot.grid.amountPerGrid',
   gridMode: 'trading-bot.grid.mode',
   gridDirection: 'trading-bot.grid.direction',
+  initialPositionPct: 'trading-bot.grid.initialPositionPct',
+  boundaryAction: 'trading-bot.grid.boundaryAction',
+  adaptiveBounds: 'trading-bot.grid.adaptiveBounds',
+  adaptiveAtrMult: 'trading-bot.grid.adaptiveAtrMult',
+  waterfallProtection: 'trading-bot.grid.waterfallProtection',
+  waterfallDropPct: 'trading-bot.grid.waterfallDropPct',
   referencePrice: 'trading-bot.detail.gridRefPrice',
   orderMode: 'trading-bot.grid.orderType',
   initialAmount: 'trading-bot.martingale.initialAmount',
@@ -366,7 +468,12 @@ const PARAM_LABEL_MAP = {
 const VALUE_DISPLAY_MAP = {
   gridMode: { arithmetic: 'trading-bot.grid.arithmetic', geometric: 'trading-bot.grid.geometric' },
   gridDirection: { neutral: 'trading-bot.grid.neutral', long: 'trading-bot.grid.long', short: 'trading-bot.grid.short' },
-  orderMode: { maker: 'trading-bot.grid.limitOrder', market: 'trading-bot.grid.marketOrder' }
+  orderMode: { maker: 'trading-bot.grid.limitOrder', market: 'trading-bot.grid.marketOrder' },
+  boundaryAction: {
+    pause: 'trading-bot.grid.boundaryPause',
+    stop_loss: 'trading-bot.grid.boundaryStopLoss',
+    hold: 'trading-bot.grid.boundaryHold'
+  }
 }
 
 export default {
@@ -381,14 +488,46 @@ export default {
     return {
       activeTab: 'params',
       klineData: [],
-      klineLoading: false
+      klineLoading: false,
+      // Hedge summary for grid/DCA bots (P0-1 / P1-1 surfacing).
+      hedgePositions: [],
+      hedgeTrades: [],
+      hedgeLoading: false,
+      hedgeTimer: null,
+      restingOrders: [],
+      restingLoading: false,
+      restingTimer: null
     }
   },
   computed: {
+    restingOrderColumns () {
+      const t = (k) => this.$t(k)
+      return [
+        { title: t('trading-bot.detail.restingOrderCell'), dataIndex: 'cell_index', width: 64 },
+        { title: t('trading-bot.detail.restingOrderPurpose'), dataIndex: 'purposeLabel' },
+        { title: t('trading-bot.detail.restingOrderSide'), dataIndex: 'side', width: 72 },
+        { title: t('trading-bot.detail.restingOrderPrice'), dataIndex: 'priceLabel' },
+        { title: t('trading-bot.detail.restingOrderQty'), dataIndex: 'qtyLabel' },
+        { title: t('trading-bot.detail.restingOrderFilled'), dataIndex: 'filledLabel' },
+        { title: t('trading-bot.detail.restingOrderStatus'), dataIndex: 'statusLabel' },
+        { title: t('trading-bot.detail.restingOrderExchangeId'), dataIndex: 'exchange_order_id', ellipsis: true }
+      ]
+    },
+    restingOrderRows () {
+      return (this.restingOrders || []).map(o => ({
+        ...o,
+        purposeLabel: this.formatRestingPurpose(o.purpose),
+        priceLabel: this.formatPrice(o.price),
+        qtyLabel: this.formatLegSize({ size: o.quantity }),
+        filledLabel: this.formatLegSize({ size: o.filled_quantity }),
+        statusLabel: this.formatRestingStatus(o.status)
+      }))
+    },
     tc () { return this.bot?.trading_config || {} },
     botParams () { return this.tc.bot_params || {} },
     botDisplay () { return this.bot?.bot_display || {} },
     isMartingaleBot () { return (this.bot?.bot_type || this.tc.bot_type) === 'martingale' },
+    needsTimeframe () { return (this.bot?.bot_type || this.tc.bot_type) === 'trend' },
     displayStrategyItems () {
       const items = Array.isArray(this.botDisplay?.strategy_params) ? this.botDisplay.strategy_params : null
       if (items && items.length) {
@@ -405,7 +544,7 @@ export default {
       }))
     },
     displayBotParams () {
-      const skip = new Set(['orderMode', 'timeframe'])
+      const skip = new Set(['orderMode', 'timeframe', 'gridExecutionMode', 'grid_execution_mode'])
       const trailingOn = this.botParams && this.botParams.trailingTpEnabled === true
       const out = {}
       for (const [k, v] of Object.entries(this.botParams)) {
@@ -440,6 +579,52 @@ export default {
       return fallback
     },
     isGridBot () { return (this.bot?.bot_type || this.tc.bot_type) === 'grid' },
+    isGridLikeBot () {
+      const bt = this.bot?.bot_type || this.tc.bot_type
+      return bt === 'grid' || bt === 'dca'
+    },
+    longLeg () {
+      const sym = String((this.tc.symbol || '').split(':')[0] || '').toUpperCase()
+      return this.hedgePositions.find(p => {
+        const s = String(p.side || '').toLowerCase()
+        const ok = String((p.symbol || '').split(':')[0] || '').toUpperCase() === sym
+        return s === 'long' && ok
+      }) || { side: 'long', size: 0, entry_price: 0, current_price: 0 }
+    },
+    shortLeg () {
+      const sym = String((this.tc.symbol || '').split(':')[0] || '').toUpperCase()
+      return this.hedgePositions.find(p => {
+        const s = String(p.side || '').toLowerCase()
+        const ok = String((p.symbol || '').split(':')[0] || '').toUpperCase() === sym
+        return s === 'short' && ok
+      }) || { side: 'short', size: 0, entry_price: 0, current_price: 0 }
+    },
+    // FIFO matched-grid profit comes pre-computed from the backend
+    // (P1-1 — grid_matched_profit on qd_strategy_trades). We just sum the
+    // realised legs and count rows that have a non-zero matched_entry_price.
+    totalGridProfit () {
+      let sum = 0
+      for (const t of this.hedgeTrades) {
+        const v = parseFloat(t.grid_matched_profit || 0)
+        if (!isNaN(v)) sum += v
+      }
+      return sum
+    },
+    matchedPairCount () {
+      let n = 0
+      for (const t of this.hedgeTrades) {
+        const matched = parseFloat(t.matched_entry_price || 0)
+        if (matched > 0) n += 1
+      }
+      return n
+    },
+    tickIntervalDisplay () {
+      const tc = this.tc || {}
+      const override = tc.tick_interval_sec
+      if (override != null && override !== '') return `${override}s`
+      // Backend default: 1s for grid/dca, 10s otherwise (see trading_executor.py).
+      return this.isGridLikeBot ? '1s' : '10s'
+    },
     gp () {
       const bp = this.botParams
       return {
@@ -448,17 +633,52 @@ export default {
         gridCount: parseInt(bp.gridCount) || 10,
         amountPerGrid: parseFloat(bp.amountPerGrid) || 0,
         gridMode: bp.gridMode || 'arithmetic',
-        gridDirection: bp.gridDirection || 'neutral'
+        gridDirection: bp.gridDirection || 'long',
+        initialPositionPct: parseFloat(bp.initialPositionPct) || 0,
+        boundaryAction: bp.boundaryAction || 'pause'
       }
+    },
+    gridNoteText () {
+      const base = this.$t('trading-bot.detail.gridNote')
+      const extraMap = {
+        long: 'trading-bot.detail.gridNoteLong',
+        short: 'trading-bot.detail.gridNoteShort',
+        neutral: 'trading-bot.detail.gridNoteNeutral'
+      }
+      const extraKey = extraMap[this.gp.gridDirection]
+      return extraKey ? `${base} ${this.$t(extraKey)}` : base
+    },
+    gridLevelPrices () {
+      const { upperPrice, lowerPrice, gridCount, gridMode } = this.gp
+      if (!upperPrice || !lowerPrice || !gridCount || upperPrice <= lowerPrice) return []
+      const n = Math.max(2, gridCount)
+      const levels = []
+      if (gridMode === 'geometric' && lowerPrice > 0) {
+        const r = Math.pow(upperPrice / lowerPrice, 1.0 / (n - 1))
+        for (let i = 0; i < n; i++) levels.push(lowerPrice * Math.pow(r, i))
+      } else {
+        const step = (upperPrice - lowerPrice) / (n - 1)
+        for (let i = 0; i < n; i++) levels.push(lowerPrice + step * i)
+      }
+      return levels
+    },
+    gridCells () {
+      const levels = this.gridLevelPrices
+      const cells = []
+      for (let i = 0; i < levels.length - 1; i++) {
+        cells.push({ index: i, lower: levels[i], upper: levels[i + 1] })
+      }
+      return cells
     },
     gridSpacingDisplay () {
       const { upperPrice, lowerPrice, gridCount, gridMode } = this.gp
       if (!upperPrice || !lowerPrice || !gridCount) return '-'
+      const n = Math.max(2, gridCount)
       if (gridMode === 'geometric' && lowerPrice > 0) {
-        const ratio = Math.pow(upperPrice / lowerPrice, 1.0 / gridCount)
+        const ratio = Math.pow(upperPrice / lowerPrice, 1.0 / (n - 1))
         return ((ratio - 1) * 100).toFixed(2) + '%'
       }
-      return this.formatPrice((upperPrice - lowerPrice) / gridCount)
+      return this.formatPrice((upperPrice - lowerPrice) / (n - 1))
     },
     gridRefPrice () {
       const fixed = parseFloat(this.botParams.referencePrice)
@@ -469,60 +689,75 @@ export default {
       return (upperPrice + lowerPrice) / 2
     },
     gridPriceLevels () {
-      const { upperPrice, lowerPrice, gridCount, gridMode, gridDirection } = this.gp
-      if (!upperPrice || !lowerPrice || !gridCount || upperPrice <= lowerPrice) return []
-      const levels = []
+      const { upperPrice, lowerPrice, gridDirection } = this.gp
+      const levels = this.gridLevelPrices
+      if (!levels.length || !upperPrice || !lowerPrice || upperPrice <= lowerPrice) return []
       const ref = this.gridRefPrice
-      for (let i = 0; i <= gridCount; i++) {
-        let price
-        if (gridMode === 'geometric' && lowerPrice > 0) {
-          const r = Math.pow(upperPrice / lowerPrice, 1.0 / gridCount)
-          price = lowerPrice * Math.pow(r, i)
-        } else {
-          price = lowerPrice + ((upperPrice - lowerPrice) / gridCount) * i
-        }
+      return levels.map(price => {
         let side = ''
         if (gridDirection === 'long') side = 'long'
         else if (gridDirection === 'short') side = 'short'
-        else {
-          side = price < ref ? 'long' : price > ref ? 'short' : 'entry'
-        }
-        levels.push({ price, pct: ((price - lowerPrice) / (upperPrice - lowerPrice)) * 100, side })
-      }
-      return levels
+        else side = price < ref ? 'long' : price > ref ? 'short' : 'entry'
+        return { price, pct: ((price - lowerPrice) / (upperPrice - lowerPrice)) * 100, side }
+      })
     },
     gridOrders () {
-      const levels = this.gridPriceLevels
+      const cells = this.gridCells
       const { amountPerGrid, gridDirection } = this.gp
-      if (levels.length < 2) return []
+      if (!cells.length) return []
       const ref = this.gridRefPrice
       const orders = []
-      for (let i = 0; i < levels.length; i++) {
-        const lv = levels[i]
-        let side, trigger, targetPrice, profitUsdt
+      for (const cell of cells) {
         if (gridDirection === 'long') {
-          side = 'long'; trigger = this.$t('trading-bot.detail.triggerDrop')
-          targetPrice = i < levels.length - 1 ? levels[i + 1].price : null
-          profitUsdt = targetPrice ? amountPerGrid * ((targetPrice - lv.price) / lv.price) : 0
+          if (cell.lower >= ref) continue
+          const targetPrice = cell.upper
+          const profitUsdt = amountPerGrid * ((targetPrice - cell.lower) / cell.lower)
+          orders.push({
+            level: cell.index,
+            price: cell.lower,
+            side: 'long',
+            trigger: this.$t('trading-bot.detail.triggerDrop'),
+            targetPrice,
+            profitUsdt
+          })
         } else if (gridDirection === 'short') {
-          side = 'short'; trigger = this.$t('trading-bot.detail.triggerRise')
-          targetPrice = i > 0 ? levels[i - 1].price : null
-          profitUsdt = targetPrice ? amountPerGrid * ((lv.price - targetPrice) / targetPrice) : 0
+          if (cell.upper <= ref) continue
+          const targetPrice = cell.lower
+          const profitUsdt = amountPerGrid * ((cell.upper - targetPrice) / targetPrice)
+          orders.push({
+            level: cell.index,
+            price: cell.upper,
+            side: 'short',
+            trigger: this.$t('trading-bot.detail.triggerRise'),
+            targetPrice,
+            profitUsdt
+          })
         } else {
-          if (lv.price < ref) {
-            side = 'long'; trigger = this.$t('trading-bot.detail.triggerDrop')
-            targetPrice = i + 1 < levels.length ? levels[i + 1].price : null
-            profitUsdt = targetPrice ? amountPerGrid * ((targetPrice - lv.price) / lv.price) : 0
-          } else if (lv.price > ref) {
-            side = 'short'; trigger = this.$t('trading-bot.detail.triggerRise')
-            targetPrice = i - 1 >= 0 ? levels[i - 1].price : null
-            profitUsdt = targetPrice ? amountPerGrid * ((lv.price - targetPrice) / targetPrice) : 0
-          } else {
-            side = 'entry'; trigger = this.$t('trading-bot.detail.triggerEntry')
-            targetPrice = null; profitUsdt = 0
+          if (cell.lower < ref) {
+            const targetPrice = cell.upper
+            const profitUsdt = amountPerGrid * ((targetPrice - cell.lower) / cell.lower)
+            orders.push({
+              level: cell.index,
+              price: cell.lower,
+              side: 'long',
+              trigger: this.$t('trading-bot.detail.triggerDrop'),
+              targetPrice,
+              profitUsdt
+            })
+          }
+          if (cell.upper > ref) {
+            const targetPrice = cell.lower
+            const profitUsdt = amountPerGrid * ((cell.upper - targetPrice) / targetPrice)
+            orders.push({
+              level: cell.index + 0.5,
+              price: cell.upper,
+              side: 'short',
+              trigger: this.$t('trading-bot.detail.triggerRise'),
+              targetPrice,
+              profitUsdt
+            })
           }
         }
-        orders.push({ level: i, price: lv.price, side, trigger, targetPrice, profitUsdt })
       }
       return orders
     },
@@ -553,7 +788,150 @@ export default {
       return { binance: 'Binance', bybit: 'Bybit', gate: 'Gate.io', okx: 'OKX', htx: 'HTX' }[id] || id
     }
   },
+  watch: {
+    'bot.id': {
+      immediate: true,
+      handler (id) {
+        this.stopHedgePolling()
+        this.stopRestingPolling()
+        if (id && this.isGridLikeBot) {
+          this.refreshHedgeSummary()
+          this.startHedgePolling()
+        }
+        if (id && this.isGridBot) {
+          this.refreshRestingOrders(true)
+        }
+      }
+    },
+    activeTab (tab) {
+      if (tab === 'restingOrders' && this.isGridBot) {
+        this.refreshRestingOrders()
+        this.startRestingPolling()
+      } else {
+        this.stopRestingPolling()
+      }
+      if (tab === 'gridPreview' && this.isGridBot && !this.klineData.length) {
+        this.$nextTick(() => this.fetchKlineForGrid())
+      }
+      if (tab === 'gridPreview' && this.klineData.length) {
+        setTimeout(() => this.drawKlineBackground(), 200)
+      }
+    },
+    isGridLikeBot: {
+      handler (val) {
+        this.stopHedgePolling()
+        if (val && this.bot?.id) {
+          this.refreshHedgeSummary()
+          this.startHedgePolling()
+        }
+      }
+    },
+    bot () {
+      this.activeTab = 'params'
+      this.klineData = []
+    },
+    klineData () {
+      setTimeout(() => this.drawKlineBackground(), 300)
+    }
+  },
+  beforeDestroy () {
+    this.stopHedgePolling()
+    this.stopRestingPolling()
+  },
   methods: {
+    startRestingPolling () {
+      this.stopRestingPolling()
+      if (!this.isGridBot) return
+      this.restingTimer = setInterval(() => {
+        if (this.activeTab === 'restingOrders') this.refreshRestingOrders(true)
+      }, 5000)
+    },
+    stopRestingPolling () {
+      if (this.restingTimer) {
+        clearInterval(this.restingTimer)
+        this.restingTimer = null
+      }
+    },
+    async refreshRestingOrders (silent = false) {
+      if (!this.bot?.id || !this.isGridBot) return
+      if (!silent) this.restingLoading = true
+      try {
+        const res = await getGridRestingOrders(this.bot.id, { limit: 200 })
+        if (res && res.code === 1) {
+          this.restingOrders = (res.data && (res.data.orders || res.data.items)) || []
+        }
+      } finally {
+        this.restingLoading = false
+      }
+    },
+    formatRestingPurpose (purpose) {
+      const key = `trading-bot.detail.restingPurpose.${purpose}`
+      const t = this.$t(key)
+      return t !== key ? t : String(purpose || '-')
+    },
+    formatRestingStatus (status) {
+      const key = `trading-bot.detail.restingStatus.${status}`
+      const t = this.$t(key)
+      return t !== key ? t : String(status || '-')
+    },
+    startHedgePolling () {
+      this.stopHedgePolling()
+      // 15s cadence is plenty — the summary card is informational, not
+      // execution-critical, and the row data is refreshed cheaply via
+      // existing list endpoints.
+      this.hedgeTimer = setInterval(() => {
+        this.refreshHedgeSummary(true)
+      }, 15000)
+    },
+    stopHedgePolling () {
+      if (this.hedgeTimer) {
+        clearInterval(this.hedgeTimer)
+        this.hedgeTimer = null
+      }
+    },
+    async refreshHedgeSummary (silent = false) {
+      if (!this.bot?.id) return
+      if (!silent) this.hedgeLoading = true
+      try {
+        const [posRes, trdRes] = await Promise.all([
+          getStrategyPositions(this.bot.id).catch(() => null),
+          getStrategyTrades(this.bot.id, this.$i18n && this.$i18n.locale).catch(() => null)
+        ])
+        if (posRes && posRes.code === 1) {
+          this.hedgePositions = (posRes.data && (posRes.data.positions || posRes.data.items)) || []
+        }
+        if (trdRes && trdRes.code === 1) {
+          this.hedgeTrades = (trdRes.data && (trdRes.data.trades || trdRes.data.items)) || []
+        }
+      } finally {
+        this.hedgeLoading = false
+      }
+    },
+    formatLegSize (leg) {
+      const sz = parseFloat(leg?.size || 0)
+      if (!sz || sz <= 0) return '—'
+      return sz.toFixed(6)
+    },
+    legPnl (leg) {
+      const sz = parseFloat(leg?.size || 0)
+      const ep = parseFloat(leg?.entry_price || 0)
+      const cp = parseFloat(leg?.current_price || 0)
+      if (!(sz > 0 && ep > 0 && cp > 0)) return 0
+      const sign = String(leg.side).toLowerCase() === 'long' ? 1 : -1
+      return sign * (cp - ep) * sz
+    },
+    legPnlClass (leg) {
+      const v = this.legPnl(leg)
+      if (v > 0) return 'profit'
+      if (v < 0) return 'loss'
+      return ''
+    },
+    formatPnl (v) {
+      const n = parseFloat(v || 0)
+      if (!isFinite(n) || Math.abs(n) < 1e-9) return '$0.00'
+      const sign = n > 0 ? '+' : '-'
+      return `${sign}$${Math.abs(n).toFixed(2)}`
+    },
     formatDisplayItem (item) {
       const valueType = item?.value_type || 'text'
       const value = item?.value
@@ -637,7 +1015,7 @@ export default {
       if (val === 'true' || val === 'false') return val === 'true' ? this.$t('trading-bot.common.enabled') : this.$t('trading-bot.common.disabled')
       if (typeof val === 'boolean') return val ? this.$t('trading-bot.common.enabled') : this.$t('trading-bot.common.disabled')
       if (['priceDropPct', 'takeProfitPct', 'stopLossPct', 'positionPct', 'dipThreshold',
-           'trailingTpActivationPct', 'trailingTpCallbackPct'].includes(key)) {
+           'trailingTpActivationPct', 'trailingTpCallbackPct', 'initialPositionPct', 'waterfallDropPct'].includes(key)) {
         return `${this.formatNum(val)}%`
       }
       if (['initialAmount', 'amountEach', 'amountPerGrid', 'referencePrice', 'totalBudget'].includes(key)) {
@@ -728,23 +1106,6 @@ export default {
         }
       })
     }
-  },
-  watch: {
-    bot () {
-      this.activeTab = 'params'
-      this.klineData = []
-    },
-    activeTab (val) {
-      if (val === 'gridPreview' && this.isGridBot && !this.klineData.length) {
-        this.$nextTick(() => this.fetchKlineForGrid())
-      }
-      if (val === 'gridPreview' && this.klineData.length) {
-        setTimeout(() => this.drawKlineBackground(), 200)
-      }
-    },
-    klineData () {
-      setTimeout(() => this.drawKlineBackground(), 300)
-    }
   }
 }
 </script>
@@ -785,6 +1146,13 @@ export default {
     &.danger { color: #f5222d; }
     &.success { color: #52c41a; }
   }
+}
+
+/* ===================== 实时挂单 ===================== */
+.resting-orders-panel { padding: 4px 0; }
+.resting-orders-toolbar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  .resting-orders-hint { font-size: 12px; color: #8c8c8c; }
 }
 
 /* ===================== 网格预览 ===================== */
@@ -882,9 +1250,51 @@ export default {
   &--mid &__price { color: #1890ff; font-weight: 700; }
 }
 
+/* ===================== Hedge summary (grid / DCA) ===================== */
+.hedge-summary-card {
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(102,126,234,0.06) 0%, rgba(118,75,162,0.06) 100%);
+}
+.hedge-summary {
+  &__title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: #595959; margin-bottom: 12px;
+    .anticon { color: #667eea; }
+  }
+  &__tip { color: #bfbfbf; cursor: help; }
+  &__grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+}
+.hedge-cell {
+  padding: 12px 14px; border-radius: 10px; background: #fff; border: 1px solid #f0f0f0;
+  &__label { font-size: 12px; color: #8c8c8c; margin-bottom: 6px; }
+  &__size { font-size: 22px; font-weight: 700; color: #262626; font-family: 'SF Mono', monospace; }
+  &__sub { font-size: 12px; color: #8c8c8c; margin-top: 4px;
+    .hedge-cell__pnl { margin-left: 8px; font-weight: 600;
+      &.profit { color: #52c41a; }
+      &.loss { color: #f5222d; }
+    }
+  }
+  &__sub-divider { margin: 0 4px; color: #d9d9d9; }
+  &--long { border-left: 3px solid #52c41a; }
+  &--short { border-left: 3px solid #f5222d; }
+  &--grid { border-left: 3px solid #1890ff;
+    .hedge-cell__size .profit { color: #52c41a; }
+    .hedge-cell__size .loss { color: #f5222d; }
+  }
+}
+
 /* ===================== 暗黑模式 ===================== */
 .theme-dark {
-  .detail-header-card, .detail-tabs-card { background: #1f1f1f; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+  .detail-header-card, .detail-tabs-card, .hedge-summary-card { background: #1f1f1f; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+  .hedge-summary-card { background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%); }
+  .hedge-summary__title { color: #d9d9d9; }
+  .hedge-cell { background: #141414; border-color: #303030;
+    &__label { color: #8c8c8c; }
+    &__size { color: #e8e8e8; }
+    &__sub { color: #595959; }
+  }
   .header-info h3 { color: #e8e8e8; }
   .params-section__title { color: #d9d9d9; border-bottom-color: #303030; }
   .param-item { background: #141414; border-color: #303030;
