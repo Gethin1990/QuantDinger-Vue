@@ -16,6 +16,8 @@ const api = {
   testConnection: '/api/strategies/test-connection',
   trades: '/api/strategies/trades',
   positions: '/api/strategies/positions',
+  accountPositions: '/api/account/positions',
+  accountSnapshot: '/api/account/snapshot',
   equityCurve: '/api/strategies/equityCurve',
   dryRunDeviation: '/api/strategies/dry-run-deviation',
   notifications: '/api/strategies/notifications',
@@ -23,11 +25,15 @@ const api = {
   verifyCode: '/api/strategies/verify-code',
   aiGenerate: '/api/strategies/ai-generate',
   performance: '/api/strategies/performance',
+  reviewReport: '/api/strategies/review-report',
+  reviewReportHistory: '/api/strategies/review-report/history',
   logs: '/api/strategies/logs',
   gridRestingOrders: '/api/strategies/grid-resting-orders',
   backtest: '/api/strategies/backtest',
   backtestHistory: '/api/strategies/backtest/history',
-  backtestGet: '/api/strategies/backtest/get'
+  backtestGet: '/api/strategies/backtest/get',
+  publishTemplate: '/api/strategies/publish-template',
+  publishBotPreset: '/api/strategies/publish-bot-preset'
 }
 
 /**
@@ -222,6 +228,33 @@ export function getStrategyPositions (id) {
 }
 
 /**
+ * L1 account position mirror (exchange truth per credential).
+ * @param {Object} params
+ * @param {number} [params.credential_id] - filter by saved credential
+ * @param {string} [params.market_type] - swap | spot
+ */
+export function getAccountPositions (params = {}) {
+  return request({
+    url: api.accountPositions,
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * Live account snapshot: swap/spot positions + open orders.
+ * @param {Object} params
+ * @param {number} params.credential_id
+ */
+export function getAccountSnapshot (params = {}) {
+  return request({
+    url: api.accountSnapshot,
+    method: 'get',
+    params
+  })
+}
+
+/**
  * 获取网格 resting 限价单（Live 预挂）
  * @param {number} id - 策略ID
  * @param {Object} [opts]
@@ -232,6 +265,7 @@ export function getGridRestingOrders (id, opts = {}) {
   const params = { id }
   if (opts.status) params.status = opts.status
   if (opts.limit) params.limit = opts.limit
+  if (opts.sync) params.sync = '1'
   return request({
     url: api.gridRestingOrders,
     method: 'get',
@@ -323,6 +357,29 @@ export function getStrategyPerformance (id) {
 }
 
 /**
+ * Build an AI-assisted strategy review report from factual trades.
+ */
+export function getStrategyReviewReport (id, data = {}) {
+  return request({
+    url: api.reviewReport,
+    method: 'post',
+    params: { id },
+    data
+  })
+}
+
+/**
+ * List or load saved AI strategy review reports.
+ */
+export function getStrategyReviewReportHistory (id, params = {}) {
+  return request({
+    url: api.reviewReportHistory,
+    method: 'get',
+    params: { id, ...params }
+  })
+}
+
+/**
  * Get strategy running logs
  */
 export function getStrategyLogs (id, params = {}) {
@@ -358,5 +415,21 @@ export function getStrategyBacktestRun (runId) {
     url: api.backtestGet,
     method: 'get',
     params: { runId }
+  })
+}
+
+export function publishStrategyTemplate (data) {
+  return request({
+    url: api.publishTemplate,
+    method: 'post',
+    data
+  })
+}
+
+export function publishBotPreset (data) {
+  return request({
+    url: api.publishBotPreset,
+    method: 'post',
+    data
   })
 }

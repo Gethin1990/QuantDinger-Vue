@@ -25,7 +25,7 @@ const locale = {
 
   'menu.dashboard.indicator': 'Biểu đồ & chỉ báo',
 
-  'menu.dashboard.community': 'Cộng đồng chỉ báo',
+  'menu.dashboard.community': 'Chợ chiến lược',
 
   'menu.dashboard.analysis': 'Phân tích AI',
 
@@ -2498,6 +2498,8 @@ const locale = {
 'trading-assistant.table.unrealizedPnl': 'Lợi nhuận/Thua lỗ chưa thực hiện',
 
 'trading-assistant.table.pnlPercent': 'Tỷ lệ lợi nhuận/thua lỗ',
+'trading-assistant.table.positionRoi': 'Position ROI',
+'trading-assistant.table.capitalContribution': 'Capital P&L %',
 
 'trading-assistant.table.buy': 'Mua',
 
@@ -2508,6 +2510,10 @@ const locale = {
 'trading-assistant.table.short': 'Bán',
 
 'trading-assistant.table.noPositions': 'Không có vị thế',
+'trading-assistant.positions.reconciliation.accountOnly': 'The exchange account has a real position on this symbol, but this strategy ledger has no position. The table only shows positions created by this strategy.',
+'trading-assistant.positions.reconciliation.strategyOnly': 'This strategy ledger has a position, but account sync has not found the matching exchange position yet. Check for manual close or exchange sync delay.',
+'trading-assistant.positions.reconciliation.mismatch': 'The exchange account position differs from this strategy ledger. The table only shows this strategy ledger position; check for another same-symbol strategy or manual trade.',
+'trading-assistant.positions.reconciliation.error': 'Account position reconciliation failed. The table still only shows this strategy ledger position.',
 
 'trading-assistant.detail.title': 'Chi tiết chiến lược',
 
@@ -3288,7 +3294,7 @@ const locale = {
   'common.noData': 'Chưa có dữ liệu',
   'common.yes': 'Có',
   'common.no': 'Không',
-  'menu.dashboard.aiAssetAnalysis': 'Phân tích tài sản AI',
+  'menu.dashboard.aiAssetAnalysis': 'Phân tích AI thông minh',
   'menu.dashboard.aiQuant': 'Định lượng AI',
   'trading-bot.type.custom': 'Tập lệnh tùy chỉnh',
   'trading-bot.type.customDesc': 'Viết logic chiến lược của riêng bạn bằng Python',
@@ -3393,7 +3399,7 @@ const locale = {
   'menu.dashboard.portfolio': 'Giám sát tài sản',
   'menu.dashboard.globalMarket': 'Thị trường toàn cầu',
   'menu.settings': 'Cài đặt hệ thống',
-  'aiAssetAnalysis.title': 'Phân tích tài sản AI',
+  'aiAssetAnalysis.title': 'Phân tích AI thông minh',
   'aiAssetAnalysis.subtitle': 'Tích hợp giám sát tài sản, phân tích tức thời, tác vụ định kỳ vào một quy trình làm việc mượt mà.',
   'aiAssetAnalysis.actions.quickAnalysis': 'Bắt đầu phân tích ngay',
   'aiAssetAnalysis.actions.monitorTasks': 'Quản lý tác vụ giám sát',
@@ -4932,6 +4938,7 @@ const locale = {
   'community.already_latest': 'Đã là phiên bản mới nhất, không cần đồng bộ',
   'community.local_copy_not_found': 'Không tìm thấy bản sao cục bộ, có thể đã bị xóa, vui lòng mua lại',
   'community.indicator_unpublished': 'Chỉ báo này đã ngừng cung cấp, không thể đồng bộ',
+  'community.indicator_unavailable': 'This content is not approved or is unavailable',
   'community.admin.reviewTab': 'Quản lý duyệt',
   'community.admin.pending': 'Chờ duyệt',
   'community.admin.approved': 'Đã duyệt',
