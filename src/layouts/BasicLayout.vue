@@ -1,5 +1,5 @@
 <template>
-  <div :class="['basic-layout-wrapper', settings.theme]">
+  <div :class="['basic-layout-wrapper', settings.theme, { 'basic-layout-wrapper--multi-tab': multiTab }]">
     <pro-layout
       :menus="menus"
       :collapsed="collapsed"
@@ -49,8 +49,58 @@
       </a-modal>
 
       <setting-drawer ref="settingDrawer" :settings="settings" @change="handleSettingChange">
-        <div style="margin: 12px 0;">
-          This is SettingDrawer custom footer content.
+        <div class="setting-drawer-support">
+          <div class="support-block">
+            <div class="support-title">{{ $t('menu.footer.contactUs') }}</div>
+            <div class="support-links">
+              <a :href="menuFooterConfig.contact.support_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.support') }}</a>
+              <span class="separator">|</span>
+              <a :href="menuFooterConfig.contact.feature_request_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.featureRequest') }}</a>
+            </div>
+          </div>
+          <div class="support-block">
+            <div class="support-title">{{ $t('menu.footer.getSupport') }}</div>
+            <div class="support-links">
+              <a :href="'mailto:' + menuFooterConfig.contact.email">{{ $t('menu.footer.email') }}</a>
+              <span class="separator">|</span>
+              <a :href="menuFooterConfig.contact.live_chat_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.liveChat') }}</a>
+            </div>
+          </div>
+          <div class="support-block" v-if="menuFooterConfig.social_accounts && menuFooterConfig.social_accounts.length > 0">
+            <div class="support-title">{{ $t('menu.footer.socialAccounts') }}</div>
+            <div class="support-socials">
+              <a
+                v-for="(account, index) in menuFooterConfig.social_accounts"
+                :key="index"
+                :href="account.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                :title="account.name"
+                class="support-social"
+              >
+                <Icon :icon="`simple-icons:${account.icon}`" />
+              </a>
+            </div>
+          </div>
+          <div class="support-legal">
+            <a
+              v-if="menuFooterConfig.legal.user_agreement_url"
+              :href="menuFooterConfig.legal.user_agreement_url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ $t('menu.footer.userAgreement') }}</a>
+            <a v-else @click="showLegalModal = true">{{ $t('menu.footer.userAgreement') }}</a>
+            <span class="separator">&</span>
+            <a
+              v-if="menuFooterConfig.legal.privacy_policy_url"
+              :href="menuFooterConfig.legal.privacy_policy_url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ $t('menu.footer.privacyPolicy') }}</a>
+            <a v-else @click="showPrivacyModal = true">{{ $t('menu.footer.privacyPolicy') }}</a>
+          </div>
+          <div class="support-copy">{{ menuFooterConfig.copyright }}</div>
+          <div class="support-version">V{{ appVersion }}</div>
         </div>
       </setting-drawer>
       <template #rightContentRender>
@@ -60,11 +110,14 @@
       <template #footerRender>
         <div style="display: none;"></div>
       </template>
-      <router-view :key="refreshKey" />
+      <multi-tab v-if="multiTab" />
+      <div class="basic-route-view-shell">
+        <route-view :key="refreshKey" :keep-alive="multiTab" />
+      </div>
     </pro-layout>
 
     <!-- 菜单底部 footer - 直接写，不依赖插槽 -->
-    <div class="custom-menu-footer" :class="{ 'collapsed': collapsed, 'drawer-open': isMobile && isDrawerOpen, 'drawer-animating': isMobile && isDrawerAnimating }">
+    <div v-if="false" class="custom-menu-footer" :class="{ 'collapsed': collapsed, 'drawer-open': isMobile && isDrawerOpen, 'drawer-animating': isMobile && isDrawerAnimating }">
       <div v-if="!collapsed" class="menu-footer-content">
         <!-- 联系我们 -->
         <div class="footer-section">
@@ -160,6 +213,8 @@ import {
 import defaultSettings from '@/config/defaultSettings'
 import RightContent from '@/components/GlobalHeader/RightContent'
 import SettingDrawer from '@/components/SettingDrawer/SettingDrawer'
+import MultiTab from '@/components/MultiTab'
+import RouteView from './RouteView'
 import { Icon } from '@iconify/vue2'
 import logoLight from '@/assets/logo.png'
 import logoDark from '@/assets/logo_w.png'
@@ -170,6 +225,8 @@ export default {
   components: {
     SettingDrawer,
     RightContent,
+    MultiTab,
+    RouteView,
     Icon
     // GlobalFooter,
     // Ads
@@ -224,12 +281,17 @@ export default {
       // 动态主路由
       mainMenu: state => state.permission.addRouters,
       // 后端下发的品牌配置（src/store/modules/brand.js）
-      brandConfig: state => state.brand.config
+      brandConfig: state => state.brand.config,
+      multiTab: state => state.app.multiTab
     }),
     // 响应式菜单 - 根据 addRouters 动态更新
     menus () {
       const routes = this.mainMenu.find(item => item.path === '/')
-      return (routes && routes.children) || []
+      const children = (routes && routes.children) || []
+      if (this.settings.layout !== 'topmenu') {
+        return children
+      }
+      return this.buildTopMenuGroups(children)
     },
     showAdminMenuDivider () {
       const routes = this.mainMenu.find(item => item.path === '/')
@@ -288,6 +350,7 @@ export default {
     this.$watch('$store.state.app.color', (val) => {
       if (val) {
         this.settings.primaryColor = val
+        document.documentElement.style.setProperty('--primary-color', val)
         // 应用主题色
         if (process.env.NODE_ENV !== 'production' || process.env.VUE_APP_PREVIEW === 'true') {
           // 首次加载时静默更新，不显示"正在切换主题"提示
@@ -468,6 +531,88 @@ export default {
   },
   methods: {
     i18nRender,
+    buildTopMenuGroups (routes) {
+      const accountMenuPaths = ['/billing', '/profile']
+      const visibleRoutes = routes.filter(route => !route.hidden && !accountMenuPaths.includes(route.path))
+      const groups = [
+        {
+          name: 'MenuGroupAI',
+          path: '/menu-group/ai-workspace',
+          title: this.$t('menu.group.aiWorkspace') || 'AI Workspace',
+          icon: 'thunderbolt',
+          paths: ['/ai-asset-analysis'],
+          singleAsItem: true
+        },
+        {
+          name: 'MenuGroupMarket',
+          path: '/menu-group/market-data',
+          title: this.$t('menu.group.marketData') || 'Market & Data',
+          icon: 'database',
+          paths: ['/strategy-center', '/indicator-community']
+        },
+        {
+          name: 'MenuGroupStrategy',
+          path: '/menu-group/strategy-lab',
+          title: this.$t('menu.group.strategyLab') || 'Strategy Lab',
+          icon: 'experiment',
+          paths: ['/indicator-ide', '/strategy-live', '/strategy-script', '/trading-bot']
+        },
+        {
+          name: 'MenuGroupTrading',
+          path: '/menu-group/auto-trading',
+          title: this.$t('menu.dashboard.brokerAccounts') || 'Broker Accounts',
+          icon: 'bank',
+          paths: ['/broker-accounts'],
+          singleAsItem: true
+        },
+        {
+          name: 'MenuGroupAdmin',
+          path: '/menu-group/admin',
+          title: this.$t('menu.group.admin') || 'Admin',
+          icon: 'setting',
+          paths: ['/user-manage', '/agent-tokens', '/ai-skills', '/settings']
+        }
+      ]
+      const routeMap = visibleRoutes.reduce((map, route) => {
+        map[route.path] = route
+        return map
+      }, {})
+      const used = new Set()
+      const groupedRoutes = groups
+        .map(group => {
+          const children = group.paths
+            .map(path => routeMap[path])
+            .filter(Boolean)
+            .map(route => {
+              used.add(route.path)
+              return { ...route }
+            })
+          if (!children.length) return null
+          if (group.singleAsItem && children.length === 1) {
+            return children[0]
+          }
+          return {
+            path: group.path,
+            name: group.name,
+            redirect: children[0].path,
+            meta: {
+              title: group.title,
+              icon: group.icon,
+              permission: children.reduce((list, route) => {
+                const perms = (route.meta && route.meta.permission) || []
+                perms.forEach(permission => {
+                  if (!list.includes(permission)) list.push(permission)
+                })
+                return list
+              }, [])
+            },
+            children
+          }
+        })
+        .filter(Boolean)
+      const leftovers = visibleRoutes.filter(route => !used.has(route.path))
+      return groupedRoutes.concat(leftovers)
+    },
     updateAdminMenuDivider () {
       this.$nextTick(() => {
         requestAnimationFrame(() => {
@@ -1212,6 +1357,122 @@ export default {
       min-height: 0;
       flex: 1;
     }
+  }
+}
+
+.setting-drawer-support {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.72);
+
+  .support-block {
+    margin-bottom: 14px;
+  }
+
+  .support-title {
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(15, 23, 42, 0.86);
+  }
+
+  .support-links,
+  .support-legal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+
+    a {
+      color: var(--primary-color, #1890ff);
+    }
+
+    .separator {
+      color: rgba(100, 116, 139, 0.58);
+    }
+  }
+
+  .support-socials {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .support-social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 6px;
+    color: rgba(15, 23, 42, 0.72);
+    background: rgba(248, 250, 252, 0.85);
+    transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+
+    &:hover {
+      color: var(--primary-color, #1890ff);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, transparent);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, #fff);
+    }
+  }
+
+  .support-copy {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    font-size: 11px;
+    color: rgba(100, 116, 139, 0.78);
+  }
+
+  .support-version {
+    margin-top: 4px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: rgba(100, 116, 139, 0.58);
+  }
+}
+
+body.dark .setting-drawer-support,
+body.realdark .setting-drawer-support,
+.basic-layout-wrapper.dark .setting-drawer-support,
+.basic-layout-wrapper.realdark .setting-drawer-support {
+  border-top-color: rgba(255, 255, 255, 0.1);
+  color: rgba(226, 232, 240, 0.72);
+
+  .support-title {
+    color: rgba(248, 250, 252, 0.9);
+  }
+
+  .support-links,
+  .support-legal {
+    .separator {
+      color: rgba(148, 163, 184, 0.58);
+    }
+  }
+
+  .support-social {
+    color: rgba(226, 232, 240, 0.74);
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+
+    &:hover {
+      color: var(--primary-color, #1890ff);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 36%, transparent);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
+    }
+  }
+
+  .support-copy {
+    border-top-color: rgba(255, 255, 255, 0.1);
+    color: rgba(148, 163, 184, 0.75);
+  }
+
+  .support-version {
+    color: rgba(148, 163, 184, 0.58);
   }
 }
 

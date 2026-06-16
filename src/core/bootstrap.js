@@ -15,7 +15,11 @@ import defaultSettings from '@/config/defaultSettings'
 export default function Initializer () {
   printANSI() // 请自行移除该行.  please remove this line
 
-  store.commit(TOGGLE_LAYOUT, storage.get(TOGGLE_LAYOUT, defaultSettings.layout))
+  const savedLayout = storage.get(TOGGLE_LAYOUT, defaultSettings.layout)
+  const nextLayout = defaultSettings.layout === 'topmenu' && savedLayout === 'sidemenu'
+    ? defaultSettings.layout
+    : savedLayout
+  store.commit(TOGGLE_LAYOUT, nextLayout)
   store.commit(TOGGLE_FIXED_HEADER, storage.get(TOGGLE_FIXED_HEADER, defaultSettings.fixedHeader))
   store.commit(TOGGLE_FIXED_SIDEBAR, storage.get(TOGGLE_FIXED_SIDEBAR, defaultSettings.fixSiderbar))
   store.commit(TOGGLE_CONTENT_WIDTH, storage.get(TOGGLE_CONTENT_WIDTH, defaultSettings.contentWidth))

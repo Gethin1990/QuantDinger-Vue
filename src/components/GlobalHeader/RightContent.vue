@@ -54,11 +54,12 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['nickname', 'avatar']),
+    ...mapGetters(['nickname', 'avatar', 'userInfo']),
     currentUser () {
       return {
         name: this.nickname,
-        avatar: this.avatar
+        avatar: this.avatar,
+        credits: this.userInfo && this.userInfo.credits
       }
     },
     wrpCls () {

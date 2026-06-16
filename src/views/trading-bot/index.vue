@@ -252,6 +252,17 @@ export default {
   methods: {
     handleRouteQuery () {
       const q = this.$route.query
+      if (q && q.aiPreset === '1') {
+        try {
+          const raw = sessionStorage.getItem('qd_copilot_bot_recommend')
+          const preset = raw ? JSON.parse(raw) : null
+          if (preset && preset.botType) {
+            this.handleAiApply(preset)
+            sessionStorage.removeItem('qd_copilot_bot_recommend')
+            return
+          }
+        } catch (_) {}
+      }
       if (!q || !q.strategy_id) return
       const sid = Number(q.strategy_id)
       if (!sid) return
@@ -766,6 +777,50 @@ export default {
 
   /deep/ .bot-status-badge .text { color: rgba(255, 255, 255, 0.45); }
   /deep/ .empty-state { color: rgba(255, 255, 255, 0.45); }
+
+  /deep/ .bot-actions .bot-action-btn {
+    background: #181818 !important;
+    border-color: #3a3a3a !important;
+    color: rgba(255, 255, 255, 0.72) !important;
+
+    .anticon {
+      color: inherit !important;
+    }
+
+    &:hover,
+    &:focus {
+      background: #222 !important;
+      border-color: var(--primary-color, #177ddc) !important;
+      color: var(--primary-color, #177ddc) !important;
+    }
+  }
+
+  /deep/ .bot-actions .bot-action-btn--start {
+    background: rgba(24, 144, 255, 0.1) !important;
+    border-color: rgba(24, 144, 255, 0.45) !important;
+    color: #40a9ff !important;
+
+    &:hover,
+    &:focus {
+      background: rgba(24, 144, 255, 0.18) !important;
+      border-color: #40a9ff !important;
+      color: #69c0ff !important;
+    }
+  }
+
+  /deep/ .bot-actions .bot-action-btn--pause,
+  /deep/ .bot-actions .bot-action-btn--delete {
+    background: rgba(255, 77, 79, 0.08) !important;
+    border-color: rgba(255, 77, 79, 0.42) !important;
+    color: #ff7875 !important;
+
+    &:hover,
+    &:focus {
+      background: rgba(255, 77, 79, 0.16) !important;
+      border-color: #ff7875 !important;
+      color: #ffa39e !important;
+    }
+  }
 
   // BotDetail
   /deep/ .detail-header-card,

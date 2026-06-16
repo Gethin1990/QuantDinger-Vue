@@ -2396,6 +2396,7 @@ export default {
     await this.loadWatchlist()
     this.restoreIdeUiState()
     this.autoSelectFirstIndicator()
+    this.applyCopilotDraft()
   },
   mounted () {
     this._fullscreenListener = () => this.onGlobalFullscreenChange()
@@ -2441,6 +2442,54 @@ export default {
     } catch (_) {}
   },
   methods: {
+    applyCopilotDraft () {
+      const q = this.$route && this.$route.query ? this.$route.query : {}
+      const targetTab = String(q.tab || '').toLowerCase()
+      if (targetTab === 'backtest') {
+        this.ideWorkspaceTab = 'backtest'
+        this.resultTab = 'backtest'
+      }
+      let prompt = ''
+      let code = ''
+      try {
+        prompt = q.aiPrompt ? decodeURIComponent(String(q.aiPrompt)) : ''
+      } catch (_) {
+        prompt = String(q.aiPrompt || '')
+      }
+      if (!prompt) {
+        try {
+          prompt = sessionStorage.getItem('qd_copilot_indicator_prompt') || ''
+          if (prompt) sessionStorage.removeItem('qd_copilot_indicator_prompt')
+        } catch (_) {}
+      }
+      try {
+        code = sessionStorage.getItem('qd_copilot_indicator_code') || ''
+        if (code) sessionStorage.removeItem('qd_copilot_indicator_code')
+      } catch (_) {}
+      if (code) {
+        prompt = ''
+        try { sessionStorage.removeItem('qd_copilot_indicator_prompt') } catch (_) {}
+      }
+      if (prompt) {
+        this.aiPrompt = prompt
+        this.aiPanelExpanded = true
+        this.codeDrawerVisible = true
+        this.codePanelExpanded = true
+      }
+      if (code) {
+        this.currentCode = code
+        this.codeDirty = true
+        this.codeDrawerVisible = true
+        this.codePanelExpanded = true
+        this.$nextTick(() => {
+          if (this.cmInstance) {
+            this.cmInstance.setValue(code)
+            this.cmInstance.refresh()
+          }
+          this.syncTradeUiFromStrategyCode(code, { silent: true })
+        })
+      }
+    },
     // ===== Data loading =====
     async loadUserId () {
       try {
@@ -4421,36 +4470,44 @@ export default {
         if (!bar) {
           const p = Number(fallbackPrice) || 0
           const minGap = Math.max(Math.abs(p) * 0.01, 1e-8)
-          const labelGap = minGap * (isDashed ? 1.8 : 1.2)
+          const labelGap = minGap * (isDashed ? 2.2 : 1.55)
           return isBuy
-            ? { label: p + labelGap, anchor: p + minGap * 0.35 }
-            : { label: p - labelGap, anchor: p - minGap * 0.35 }
+            ? { label: p - labelGap, anchor: p - minGap * 0.35 }
+            : { label: p + labelGap, anchor: p + minGap * 0.35 }
         }
         const high = Number(bar.high)
         const low = Number(bar.low)
         const close = Number(bar.close)
         const open = Number(bar.open)
         const ref = Number.isFinite(high) && Number.isFinite(low)
-          ? (isBuy ? high : low)
+          ? (isBuy ? low : high)
           : (Number.isFinite(close) ? close : open)
         const span = Math.max(
           (Number.isFinite(high) && Number.isFinite(low)) ? (high - low) : 0,
           Math.abs(ref) * 0.001,
           1e-8
         )
-        const gap = Math.max(span * 0.38, Math.abs(ref) * 0.0045)
-        const labelGap = gap * (isDashed ? 1.35 : 0.9)
-        const anchorGap = gap * 0.18
+        const gap = Math.max(span * 0.92, Math.abs(ref) * 0.010)
+        const labelGap = gap * (isDashed ? 1.7 : 1.2)
+        const anchorGap = gap * 0.22
         if (!Number.isFinite(ref) || ref <= 0) {
           const p = Number(fallbackPrice) || 0
           return { label: p, anchor: p }
         }
         return isBuy
-          ? { label: ref + labelGap, anchor: ref + anchorGap }
-          : { label: ref - labelGap, anchor: ref - anchorGap }
+          ? { label: ref - labelGap, anchor: ref - anchorGap }
+          : { label: ref + labelGap, anchor: ref + anchorGap }
       }
 
-      const createSignalOverlay = ({ timestamp, labelPrice, anchorPrice, isBuy, markerStyle, text, color }) => {
+      const markerLaneByTs = new Map()
+      const nextMarkerLane = (timestamp) => {
+        const key = String(timestamp || '')
+        const current = markerLaneByTs.get(key) || 0
+        markerLaneByTs.set(key, current + 1)
+        return current % 4
+      }
+
+      const createSignalOverlay = ({ timestamp, labelPrice, anchorPrice, isBuy, markerStyle, text, shortText, color, lane }) => {
         if (!timestamp || !labelPrice) return
         const payload = {
           name: 'signalTag',
@@ -4466,7 +4523,10 @@ export default {
             price: labelPrice,
             markerStyle: markerStyle || 'solid',
             source: 'backtest',
-            fontSize: 11
+            labelMode: 'compact',
+            shortText: shortText || text || (isBuy ? 'L' : 'S'),
+            lane: lane == null ? nextMarkerLane(timestamp) : lane,
+            fontSize: 10
           },
           lock: true
         }
@@ -4508,6 +4568,7 @@ export default {
           isBuy,
           markerStyle: 'solid',
           text: meta.fillLabel,
+          shortText: meta.shortFillLabel,
           color: meta.color
         })
 
@@ -4520,6 +4581,7 @@ export default {
             isBuy,
             markerStyle: 'dashed',
             text: meta.signalLabel,
+            shortText: meta.shortSignalLabel,
             color: meta.color
           })
         }
@@ -4701,6 +4763,20 @@ export default {
     },
     formatQualityHint (h) {
       if (!h || !h.code) return ''
+      if (h.code === 'PARAM_DEFAULT_MISMATCH') {
+        const items = Array.isArray(h.params && h.params.items) ? h.params.items : []
+        const details = items
+          .map(item => {
+            const name = item && item.name ? item.name : '-'
+            const declared = item && item.declared !== undefined ? item.declared : '-'
+            const fallback = item && item.fallback !== undefined ? item.fallback : '-'
+            return `${name}: @param=${declared}, params.get=${fallback}`
+          })
+          .join('; ')
+        const key = 'indicatorIde.quality.PARAM_DEFAULT_MISMATCH'
+        const msg = this.$t(key, { details })
+        return msg === key ? `Parameter default mismatch${details ? `: ${details}` : ''}` : msg
+      }
       const key = `indicatorIde.quality.${h.code}`
       const msg = this.$t(key, h.params || {})
       return msg === key ? String(h.code) : msg
@@ -4835,12 +4911,15 @@ export default {
         '# @strategy trailingActivationPct 0.03  # Activate trailing after +3% in profit\n' +
         '# @strategy tradeDirection long         # long | short | both\n\n' +
         'df = df.copy()\n' +
-        "df['buy'] = False\n" +
-        "df['sell'] = False\n\n" +
+        "df['open_long'] = False\n" +
+        "df['close_long'] = False\n" +
+        "df['open_short'] = False\n" +
+        "df['close_short'] = False\n\n" +
         'output = {\n' +
         "  'name': my_indicator_name,\n" +
         "  'plots': [],\n" +
-        "  'signals': []\n" +
+        "  'signals': [],\n" +
+        "  'layers': []\n" +
         '}\n'
       )
     },
@@ -5776,10 +5855,29 @@ export default {
         liquidation: '#D50000',
         other: '#78909C'
       }
+      const shortLabelByAction = {
+        openLong: 'L',
+        addLong: '+L',
+        closeLong: 'XL',
+        closeLongStop: 'SL',
+        closeLongProfit: 'TP',
+        closeLongTrailing: 'TR',
+        openShort: 'S',
+        addShort: '+S',
+        closeShort: 'XS',
+        closeShortStop: 'SL',
+        closeShortProfit: 'TP',
+        closeShortTrailing: 'TR',
+        liquidation: 'LQ',
+        other: 'X'
+      }
+      const shortFillLabel = shortLabelByAction[actionKey] || (isBuy ? 'L' : 'S')
       return {
         isBuy: isBuy || !isSell,
         fillLabel,
         signalLabel,
+        shortFillLabel,
+        shortSignalLabel: `${shortFillLabel}?`,
         color: colorByAction[actionKey] || (isBuy ? '#00E676' : '#FF5252')
       }
     },
@@ -5978,7 +6076,7 @@ export default {
   display: flex;
   flex-direction: column;
   /* 勿用 height:100% 依赖父级链：pro-layout 下父节点常无明确高度，会导致整页高度为 0 空白 */
-  min-height: calc(100vh - 64px);
+  min-height: var(--ide-shell-height, calc(100vh - 64px));
   height: auto;
   width: 100%;
   padding: 0;
@@ -6173,8 +6271,8 @@ export default {
   width: 30%;
   min-width: 280px;
   max-width: 400px;
-  height: calc(100vh - 64px - 8px);
-  max-height: calc(100vh - 64px - 8px);
+  height: calc(var(--ide-shell-height, calc(100vh - 64px)) - 8px);
+  max-height: calc(var(--ide-shell-height, calc(100vh - 64px)) - 8px);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -6838,8 +6936,8 @@ export default {
   /* 勿 align-self:flex-start：在 ide-main 行 flex 里会按「子内容高度」收缩，回测 Tab 内 flex 链易塌成 0 */
   align-self: stretch;
   flex: 1 1 0;
-  height: calc(100vh - 64px - 8px);
-  max-height: calc(100vh - 64px - 8px);
+  height: calc(var(--ide-shell-height, calc(100vh - 64px)) - 8px);
+  max-height: calc(var(--ide-shell-height, calc(100vh - 64px)) - 8px);
 }
 /* 根节点同时带 .ide-workspace-tabs 与 .ant-tabs，勿用 /deep/ .ant-tabs 仅匹配子级 */
 .ide-workspace-tabs {
@@ -7943,6 +8041,16 @@ body.realdark .backtest-panel-toolbar {
 .ide-tune-run-btn {
   flex-shrink: 0;
   font-weight: 500;
+  min-width: 96px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff !important;
+
+  span,
+  i {
+    color: inherit !important;
+  }
 }
 .ide-tune-method-badge--ai {
   /* Same neutral badge as the structured one. */

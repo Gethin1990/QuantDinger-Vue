@@ -18,6 +18,89 @@
   }
 }
 
+.basic-layout-wrapper .ant-layout-content,
+.basic-layout-wrapper .ant-pro-basicLayout-content,
+.basic-layout-wrapper .ant-pro-page-header-wrap,
+.basic-layout-wrapper .ant-pro-page-header-wrap-children-content,
+.basic-layout-wrapper .basic-route-view-shell,
+.basic-layout-wrapper [class*='ant-pro-basicLayout-children'] {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:global {
+  .basic-layout-wrapper .ant-layout-content,
+  .basic-layout-wrapper .ant-pro-basicLayout-content,
+  .basic-layout-wrapper .ant-pro-page-header-wrap,
+  .basic-layout-wrapper .ant-pro-page-header-wrap-children-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .basic-layout-wrapper .basic-route-view-shell {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+:global {
+  .basic-layout-wrapper--multi-tab .ant-layout-content {
+    --qd-multi-tab-height: 36px;
+  }
+
+  .basic-layout-wrapper--multi-tab .basic-route-view-shell {
+    margin-top: 0;
+  }
+
+  .basic-layout-wrapper--multi-tab .ant-pro-basicLayout-content,
+  .basic-layout-wrapper--multi-tab .ant-layout-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .basic-layout-wrapper--multi-tab .ant-pro-multi-tab {
+    margin: 0;
+  }
+
+  .basic-layout-wrapper--multi-tab .basic-route-view-shell:has(.indicator-ide) {
+    margin-top: 0;
+  }
+
+  .basic-layout-wrapper--multi-tab .ai-asset-analysis-page {
+    min-height: calc(100vh - 112px);
+  }
+
+  .basic-layout-wrapper--multi-tab .copilot-workbench {
+    height: calc(100vh - 100px);
+  }
+
+  .basic-layout-wrapper--multi-tab .indicator-ide {
+    --ide-shell-height: calc(100vh - 64px - var(--qd-multi-tab-height, 36px));
+  }
+
+  .basic-layout-wrapper--multi-tab .indicator-ide .ide-left {
+    top: var(--qd-multi-tab-height, 36px);
+  }
+
+  .basic-layout-wrapper--multi-tab .ant-pro-multi-tab {
+    flex: 0 0 var(--qd-multi-tab-height, 36px);
+  }
+
+  @supports selector(:has(*)) {
+    .basic-layout-wrapper--multi-tab .ant-layout-content:has(.indicator-ide),
+    .basic-layout-wrapper--multi-tab .ant-pro-basicLayout-content:has(.indicator-ide) {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .basic-layout-wrapper--multi-tab .ant-layout-content:has(.indicator-ide) .ant-pro-multi-tab,
+    .basic-layout-wrapper--multi-tab .ant-pro-basicLayout-content:has(.indicator-ide) .ant-pro-multi-tab {
+      margin: 0;
+    }
+
+  }
+}
+
 /* ========== ant-layout-header 主题适配 ========== */
 /* 全局样式：根据 body 或 layout 的主题类自动适配 */
 :global {
@@ -43,7 +126,7 @@
       color: rgba(255, 255, 255, 0.85) !important;
 
       &:hover {
-        color: #1890ff !important;
+        color: var(--primary-color, #1890ff) !important;
         background: rgba(255, 255, 255, 0.08) !important;
         border-radius: 4px;
       }
@@ -54,7 +137,7 @@
       color: rgba(255, 255, 255, 0.85) !important;
 
       &:hover {
-        color: #1890ff !important;
+        color: var(--primary-color, #1890ff) !important;
       }
     }
 
@@ -158,7 +241,7 @@
       color: rgba(255, 255, 255, 0.85) !important;
 
       &:hover {
-        color: #1890ff !important;
+        color: var(--primary-color, #1890ff) !important;
         background: rgba(255, 255, 255, 0.08) !important;
         border-radius: 4px;
       }
@@ -184,7 +267,7 @@
       color: rgba(255, 255, 255, 0.85) !important;
 
       &:hover {
-        color: #1890ff !important;
+        color: var(--primary-color, #1890ff) !important;
         background: rgba(255, 255, 255, 0.08) !important;
       }
 
@@ -212,7 +295,7 @@
       color: rgba(255, 255, 255, 0.85) !important;
 
       &:hover {
-        color: #1890ff !important;
+        color: var(--primary-color, #1890ff) !important;
         background: rgba(255, 255, 255, 0.08) !important;
       }
 
@@ -227,7 +310,7 @@
     color: rgba(255, 255, 255, 0.85) !important;
 
     &:hover {
-      color: #1890ff !important;
+      color: var(--primary-color, #1890ff) !important;
     }
   }
 
@@ -236,7 +319,7 @@
     color: rgba(255, 255, 255, 0.85) !important;
 
     &:hover {
-      color: #1890ff !important;
+      color: var(--primary-color, #1890ff) !important;
     }
   }
 
@@ -356,7 +439,7 @@
       color: hsl(0deg 0% 100% / 85%);
 
       &:hover {
-        background: #1890ff;
+        background: var(--primary-color, #1890ff);
       }
     }
 
@@ -378,7 +461,7 @@
       color: rgba(255, 255, 255, 0.85);
 
       &:hover {
-        color: #1890ff;
+        color: var(--primary-color, #1890ff);
         background: rgba(255, 255, 255, 0.08);
       }
     }
@@ -420,7 +503,7 @@
 
         &:hover {
           background: #252525 !important;
-          color: #1890ff !important;
+          color: var(--primary-color, #1890ff) !important;
         }
       }
 
@@ -528,3 +611,51 @@
   }
 }
 
+:global {
+  body.dark .ant-layout-header .ant-menu-horizontal,
+  body.realdark .ant-layout-header .ant-menu-horizontal {
+    background: transparent !important;
+  }
+
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-selected,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-selected,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-active,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-active,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item:hover,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu:hover,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-selected,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-selected,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-active,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-active,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item:hover,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item:hover,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-active,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu:hover,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-active,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item:hover,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-active,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu:hover,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-active {
+    color: var(--primary-color, #1890ff) !important;
+  }
+
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item:hover *,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-active *,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu:hover *,
+  body.dark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-active *,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item:hover *,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-item-active *,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu:hover *,
+  body.realdark .ant-layout-header .ant-menu-horizontal > .ant-menu-submenu-active * {
+    color: var(--primary-color, #1890ff) !important;
+  }
+}

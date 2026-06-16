@@ -169,6 +169,12 @@ export const asyncRouterMap = [
         component: () => import('@/views/agent-tokens'),
         meta: { title: 'menu.agentTokens', keepAlive: false, icon: 'api', permission: ['admin'] }
       },
+      {
+        path: '/ai-skills',
+        name: 'AiSkills',
+        component: () => import('@/views/ai-skills'),
+        meta: { title: 'menu.aiSkills', keepAlive: false, icon: 'experiment', permission: ['admin'] }
+      },
       // 系统设置 (admin only) - 放在最后
       {
         path: '/settings',

@@ -370,6 +370,7 @@ export default {
       } else if (!this.value) {
         this.$emit('input', this._getDefaultCode())
       }
+      this.applyCopilotDraft()
     })
     window.addEventListener('resize', this.scheduleEditorRefresh)
   },
@@ -413,6 +414,18 @@ export default {
     }
   },
   methods: {
+    applyCopilotDraft () {
+      let code = ''
+      try {
+        code = sessionStorage.getItem('qd_copilot_script_strategy_code') || ''
+        if (code) sessionStorage.removeItem('qd_copilot_script_strategy_code')
+      } catch (_) {}
+      if (code) {
+        this.activeTab = 'ai'
+        this.setCode(code)
+        this.templateDirty = true
+      }
+    },
     initEditor () {
       if (!this.$refs.editorContainer) return
       this.editor = CodeMirror(this.$refs.editorContainer, {

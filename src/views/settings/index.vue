@@ -624,6 +624,14 @@ export default {
   mounted () {
     this.loadSettings()
   },
+  watch: {
+    '$route.query.section' () {
+      this.applyRouteSection()
+    },
+    '$route.query.group' () {
+      this.applyRouteSection()
+    }
+  },
   methods: {
     // Left-nav click: switch the currently displayed group.  Clearing the
     // search keyword on group change matches user intent ("I navigated, I'm
@@ -645,6 +653,28 @@ export default {
     onSelectFieldChange (item, value) {
       if (item && item.key === 'LLM_PROVIDER') {
         this.selectedLlmProvider = value || 'openrouter'
+      }
+    },
+    normalizeRouteSection (value) {
+      const key = String(value || '').toLowerCase()
+      const map = {
+        llm: 'ai',
+        ai_llm: 'ai',
+        ai: 'ai',
+        data: 'data_source',
+        datasource: 'data_source',
+        data_source: 'data_source',
+        broker: 'trading',
+        broker_accounts: 'trading'
+      }
+      return map[key] || key
+    },
+    applyRouteSection () {
+      const keys = Object.keys(this.sortedSchema || {})
+      const target = this.normalizeRouteSection(this.$route.query.section || this.$route.query.group)
+      if (target && keys.includes(target)) {
+        this.activeGroupKey = target
+        this.searchKeyword = ''
       }
     },
     // 兼容后端 schema options 两种格式：
@@ -692,7 +722,10 @@ export default {
         // or the previously active key disappeared, fall back to the first
         // group in display order.  This avoids a blank right pane.
         const keys = Object.keys(this.sortedSchema)
-        if (keys.length && (!this.activeGroupKey || !keys.includes(this.activeGroupKey))) {
+        const routeGroup = this.normalizeRouteSection(this.$route.query.section || this.$route.query.group)
+        if (routeGroup && keys.includes(routeGroup)) {
+          this.activeGroupKey = routeGroup
+        } else if (keys.length && (!this.activeGroupKey || !keys.includes(this.activeGroupKey))) {
           this.activeGroupKey = keys[0]
         }
       } catch (error) {
@@ -871,7 +904,8 @@ export default {
 @card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 
 .settings-page {
-  padding: 24px;
+  padding: 16px !important;
+  padding-bottom: 104px;
   min-height: calc(100vh - 120px);
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 
@@ -908,7 +942,7 @@ export default {
   .settings-layout {
     display: flex;
     gap: 20px;
-    margin-bottom: 80px;
+    margin-bottom: 24px;
     align-items: flex-start;
   }
 
@@ -923,7 +957,7 @@ export default {
     border-radius: @border-radius;
     box-shadow: @card-shadow;
     padding: 16px 0;
-    max-height: calc(100vh - 200px);
+    max-height: calc(100vh - 280px);
     // Allow vertical scroll for long lists, but never let the side rail
     // grow a horizontal scrollbar — overflow is handled by ellipsis on
     // the menu-item label instead.
@@ -1263,7 +1297,7 @@ export default {
   .settings-footer {
     position: fixed;
     bottom: 0;
-    left: 208px;
+    left: 0;
     right: 0;
     padding: 16px 24px;
     background: #fff;
@@ -1452,7 +1486,8 @@ export default {
 // 响应式适配
 @media (max-width: 768px) {
   .settings-page {
-    padding: 16px;
+    padding: 12px !important;
+    padding-bottom: 104px !important;
 
     .settings-layout {
       flex-direction: column;

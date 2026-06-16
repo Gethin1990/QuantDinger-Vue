@@ -100,18 +100,6 @@
                 <a-icon type="line-chart" class="section-card-title-icon" />
                 {{ $t('userManage.chartGrowthTitle') || 'Member Growth (Last 30 Days)' }}
               </h4>
-              <a-button-group size="small">
-                <a-button
-                  size="small"
-                  :type="userStatsLoading ? 'default' : 'primary'"
-                  :ghost="!userStatsLoading"
-                  :loading="userStatsLoading"
-                  @click="loadUserStats(true)"
-                >
-                  <a-icon type="reload" v-if="!userStatsLoading" />
-                  {{ $t('common.refresh') || 'Refresh' }}
-                </a-button>
-              </a-button-group>
             </div>
             <div ref="growthChart" class="chart-canvas chart-canvas-tall" />
           </a-card>

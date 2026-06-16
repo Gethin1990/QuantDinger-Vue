@@ -243,7 +243,7 @@ export default {
     /** 成交量副图：VOL 只能创建一次；onDataReady/resize 仅做 layout，否则会叠很多层 VOL */
     let volEnsureRafId = null
     let volPaneEnsured = false
-    const VOL_PANE_OPTIONS = { height: 96, minHeight: 52, dragEnabled: true }
+    const VOL_PANE_OPTIONS = { height: 112, minHeight: 64, dragEnabled: true }
     const syncVolumePaneLayout = () => {
       if (!chartRef.value) return
       if (!volPaneEnsured && typeof chartRef.value.createIndicator === 'function') {
@@ -929,6 +929,54 @@ export default {
 
     // ========== Python 代码解析 ==========
     // 解析 Python 代码，提取参数信息
+    const castPythonParamValue = (rawValue, type) => {
+      const paramType = String(type || '').toLowerCase()
+      if (paramType === 'bool') {
+        return ['true', '1', 'yes', 'on'].includes(String(rawValue).toLowerCase())
+      }
+      if (paramType === 'int') {
+        const num = Number(rawValue)
+        return Number.isFinite(num) ? Math.trunc(num) : rawValue
+      }
+      if (paramType === 'float') {
+        const num = Number(rawValue)
+        return Number.isFinite(num) ? num : rawValue
+      }
+      return String(rawValue)
+    }
+
+    const extractPythonParamDefaults = (code) => {
+      const defaults = {}
+      if (!code || typeof code !== 'string') return defaults
+      const paramRe = /^\s*#\s*@param\s+(\w+)\s+(int|float|bool|str|string)\s+(\S+)/i
+      for (const rawLine of code.split('\n')) {
+        const match = rawLine.match(paramRe)
+        if (!match) continue
+        defaults[match[1]] = castPythonParamValue(match[3], match[2])
+      }
+      return defaults
+    }
+
+    const resolvePythonIndicatorParams = (indicator = {}) => {
+      const code = indicator.code || indicator.userCode || ''
+      const declaredDefaults = extractPythonParamDefaults(code)
+      const explicitParams = indicator.params && typeof indicator.params === 'object'
+        ? indicator.params
+        : {}
+      const snakeParams = indicator.indicator_params && typeof indicator.indicator_params === 'object'
+        ? indicator.indicator_params
+        : {}
+      const camelParams = indicator.indicatorParams && typeof indicator.indicatorParams === 'object'
+        ? indicator.indicatorParams
+        : {}
+      return {
+        ...declaredDefaults,
+        ...snakeParams,
+        ...camelParams,
+        ...explicitParams
+      }
+    }
+
     const parsePythonStrategy = (code) => {
       if (!code || typeof code !== 'string') {
         return null
@@ -937,7 +985,7 @@ export default {
       try {
         // 简单的参数提取：查找类似 @param 或 #param 的注释，或者函数参数
         // 提取可能的参数
-        const params = {}
+        const params = extractPythonParamDefaults(code)
 
         // 尝试从代码中提取参数（如果有的话）
         // 例如：查找类似 span=144 这样的参数
@@ -1070,6 +1118,47 @@ export default {
     // ========== 注册自定义信号 Overlay (Signal Tag) ==========
     // 这是一个能够绘制 "圆点 + 带背景色文字框" 的自定义覆盖物
 // ========== 注册自定义信号 Overlay (Signal Tag) ==========
+const normalizeBacktestMarkerText = (text, side) => {
+  const raw = String(text || '').trim()
+  const lower = raw.toLowerCase()
+  if (lower.includes('liquid') || raw.includes('强平')) return 'LQ'
+  if (lower.includes('trailing') || raw.includes('追踪')) return 'TR'
+  if (lower.includes('profit') || lower.includes('tp') || raw.includes('止盈')) return 'TP'
+  if (lower.includes('stop') || lower.includes('sl') || raw.includes('止损')) return 'SL'
+  if (raw.includes('开多') || lower.includes('open long')) return 'L'
+  if (raw.includes('开空') || lower.includes('open short')) return 'S'
+  if (raw.includes('平多') || lower.includes('close long')) return 'XL'
+  if (raw.includes('平空') || lower.includes('close short')) return 'XS'
+  if (raw.includes('信号') || lower.includes('signal')) return side === 'buy' ? 'L?' : 'S?'
+  if (/^[A-Za-z0-9?]{1,4}$/.test(raw)) return raw
+  return side === 'buy' ? 'L' : 'S'
+}
+
+const withAlpha = (color, alpha) => {
+  const hex = String(color || '').replace('#', '')
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return color
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+const normalizeCompactBacktestMarkerText = (text, side) => {
+  const raw = String(text || '').trim()
+  const lower = raw.toLowerCase()
+  if (lower.includes('liquid')) return 'LQ'
+  if (lower.includes('trailing')) return 'TR'
+  if (lower.includes('profit') || lower.includes('tp')) return 'TP'
+  if (lower.includes('stop') || lower.includes('sl')) return 'SL'
+  if (lower.includes('open long')) return 'L'
+  if (lower.includes('open short')) return 'S'
+  if (lower.includes('close long')) return 'XL'
+  if (lower.includes('close short')) return 'XS'
+  if (lower.includes('signal')) return side === 'buy' ? 'L?' : 'S?'
+  if (/^[A-Za-z0-9?+]{1,4}$/.test(raw)) return raw
+  return side === 'buy' ? 'L' : 'S'
+}
+
 registerOverlay({
       name: 'signalTag',
       // 【关键修改1】必须改为 1。告诉图表这个图形只需要一个点就画完了。
@@ -1117,6 +1206,70 @@ registerOverlay({
         // Compatibility: old overlays used extendData.type='buy'/'sell', new overlays use extendData.side='buy'/'sell'
         const side = overlay.extendData?.side || overlay.extendData?.type || 'buy'
         const isBuy = side === 'buy'
+
+        if (isBacktest && overlay.extendData?.labelMode !== 'full') {
+          const lane = Math.max(0, Math.min(3, Number(overlay.extendData?.lane) || 0))
+          const shortText = normalizeCompactBacktestMarkerText(overlay.extendData?.shortText || textStr, side)
+          const compactFontSize = Number(overlay.extendData?.fontSize) || (isDashed ? 9 : 10)
+          const compactHeight = isDashed ? 13 : 15
+          const compactWidth = Math.max(17, Math.min(32, shortText.length * 7 + 9))
+          const laneShift = lane * 16
+          const compactY = isBuy ? signalY + laneShift : signalY - compactHeight - laneShift
+          const dotY = anchorY
+          const edgeLineEndY = isBuy ? compactY : (compactY + compactHeight)
+          const labelFill = isDashed ? 'rgba(0,0,0,0)' : color
+          const labelTextColor = isDashed ? withAlpha(color, 0.86) : '#ffffff'
+          return [
+            {
+              type: 'line',
+              attrs: { coordinates: [{ x, y: dotY }, { x, y: edgeLineEndY }] },
+              styles: {
+                style: 'stroke',
+                color: withAlpha(color, isDashed ? 0.34 : 0.46),
+                dashedValue: isDashed ? [2, 4] : [2, 3]
+              },
+              ignoreEvent: true
+            },
+            {
+              type: 'circle',
+              attrs: { x, y: dotY, r: isDashed ? 2 : 2.5 },
+              styles: isDashed
+                ? { style: 'stroke', color: withAlpha(color, 0.82), lineWidth: 1.2 }
+                : { style: 'fill', color: color },
+              ignoreEvent: true
+            },
+            {
+              type: 'rect',
+              attrs: {
+                x: x - compactWidth / 2,
+                y: compactY,
+                width: compactWidth,
+                height: compactHeight,
+                r: 4
+              },
+              styles: {
+                style: isDashed ? 'stroke' : 'stroke_fill',
+                color: labelFill,
+                borderColor: isDashed ? withAlpha(color, 0.86) : color,
+                borderSize: 1,
+                borderDashedValue: isDashed ? [3, 3] : []
+              },
+              ignoreEvent: true
+            },
+            {
+              type: 'text',
+              attrs: {
+                x,
+                y: compactY + compactHeight / 2,
+                text: shortText,
+                align: 'center',
+                baseline: 'middle'
+              },
+              styles: { color: labelTextColor, size: compactFontSize, weight: '700' },
+              ignoreEvent: true
+            }
+          ]
+        }
 
         // 3. 计算 Box 的 Y 轴位置
         const boxY = isBuy ? signalY : (signalY - boxHeight)
@@ -1225,6 +1378,143 @@ registerOverlay({
               baseline: 'middle'
             },
             styles: { color: solidTextColor, size: fontSize, weight: textWeight },
+            ignoreEvent: true
+          }
+        ]
+      }
+    })
+
+    registerOverlay({
+      name: 'qdIndicatorZone',
+      totalStep: 2,
+      lock: true,
+      needDefaultPointFigure: false,
+      needDefaultXAxisFigure: false,
+      needDefaultYAxisFigure: false,
+      checkEventOn: () => false,
+      createPointFigures: ({ coordinates, overlay }) => {
+        if (!coordinates[0] || !coordinates[1]) return []
+        const data = overlay.extendData || {}
+        const x1 = Math.min(coordinates[0].x, coordinates[1].x)
+        const x2 = Math.max(coordinates[0].x, coordinates[1].x)
+        const y1 = Math.min(coordinates[0].y, coordinates[1].y)
+        const y2 = Math.max(coordinates[0].y, coordinates[1].y)
+        const color = data.color || '#1890ff'
+        const opacity = Number.isFinite(Number(data.opacity)) ? Number(data.opacity) : 0.14
+        const figures = [
+          {
+            type: 'rect',
+            attrs: { x: x1, y: y1, width: Math.max(1, x2 - x1), height: Math.max(1, y2 - y1) },
+            styles: {
+              style: 'stroke_fill',
+              color: data.fillColor || withAlpha(color, opacity),
+              borderColor: data.borderColor || withAlpha(color, Math.min(opacity + 0.22, 0.55)),
+              borderSize: Number(data.borderSize || 1),
+              borderDashedValue: data.dashed ? [4, 4] : []
+            },
+            ignoreEvent: true
+          }
+        ]
+        if (data.text) {
+          figures.push({
+            type: 'text',
+            attrs: { x: x1 + 6, y: y1 + 13, text: String(data.text), align: 'left', baseline: 'middle' },
+            styles: {
+              color: data.textColor || color,
+              size: Number(data.fontSize || 10),
+              weight: '600',
+              backgroundColor: 'transparent'
+            },
+            ignoreEvent: true
+          })
+        }
+        return figures
+      }
+    })
+
+    registerOverlay({
+      name: 'qdIndicatorLine',
+      totalStep: 2,
+      lock: true,
+      needDefaultPointFigure: false,
+      needDefaultXAxisFigure: false,
+      needDefaultYAxisFigure: false,
+      checkEventOn: () => false,
+      createPointFigures: ({ coordinates, overlay }) => {
+        if (!coordinates[0] || !coordinates[1]) return []
+        const data = overlay.extendData || {}
+        const color = data.color || '#1890ff'
+        const figures = [
+          {
+            type: 'line',
+            attrs: { coordinates: [{ x: coordinates[0].x, y: coordinates[0].y }, { x: coordinates[1].x, y: coordinates[1].y }] },
+            styles: {
+              style: 'stroke',
+              color,
+              size: Number(data.lineWidth || 1),
+              dashedValue: data.dashed ? [5, 5] : []
+            },
+            ignoreEvent: true
+          }
+        ]
+        if (data.text) {
+          figures.push({
+            type: 'text',
+            attrs: { x: coordinates[1].x + 6, y: coordinates[1].y, text: String(data.text), align: 'left', baseline: 'middle' },
+            styles: {
+              color: data.textColor || color,
+              size: Number(data.fontSize || 10),
+              weight: '600',
+              backgroundColor: 'transparent'
+            },
+            ignoreEvent: true
+          })
+        }
+        return figures
+      }
+    })
+
+    registerOverlay({
+      name: 'qdIndicatorLabel',
+      totalStep: 1,
+      lock: true,
+      needDefaultPointFigure: false,
+      needDefaultXAxisFigure: false,
+      needDefaultYAxisFigure: false,
+      checkEventOn: () => false,
+      createPointFigures: ({ coordinates, overlay }) => {
+        if (!coordinates[0]) return []
+        const data = overlay.extendData || {}
+        const text = String(data.text || '')
+        if (!text) return []
+        const color = data.color || '#1890ff'
+        const isAbove = data.side === 'above' || data.side === 'sell'
+        const fontSize = Number(data.fontSize || 10)
+        const width = Math.max(24, Math.min(86, text.length * 7 + 12))
+        const height = fontSize + 8
+        const x = coordinates[0].x
+        const y = coordinates[0].y + (isAbove ? -height - 7 : 7)
+        return [
+          {
+            type: 'rect',
+            attrs: { x: x - width / 2, y, width, height, r: 4 },
+            styles: {
+              style: 'stroke_fill',
+              color: data.fillColor || withAlpha(color, 0.14),
+              borderColor: data.borderColor || withAlpha(color, 0.55),
+              borderSize: 1
+            },
+            ignoreEvent: true
+          },
+          {
+            type: 'text',
+            attrs: { x, y: y + height / 2, text, align: 'center', baseline: 'middle' },
+            styles: {
+              color: data.textColor || color,
+              size: fontSize,
+              weight: '700',
+              backgroundColor: 'transparent'
+            },
             ignoreEvent: true
           }
         ]
@@ -2638,7 +2928,10 @@ registerOverlay({
             size: 1
           },
           vertical: {
-            show: false
+            show: true,
+            color: isDark ? 'rgba(255, 255, 255, 0.045)' : 'rgba(17, 24, 39, 0.045)',
+            style: 'solid',
+            size: 1
           }
         },
         candle: {
@@ -2778,6 +3071,122 @@ registerOverlay({
     }
 
     // --- 更新指标（KLineChart 版本） ---
+    const normalizeLayerTimestamp = (value, internalData, fallbackIndex = null) => {
+      const raw = value == null ? fallbackIndex : value
+      if (raw == null) return null
+      const numeric = Number(raw)
+      if (!Number.isFinite(numeric)) return null
+      if (Number.isInteger(numeric) && numeric >= 0 && numeric < internalData.length) {
+        const timeValue = internalData[numeric].timestamp || internalData[numeric].time || null
+        if (timeValue == null) return null
+        return timeValue < 1e10 ? timeValue * 1000 : timeValue
+      }
+      return numeric < 1e10 ? numeric * 1000 : numeric
+    }
+
+    const normalizeLayerPrice = (...values) => {
+      for (const value of values) {
+        const numeric = Number(value)
+        if (Number.isFinite(numeric)) return numeric
+      }
+      return null
+    }
+
+    const pushLayerOverlay = (overlayConfig) => {
+      if (!chartRef.value || typeof chartRef.value.createOverlay !== 'function') return
+      try {
+        const overlayId = chartRef.value.createOverlay(overlayConfig, 'candle_pane')
+        if (overlayId) addedSignalOverlayIds.value.push(overlayId)
+      } catch (e) {
+      }
+    }
+
+    const renderIndicatorLayers = (layers, internalData) => {
+      if (!Array.isArray(layers) || !layers.length || !internalData.length) return
+      const lastIndex = internalData.length - 1
+
+      layers.forEach(layer => {
+        if (!layer || typeof layer !== 'object') return
+        const type = String(layer.type || '').toLowerCase()
+
+        if (['zone', 'box', 'rect', 'area'].includes(type)) {
+          const startIndex = layer.startIndex ?? layer.fromIndex ?? layer.index ?? 0
+          const endIndex = layer.endIndex ?? layer.toIndex ?? layer.end ?? lastIndex
+          const start = normalizeLayerTimestamp(layer.start ?? layer.from ?? layer.x1, internalData, startIndex)
+          const end = normalizeLayerTimestamp(layer.end ?? layer.to ?? layer.x2, internalData, endIndex)
+          const top = normalizeLayerPrice(layer.top, layer.high, layer.y1, layer.price1)
+          const bottom = normalizeLayerPrice(layer.bottom, layer.low, layer.y2, layer.price2)
+          if (start == null || end == null || top == null || bottom == null) return
+          pushLayerOverlay({
+            name: 'qdIndicatorZone',
+            points: [
+              { timestamp: start, value: top },
+              { timestamp: end, value: bottom }
+            ],
+            extendData: {
+              text: layer.text || layer.name || '',
+              color: layer.color,
+              fillColor: layer.fillColor,
+              borderColor: layer.borderColor,
+              opacity: layer.opacity,
+              dashed: layer.dashed,
+              fontSize: layer.fontSize,
+              textColor: layer.textColor
+            },
+            lock: true
+          })
+          return
+        }
+
+        if (['line', 'segment', 'level', 'ray'].includes(type)) {
+          const startIndex = layer.startIndex ?? layer.fromIndex ?? layer.index ?? 0
+          const endIndex = layer.endIndex ?? layer.toIndex ?? layer.end ?? lastIndex
+          const start = normalizeLayerTimestamp(layer.start ?? layer.from ?? layer.x1, internalData, startIndex)
+          const end = normalizeLayerTimestamp(layer.end ?? layer.to ?? layer.x2, internalData, endIndex)
+          const y1 = normalizeLayerPrice(layer.y1, layer.price1, layer.price, layer.level)
+          const y2 = normalizeLayerPrice(layer.y2, layer.price2, layer.price, layer.level)
+          if (start == null || end == null || y1 == null || y2 == null) return
+          pushLayerOverlay({
+            name: 'qdIndicatorLine',
+            points: [
+              { timestamp: start, value: y1 },
+              { timestamp: end, value: y2 }
+            ],
+            extendData: {
+              text: layer.text || layer.name || '',
+              color: layer.color,
+              lineWidth: layer.lineWidth,
+              dashed: layer.dashed,
+              fontSize: layer.fontSize,
+              textColor: layer.textColor
+            },
+            lock: true
+          })
+          return
+        }
+
+        if (['label', 'tag', 'note'].includes(type)) {
+          const timestamp = normalizeLayerTimestamp(layer.timestamp ?? layer.time ?? layer.index, internalData, layer.index ?? lastIndex)
+          const price = normalizeLayerPrice(layer.price, layer.value, layer.y)
+          if (timestamp == null || price == null) return
+          pushLayerOverlay({
+            name: 'qdIndicatorLabel',
+            points: [{ timestamp, value: price }],
+            extendData: {
+              text: layer.text || layer.name || '',
+              color: layer.color,
+              fillColor: layer.fillColor,
+              borderColor: layer.borderColor,
+              side: layer.side,
+              fontSize: layer.fontSize,
+              textColor: layer.textColor
+            },
+            lock: true
+          })
+        }
+      })
+    }
+
     const updateIndicators = async () => {
       if (indicatorsUpdating.value) {
         return
@@ -2864,7 +3273,7 @@ registerOverlay({
             try {
               // 如果有 calculate 函数，使用它（用于 Python 指标）
               if (indicator.calculate && typeof indicator.calculate === 'function') {
-                const result = await indicator.calculate(internalData, indicator.params || {})
+                const result = await indicator.calculate(internalData, resolvePythonIndicatorParams(indicator))
 
                 // 处理结果中的 plots - 将所有 plots 合并到一个指标中
                 // 注意：signals 不添加到指标中，而是单独处理，避免显示 "n/a"
@@ -2872,6 +3281,7 @@ registerOverlay({
                 if (result && result.plots && Array.isArray(result.plots)) {
                   allPlots = [...result.plots]
                 }
+                renderIndicatorLayers(result && result.layers, internalData)
 
                 // 处理 signals - 使用 KLineChart 的 createOverlay 显示（不添加到指标中）
                 if (result && result.signals && Array.isArray(result.signals)) {
@@ -3078,7 +3488,7 @@ registerOverlay({
                 const pythonResult = await executePythonStrategy(
                   indicator.code,
                   internalData,
-                  indicator.params || {},
+                  resolvePythonIndicatorParams(indicator),
                   decryptInfo // 传递解密信息
                 )
 
@@ -3088,6 +3498,7 @@ registerOverlay({
                 if (pythonResult && pythonResult.plots && Array.isArray(pythonResult.plots)) {
                   allPlots = [...pythonResult.plots]
                 }
+                renderIndicatorLayers(pythonResult && pythonResult.layers, internalData)
 
                 // 处理 signals - 使用 KLineChart 的 createOverlay 显示（不添加到指标中）
                 if (pythonResult && pythonResult.signals && Array.isArray(pythonResult.signals)) {

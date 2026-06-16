@@ -9,7 +9,15 @@ const marketApi = {
   // AI chat (optional)
   ChatMessage: '/api/ai/chat/message',
   GetChatHistory: '/api/ai/chat/history',
+  GetChatSessions: '/api/ai/chat/sessions',
+  DeleteChatSession: '/api/ai/chat/sessions',
   SaveChatHistory: '/api/ai/chat/history/save',
+  SaveCopilotMessage: '/api/ai/chat/message/local',
+  AgentPreflight: '/api/ai/agent/preflight',
+  AgentIntent: '/api/ai/agent/intent',
+  AiSkills: '/api/ai/skills',
+  AiTools: '/api/ai/tools',
+  UserMemory: '/api/ai/memory',
   // Public config
   GetConfig: '/api/market/config',
   GetMenuFooterConfig: '/api/market/menuFooterConfig',
@@ -100,6 +108,21 @@ export function getChatHistory (parameter) {
   })
 }
 
+export function getChatSessions (parameter) {
+  return request({
+    url: marketApi.GetChatSessions,
+    method: 'get',
+    params: parameter
+  })
+}
+
+export function deleteChatSession (sessionId) {
+  return request({
+    url: `${marketApi.DeleteChatSession}/${sessionId}`,
+    method: 'delete'
+  })
+}
+
 /**
  * 保存聊天历史
  * @param parameter { userid: number, chatHistory: array }
@@ -110,6 +133,98 @@ export function saveChatHistory (parameter) {
     url: marketApi.SaveChatHistory,
     method: 'post',
     data: parameter
+  })
+}
+
+export function saveCopilotMessage (parameter) {
+  return request({
+    url: marketApi.SaveCopilotMessage,
+    method: 'post',
+    data: parameter
+  })
+}
+
+export function getAgentPreflight () {
+  return request({
+    url: marketApi.AgentPreflight,
+    method: 'get'
+  })
+}
+
+export function classifyAgentIntent (parameter) {
+  return request({
+    url: marketApi.AgentIntent,
+    method: 'post',
+    data: parameter
+  })
+}
+
+export function getAiSkills (parameter) {
+  return request({
+    url: marketApi.AiSkills,
+    method: 'get',
+    params: parameter
+  })
+}
+
+export function getAiSkillPrompt (skillId, parameter) {
+  return request({
+    url: `${marketApi.AiSkills}/${skillId}/prompt`,
+    method: 'post',
+    data: parameter
+  })
+}
+
+export function getAiTools (parameter) {
+  return request({
+    url: marketApi.AiTools,
+    method: 'get',
+    params: parameter
+  })
+}
+
+export function installAiSkill (parameter) {
+  return request({
+    url: `${marketApi.AiSkills}/install`,
+    method: 'post',
+    data: parameter
+  })
+}
+
+export function updateAiSkill (skillId, parameter) {
+  return request({
+    url: `${marketApi.AiSkills}/${skillId}`,
+    method: 'patch',
+    data: parameter
+  })
+}
+
+export function deleteAiSkill (skillId) {
+  return request({
+    url: `${marketApi.AiSkills}/${skillId}`,
+    method: 'delete'
+  })
+}
+
+export function getUserMemory () {
+  return request({
+    url: marketApi.UserMemory,
+    method: 'get'
+  })
+}
+
+export function saveUserMemory (parameter) {
+  return request({
+    url: marketApi.UserMemory,
+    method: 'post',
+    data: parameter
+  })
+}
+
+export function deleteUserMemory (memoryId) {
+  return request({
+    url: `${marketApi.UserMemory}/${memoryId}`,
+    method: 'delete'
   })
 }
 

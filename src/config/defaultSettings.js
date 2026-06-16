@@ -20,10 +20,10 @@ export default {
   appVersion: BUILD_APP_VERSION,
   navTheme: 'light', // theme for nav menu
   primaryColor: '#13C2C2', // '#F5222D', // primary color of ant design
-  layout: 'sidemenu', // nav menu position: `sidemenu` or `topmenu`
+  layout: 'topmenu', // nav menu position: `sidemenu` or `topmenu`
   contentWidth: 'Fluid', // layout of content: `Fluid` or `Fixed`, only works when layout is topmenu
   fixedHeader: true, // sticky header - 固定顶部导航栏
-  fixSiderbar: true, // sticky siderbar - 固定左侧边栏
+  fixSiderbar: false, // sticky sidebar
   colorWeak: false,
   menu: {
     locale: true

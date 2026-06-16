@@ -237,7 +237,7 @@ export default {
 
 <style lang="less" scoped>
 .broker-accounts {
-  padding: 20px;
+  padding: 16px !important;
   min-height: 100%;
   background: #f5f7fa;
   &.theme-dark {
