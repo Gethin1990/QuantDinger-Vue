@@ -27,7 +27,7 @@
         {{ formatMoney(record.market_value || record.marketValue || record.value) }}
       </template>
       <template slot="avg" slot-scope="text, record">
-        {{ formatMoney(record.avg_entry_price || record.avgPrice || record.avg_price) }}
+        {{ formatMoney(record.avg_entry_price || record.avgPrice || record.avg_price|| record.avgCost ) }}
       </template>
     </a-table>
   </div>

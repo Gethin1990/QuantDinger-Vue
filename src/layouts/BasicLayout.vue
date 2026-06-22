@@ -854,9 +854,7 @@ export default {
   }
 }
 
-.ant-pro-sider-menu-sider.light .ant-menu-light {
-  height: 60vh!important;
-}
+/* 完全隐藏所有 footer */
 .basic-layout-wrapper {
   .ant-layout-footer {
     display: none !important;
@@ -1107,16 +1105,47 @@ export default {
     }
   }
 
+  /* 侧栏容器：固定全屏高度，flex 纵向布局 */
+  .ant-pro-sider,
+  .ant-layout-sider {
+    height: 100vh !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* sider 内部 children：flex 撑满剩余空间 */
   .ant-layout-sider-children {
-    padding-bottom: calc(var(--menu-footer-height, 220px) + 12px);
-    overflow-y: auto;
-    overflow-x: hidden;
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0 !important;
+  }
+
+  /* 菜单区域：约束高度 + 滚动 */
+  .ant-pro-sider-menu,
+  .ant-menu-root,
+  .ant-menu {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: calc(100vh - var(--menu-footer-height, 240px) - 12px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* 滚动条样式 */
+  .ant-layout-sider-children,
+  .ant-pro-sider-menu,
+  .ant-menu-root,
+  .ant-menu {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 
     &::-webkit-scrollbar {
-      width: 6px;
+      width: 5px;
     }
 
     &::-webkit-scrollbar-track {
@@ -1126,41 +1155,31 @@ export default {
     &::-webkit-scrollbar-thumb {
       background: rgba(0, 0, 0, 0.15);
       border-radius: 3px;
-    }
 
-    body.dark &,
-    body.realdark &,
-    .ant-pro-layout.dark &,
-    .ant-pro-layout.realdark & {
-      scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
-
-      &::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.25);
+      &:hover {
+        background: rgba(0, 0, 0, 0.3);
       }
     }
   }
 
-  .ant-pro-sider {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-
-    .ant-layout-sider-children {
-      flex: 1 1 auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
+  /* 暗黑主题滚动条 */
+  body.dark &,
+  body.realdark &,
+  .ant-pro-layout.dark &,
+  .ant-pro-layout.realdark & {
+    .ant-layout-sider-children,
     .ant-pro-sider-menu,
     .ant-menu-root,
     .ant-menu {
-      flex: 1 1 auto;
-      min-height: 0;
-      max-height: calc(100vh - var(--menu-footer-height, 220px) - 24px);
-      overflow-y: auto !important;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
+      scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.25);
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.4);
+        }
+      }
     }
   }
 }

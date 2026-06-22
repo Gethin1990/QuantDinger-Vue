@@ -17,6 +17,9 @@
       size="small"
       :scroll="{ x: 820 }"
     >
+      <template slot="orderId" slot-scope="text, record">
+        {{ record.id || record.order_id || record.orderId || record.ticket || '--' }}
+      </template>
       <template slot="side" slot-scope="text, record">
         <a-tag :color="(record.side || record.action || '').toLowerCase() === 'buy' ? 'green' : 'red'">
           {{ String(record.side || record.action || '--').toUpperCase() }}
@@ -73,7 +76,7 @@ export default {
   computed: {
     columns () {
       return [
-        { title: this.$t('brokerAccounts.col.orderId'), dataIndex: 'id', key: 'id', width: 200, ellipsis: true },
+        { title: this.$t('brokerAccounts.col.orderId'), key: 'id', width: 200, ellipsis: true, scopedSlots: { customRender: 'orderId' } },
         { title: this.$t('brokerAccounts.col.symbol'), dataIndex: 'symbol', key: 'symbol', width: 110 },
         { title: this.$t('brokerAccounts.col.side'), key: 'side', width: 90, scopedSlots: { customRender: 'side' } },
         { title: this.$t('brokerAccounts.col.qty'), key: 'qty', width: 90, scopedSlots: { customRender: 'qty' }, align: 'right' },
@@ -97,7 +100,7 @@ export default {
     },
     canCancel (record) {
       const s = String(record.status || '').toLowerCase()
-      return !!record.id && !FINAL_STATUSES.has(s)
+      return !!(record.id || record.order_id || record.orderId || record.ticket) && !FINAL_STATUSES.has(s)
     },
     rowKey (row) {
       return row.id || row.ticket || row.symbol || JSON.stringify(row).slice(0, 32)
@@ -116,7 +119,7 @@ export default {
       }
     },
     onCancel (record) {
-      this.$emit('cancel', record.id)
+      this.$emit('cancel', record.id || record.order_id || record.orderId || record.ticket)
       this.load()
     }
   }

@@ -6,6 +6,7 @@ import { viteMockServe } from 'vite-plugin-mock'
 import { fileURLToPath, URL } from 'node:url'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import Inspector from 'unplugin-vue-inspector/vite'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
 
@@ -109,16 +110,20 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: [
         { find: /^~(.+)/, replacement: '$1' },
+        // pro-layout 1.x 仍引用 webpack 专用插件 client，用 shim 兼容
         {
           find: 'webpack-theme-color-replacer/client',
-          replacement: fileURLToPath(new URL('./src/shims/webpack-theme-color-replacer-client.js', import.meta.url))
+          replacement: fileURLToPath(new URL('./src/shims/webpack-theme-color-replacer-client.js', import.meta.url)),
         },
+        // moment 纯 CJS（module.exports = ctor），Vite 下 `import * as moment from 'moment'`
+        // namespace 拿不到 isMoment 等静态方法 → 走 shim 平铺 named exports
         { find: /^moment$/, replacement: fileURLToPath(new URL('./src/shims/moment.js', import.meta.url)) },
         { find: /^store$/, replacement: 'store/dist/store.modern.js' },
-        { find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) },
-        { find: /^@$/, replacement: fileURLToPath(new URL('./src', import.meta.url)) }
+        { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+        { find: '@$', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
       ],
-      extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.vue']
+      // 兼容旧代码中省略 .vue 后缀的 import（如 `import App from './App'`）
+      extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.vue'],
     },
     define: {
       APP_VERSION: JSON.stringify(appVersion),
@@ -131,7 +136,7 @@ export default defineConfig(({ mode }) => {
       'process.env.VUE_APP_PYTHON_API_BASE_URL': JSON.stringify(env.VITE_PYTHON_API_BASE_URL || ''),
       'process.env.VUE_APP_PYODIDE_CDN_BASE': JSON.stringify(env.VITE_PYODIDE_CDN_BASE || ''),
       'process.env.VUE_APP_PYODIDE_LOCAL_BASE': JSON.stringify(env.VITE_PYODIDE_LOCAL_BASE || ''),
-      'process.env.VUE_APP_PYODIDE_PREFER_CDN': JSON.stringify(env.VITE_PYODIDE_PREFER_CDN || '')
+      'process.env.VUE_APP_PYODIDE_PREFER_CDN': JSON.stringify(env.VITE_PYODIDE_PREFER_CDN || ''),
     },
     css: {
       preprocessorOptions: {
@@ -139,10 +144,10 @@ export default defineConfig(({ mode }) => {
           javascriptEnabled: true,
           additionalData: "@import '@/styles/antd-vars.less';\n",
           modifyVars: {
-            'border-radius-base': '2px'
-          }
-        }
-      }
+            'border-radius-base': '2px',
+          },
+        },
+      },
     },
     plugins: [
       fixAntDesignVueLess(),
@@ -154,39 +159,49 @@ export default defineConfig(({ mode }) => {
         mockPath: 'src/mock/services',
         enable: enableMock,
         watchFiles: true,
-        logger: true
-      })
+        logger: true,
+      }),
+      Inspector({
+        vue: 2
+      }),
     ],
     server: {
-      port: 8000,
+      port: 8001,
+      sourcemap: true,
       proxy: {
         '/api': {
           target: env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:5000',
           ws: true,
           changeOrigin: true,
           timeout: 600000,
-          proxyTimeout: 600000
-        }
-      }
+          proxyTimeout: 600000,
+        },
+      },
     },
     worker: {
-      format: 'es'
+      format: 'es',
     },
     optimizeDeps: {
-      exclude: ['pyodide']
+      // pyodide 自己通过 Worker 内 importScripts 加载，不参与 Vite 预构建
+      exclude: ['pyodide'],
     },
     build: {
       target: 'es2020',
-      sourcemap: false,
+      sourcemap: 'hidden',
       chunkSizeWarningLimit: 1500,
       commonjsOptions: {
-        transformMixedEsModules: true
+        transformMixedEsModules: true,
       },
       rollupOptions: {
         output: {
-          manualChunks: resolveManualChunk
-        }
-      }
-    }
+          manualChunks: {
+            'ant-design-vue': ['ant-design-vue'],
+            echarts: ['echarts'],
+            klinecharts: ['klinecharts'],
+            codemirror: ['codemirror'],
+          },
+        },
+      },
+    },
   }
 })

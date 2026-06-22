@@ -80,10 +80,10 @@
               <a-radio-group v-model="heatmapType" size="small" button-style="solid" class="heatmap-type-tabs">
                 <a-radio-button value="us_stocks">{{ $t('globalMarket.usStockHeatmap') }}</a-radio-button>
                 <a-radio-button value="hk_stocks">{{ $t('globalMarket.hkStockHeatmap') }}</a-radio-button>
-                <a-radio-button value="crypto">{{ $t('globalMarket.cryptoHeatmap') }}</a-radio-button>
-                <a-radio-button value="commodities">{{ $t('globalMarket.commoditiesHeatmap') }}</a-radio-button>
                 <a-radio-button value="sectors">{{ $t('globalMarket.sectorHeatmap') }}</a-radio-button>
                 <a-radio-button value="forex">{{ $t('globalMarket.forexHeatmap') }}</a-radio-button>
+                <a-radio-button value="crypto">{{ $t('globalMarket.cryptoHeatmap') }}</a-radio-button>
+                <a-radio-button value="commodities">{{ $t('globalMarket.commoditiesHeatmap') }}</a-radio-button>
               </a-radio-group>
             </div>
             <div class="heatmap-grid">

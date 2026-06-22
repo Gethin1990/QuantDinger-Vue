@@ -56,22 +56,22 @@ export default {
       const ccy = i.currency || i.account_currency || 'USD'
       if (this.brokerId === 'alpaca') {
         return [
-          { key: 'equity', label: this.$t('brokerAccounts.kpi.equity'), value: money(i.equity || i.portfolio_value, ccy) },
-          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash, ccy) },
-          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power, ccy), tone: 'accent' },
-          { key: 'positions', label: this.$t('brokerAccounts.kpi.positionsCount'), value: String(i.position_count || i.positions_count || '--') },
-          { key: 'daytrades', label: this.$t('brokerAccounts.kpi.dayTrades'), value: String(i.daytrade_count || '--') },
-          { key: 'status', label: this.$t('brokerAccounts.kpi.accountStatus'), value: String(i.status || 'ACTIVE'), tone: 'positive' }
+          { key: 'equity', label: this.$t('brokerAccounts.kpi.equity'), value: money(i.equity || i.portfolio_value || i.summary?.Equity?.value, ccy) },
+          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash || i.summary?.Cash?.value, ccy) }, 
+          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.summary?.BuyingPower?.value, ccy), tone: 'accent' },
+          { key: 'positions', label: this.$t('brokerAccounts.kpi.positionsCount'), value: String(i.position_count || i.positions_count || i.summary?.PortfolioValue?.value || '--') },
+          { key: 'daytrades', label: this.$t('brokerAccounts.kpi.dayTrades'), value: String(i.daytrade_count || i.summary?.DayTradeCount?.value || '--') },
+          { key: 'status', label: this.$t('brokerAccounts.kpi.accountStatus'), value: String(i.status || i.summary?.Status?.value?.replace('AccountStatus.', '') || 'ACTIVE'), tone: 'positive' }
         ]
       }
       if (this.brokerId === 'ibkr') {
         return [
-          { key: 'nav', label: this.$t('brokerAccounts.kpi.netLiq'), value: money(i.net_liquidation || i.NetLiquidation, ccy) },
-          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.total_cash_value || i.TotalCashValue, ccy) },
-          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.BuyingPower, ccy), tone: 'accent' },
-          { key: 'init', label: this.$t('brokerAccounts.kpi.initMargin'), value: money(i.init_margin_req || i.InitMarginReq, ccy) },
-          { key: 'maint', label: this.$t('brokerAccounts.kpi.maintMargin'), value: money(i.maint_margin_req || i.MaintMarginReq, ccy) },
-          { key: 'account', label: this.$t('brokerAccounts.kpi.account'), value: String(i.account || i.AccountCode || '--') }
+          { key: 'nav', label: this.$t('brokerAccounts.kpi.netLiq'), value: money(i.net_liquidation || i.summary?.NetLiquidation?.value, ccy) },
+          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.total_cash_value || i.summary?.TotalCashValue?.value, ccy) },
+          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.summary?.BuyingPower?.value, ccy), tone: 'accent' },
+          { key: 'init', label: this.$t('brokerAccounts.kpi.initMargin'), value: money(i.init_margin_req || i.summary?.InitMarginReq?.value, ccy) },
+          { key: 'maint', label: this.$t('brokerAccounts.kpi.maintMargin'), value: money(i.maint_margin_req || i.summary?.MaintMarginReq?.value, ccy) },
+          { key: 'account', label: this.$t('brokerAccounts.kpi.account'), value: String(i.account || i.summary?.AccountCode || '--') }
         ]
       }
       // mt5
