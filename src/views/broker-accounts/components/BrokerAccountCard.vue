@@ -1,6 +1,10 @@
 <template>
   <a-spin :spinning="loading">
-    <div v-if="!loading && (!info || isEmpty)" class="bp-empty" :class="{ 'theme-dark': isDarkTheme }">
+    <div v-if="error && !loading" class="bp-error" :class="{ 'theme-dark': isDarkTheme }">
+      <a-icon type="warning" /> <span>{{ error }}</span>
+      <a-button size="small" type="link" @click="load">{{ $t('brokerAccounts.refresh') }}</a-button>
+    </div>
+    <div v-else-if="!loading && (!info || isEmpty)" class="bp-empty" :class="{ 'theme-dark': isDarkTheme }">
       <a-icon type="inbox" /> <span>{{ $t('brokerAccounts.noAccount') }}</span>
     </div>
     <div v-else-if="info" class="account-grid" :class="{ 'theme-dark': isDarkTheme }">
@@ -42,7 +46,9 @@ export default {
   data () {
     return {
       info: null,
+      positions: [],
       loading: false,
+      error: null,
       timer: null
     }
   },
@@ -54,12 +60,13 @@ export default {
       if (!this.info) return []
       const i = this.info
       const ccy = i.currency || i.account_currency || 'USD'
+      const positionCount = this.resolvePositionCount(i, this.positions)
       if (this.brokerId === 'alpaca') {
         return [
           { key: 'equity', label: this.$t('brokerAccounts.kpi.equity'), value: money(i.equity || i.portfolio_value || i.summary?.Equity?.value, ccy) },
           { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash || i.summary?.Cash?.value, ccy) }, 
           { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.summary?.BuyingPower?.value, ccy), tone: 'accent' },
-          { key: 'positions', label: this.$t('brokerAccounts.kpi.positionsCount'), value: String(i.position_count || i.positions_count || i.summary?.PortfolioValue?.value || '--') },
+          { key: 'positions', label: this.$t('brokerAccounts.kpi.positionsCount'), value: positionCount == null ? '--' : String(positionCount) },
           { key: 'daytrades', label: this.$t('brokerAccounts.kpi.dayTrades'), value: String(i.daytrade_count || i.summary?.DayTradeCount?.value || '--') },
           { key: 'status', label: this.$t('brokerAccounts.kpi.accountStatus'), value: String(i.status || i.summary?.Status?.value?.replace('AccountStatus.', '') || 'ACTIVE'), tone: 'positive' }
         ]
@@ -92,15 +99,65 @@ export default {
     if (this.timer) clearTimeout(this.timer)
   },
   methods: {
+    resolvePositionCount (info, positions) {
+      const direct = info && (info.position_count || info.positions_count || info.open_position_count || info.open_positions)
+      if (direct != null && direct !== '') return Number(direct)
+      if (Array.isArray(positions)) return positions.length
+      return null
+    },
     async load () {
       this.loading = true
+      this.error = null
       try {
-        const res = await broker[this.brokerId].account()
-        const payload = (res && (res.data || res)) || {}
-        const inner = payload.data && typeof payload.data === 'object' ? payload.data : payload
-        this.info = inner && Object.keys(inner).length ? inner : null
-      } catch (_) {
+        const [accountRes, positionsRes] = await Promise.allSettled([
+          broker[this.brokerId].account(),
+          broker[this.brokerId].positions()
+        ])
+
+        // Handle account response
+        if (accountRes.status === 'rejected') {
+          const reason = accountRes.reason
+          this.error = (reason && (reason.response && reason.response.data && reason.response.data.error || reason.message)) || 'Account request failed'
+          this.info = null
+        } else {
+          const raw = accountRes.value || {}
+          const payload = raw.data || raw
+          // IBKR returns { success, data: { account, summary } }
+          // The summary dict has { NetLiquidation: { value, currency }, ... }
+          // Flatten it so the metrics computed prop can read both:
+          //   i.summary.NetLiquidation.value  AND  i.net_liquidation (top-level)
+          let accountInner = payload
+          // If payload has nested "data" (double-wrapped), unwrap once more
+          if (payload && payload.data && typeof payload.data === 'object' && !payload.connected) {
+            accountInner = payload.data
+          }
+          // For IBKR: flatten summary tags into top-level snake_case keys
+          if (accountInner && accountInner.summary && typeof accountInner.summary === 'object') {
+            const flat = { ...accountInner }
+            for (const [tag, val] of Object.entries(accountInner.summary)) {
+              // e.g. NetLiquidation → net_liquidation
+              const snakeKey = tag.replace(/([A-Z])/g, (m, off) => (off ? '_' : '') + m.toLowerCase())
+              flat[snakeKey] = typeof val === 'object' ? val.value : val
+            }
+            flat.currency = flat.currency || (accountInner.summary.NetLiquidation && accountInner.summary.NetLiquidation.currency) || 'USD'
+            accountInner = flat
+          }
+          this.info = accountInner && Object.keys(accountInner).length ? accountInner : null
+        }
+
+        const positionsPayload = positionsRes.status === 'fulfilled'
+          ? ((positionsRes.value && (positionsRes.value.data || positionsRes.value)) || {})
+          : {}
+        const list = Array.isArray(positionsPayload)
+          ? positionsPayload
+          : (Array.isArray(positionsPayload.data)
+              ? positionsPayload.data
+              : (positionsPayload.positions || []))
+        this.positions = Array.isArray(list) ? list : []
+      } catch (e) {
         this.info = null
+        this.error = (e && e.message) || 'Failed to load account'
+        this.positions = []
       } finally {
         this.loading = false
       }
@@ -173,7 +230,19 @@ export default {
   font-size: 13px;
   i { font-size: 22px; display: block; margin-bottom: 8px; }
 }
+.bp-error {
+  padding: 24px;
+  text-align: center;
+  color: #cf1322;
+  font-size: 13px;
+  i { font-size: 22px; display: block; margin-bottom: 8px; }
+  .ant-btn-link { color: #1890ff; font-size: 13px; }
+}
 .bp-empty.theme-dark {
   color: rgba(255, 255, 255, 0.5);
+}
+.bp-error.theme-dark {
+  color: rgba(245, 34, 45, 0.8);
+  .ant-btn-link { color: #40a9ff; }
 }
 </style>

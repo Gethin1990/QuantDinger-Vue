@@ -79,7 +79,7 @@ export default {
   mixins: [baseMixin],
   data () {
     return {
-      activeBroker: 'ibkr',
+      activeBroker: 'alpaca',
       connectionMap: {},
       loadingMap: {},
       refreshing: false,
