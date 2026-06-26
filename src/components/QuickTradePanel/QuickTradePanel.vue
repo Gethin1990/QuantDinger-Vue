@@ -464,7 +464,10 @@ export default {
       quickAmountPcts: [10, 25, 50, 75, 100],
       // polling
       pollTimer: null,
-      showAddExchangeModal: false
+      showAddExchangeModal: false,
+      // error suppression — prevent repeated toasts from polling
+      _lastBalanceErrorKey: '',
+      _lastBalanceErrorTime: 0
     }
   },
   computed: {
@@ -585,6 +588,9 @@ export default {
       }
     },
     selectedCredentialId (val) {
+      // Reset error suppression state when credential changes
+      this._lastBalanceErrorKey = ''
+      this._lastBalanceErrorTime = 0
       // Reload position when credential changes
       if (val && this.currentSymbol) {
         this.loadPosition()
@@ -890,8 +896,16 @@ export default {
             error_hint_key: d.error_hint_key || '',
             request_ip: d.request_ip || ''
           }
+          // Suppress repeated error popups: show the toast only once per error
+          // within a 60-second window, not on every 10-second poll cycle.
           if (d.error && this.$message) {
-            this.$message.warning(this.balanceErrorMessage || d.error, 6)
+            const errKey = (d.error_hint_key || '') + '|' + (d.error || '').slice(0, 80)
+            const now = Date.now()
+            if (errKey !== this._lastBalanceErrorKey || now - this._lastBalanceErrorTime > 60000) {
+              this._lastBalanceErrorKey = errKey
+              this._lastBalanceErrorTime = now
+              this.$message.warning(this.balanceErrorMessage || d.error, 6)
+            }
           }
         } else {
           this.balance = {

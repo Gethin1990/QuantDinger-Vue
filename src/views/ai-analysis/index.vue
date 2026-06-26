@@ -2161,10 +2161,28 @@ export default {
           target: this.marketLabel('CNStock')
         })
       }
+      // Pure numeric codes (1-5 digits, e.g. 700, 00700, 00100) are HK stock
+      // codes. Routing them to Crypto or USStock always fails on Binance/yfinance.
+      if (/^\d{1,5}$/.test(symbol) && market !== 'HKStock' && market !== 'CNStock') {
+        return this.i18nText('dashboard.analysis.modal.addStock.validate.hk', '"{symbol}" looks like a Hong Kong stock code; choose {target}.', {
+          symbol,
+          target: this.marketLabel('HKStock')
+        })
+      }
       if (symbol.toUpperCase().endsWith('.HK') && market !== 'HKStock') {
         return this.i18nText('dashboard.analysis.modal.addStock.validate.hk', '"{symbol}" looks like a Hong Kong stock; choose {target}.', {
           symbol,
           target: this.marketLabel('HKStock')
+        })
+      }
+      // Short all-alpha 1-5 letter symbols that aren't known crypto bases
+      // are likely US stock tickers and shouldn't go to Crypto.
+      const knownCryptoBases = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'MATIC', 'AVAX', 'SHIB', 'LINK', 'UNI', 'ATOM', 'LTC', 'NEAR', 'APT', 'ARB', 'OP', 'FTM', 'PEPE', 'WIF', 'BONK', 'FLOKI', 'TRX', 'TON', 'FIL', 'IMX', 'RUNE', 'AAVE', 'PI']
+      const upperSymbol = symbol.toUpperCase()
+      if (/^[A-Z]{1,5}$/.test(upperSymbol) && !knownCryptoBases.includes(upperSymbol) && market === 'Crypto') {
+        return this.i18nText('dashboard.analysis.modal.addStock.validate.us', '"{symbol}" looks like a US stock ticker; choose {target} instead of Crypto.', {
+          symbol,
+          target: this.marketLabel('USStock')
         })
       }
       return ''
