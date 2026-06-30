@@ -1013,7 +1013,7 @@ const locale = {
   'user.login.forgot-password': '忘记密码',
   'user.login.sign-in-with': '其他登录方式',
   'user.login.signup': '注册账户',
-  'user.login.login': '登录',
+  'user.login.login': '登录',
   'user.login.mfa.failed': '验证失败，请重试',
   'user.login.mfa.required': '请输入二次验证码',
   'user.login.mfa.verify': '验证',
