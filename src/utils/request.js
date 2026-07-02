@@ -147,7 +147,7 @@ const errorHandler = (error) => {
     if (error.response.status === 403) {
       // NOTE: this notification used to be labelled "(Demo Mode) / Read-only in
       // demo mode", which was misleading: the backend returns 403 for many
-      // distinct reasons (permission denied, IBKR/MT5 disabled by env, market
+      // distinct reasons (permission denied, IBKR disabled by env, market
       // not on whitelist, billing-gated route, ...). Always show the backend
       // msg as the description so users see the real cause.
       notification.error({

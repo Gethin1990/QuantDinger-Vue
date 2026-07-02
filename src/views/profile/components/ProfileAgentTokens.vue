@@ -522,6 +522,102 @@ export default {
     .text-muted {
       color: rgba(255, 255, 255, 0.35);
     }
+
+    ::v-deep .ant-alert {
+      background: rgba(24, 144, 255, 0.08);
+      border-color: rgba(24, 144, 255, 0.22);
+      color: rgba(255, 255, 255, 0.78);
+
+      .ant-alert-message,
+      .ant-alert-description {
+        color: rgba(255, 255, 255, 0.86);
+      }
+    }
+
+    ::v-deep .ant-tabs-bar {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    ::v-deep .ant-tabs-tab {
+      color: rgba(255, 255, 255, 0.62);
+
+      &:hover {
+        color: var(--primary-color-hover, #40a9ff);
+      }
+    }
+
+    ::v-deep .ant-tabs-tab-active {
+      color: var(--primary-color-hover, #40a9ff);
+      background: rgba(24, 144, 255, 0.12);
+    }
+
+    ::v-deep .ant-btn:not(.ant-btn-primary):not(.ant-btn-link) {
+      background: #1f1f1f;
+      border-color: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.86);
+
+      &:hover,
+      &:focus {
+        border-color: var(--primary-color-hover, #40a9ff);
+        color: var(--primary-color-hover, #40a9ff);
+      }
+    }
+
+    ::v-deep .ant-table {
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    ::v-deep .ant-table-thead > tr > th {
+      background: #101010;
+      border-bottom-color: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    ::v-deep .ant-table-tbody > tr > td {
+      background: #161616;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    ::v-deep .ant-table-tbody > tr:hover:not(.ant-table-expanded-row) > td {
+      background: #1f2630;
+    }
+
+    ::v-deep .ant-table-tbody > tr.token-row-revoked > td {
+      background: rgba(255, 77, 79, 0.08) !important;
+      color: rgba(255, 255, 255, 0.62);
+    }
+
+    ::v-deep .ant-table-tbody > tr.token-row-revoked:hover:not(.ant-table-expanded-row) > td {
+      background: rgba(255, 77, 79, 0.13) !important;
+    }
+
+    ::v-deep .ant-table-placeholder {
+      background: #161616;
+      border-color: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    ::v-deep .ant-pagination-item,
+    ::v-deep .ant-pagination-prev .ant-pagination-item-link,
+    ::v-deep .ant-pagination-next .ant-pagination-item-link {
+      background: #141414;
+      border-color: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    ::v-deep .ant-pagination-item a {
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    ::v-deep .ant-pagination-item-active {
+      border-color: var(--primary-color, #1890ff);
+      background: rgba(24, 144, 255, 0.16);
+
+      a {
+        color: #fff;
+      }
+    }
   }
 }
 </style>

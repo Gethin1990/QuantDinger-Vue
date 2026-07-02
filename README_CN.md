@@ -81,7 +81,7 @@
 | 项目 | 说明 |
 |------|------|
 | 官方前端镜像 | `ghcr.io/brokermr810/quantdinger-frontend` |
-| 常用标签 | `latest`、semver（`4.0.1`）、`{major}.{minor}`（`4.0`） |
+| 常用标签 | `latest`、semver（`4.0.4`）、`{major}.{minor}`（`4.0`） |
 
 可用标签见 [QuantDinger Releases](https://github.com/brokermr810/QuantDinger/releases) 与 [QuantDinger-Vue Releases](https://github.com/brokermr810/QuantDinger-Vue/releases)。
 
@@ -129,7 +129,7 @@ docker run -d --name quantdinger-frontend \
 固定版本而非 `latest`：
 
 ```bash
-docker pull ghcr.io/brokermr810/quantdinger-frontend:4.0.1
+docker pull ghcr.io/brokermr810/quantdinger-frontend:4.0.4
 ```
 
 ### 固定标签与更新镜像（Compose）
@@ -138,11 +138,11 @@ docker pull ghcr.io/brokermr810/quantdinger-frontend:4.0.1
 
 ```ini
 # 前后端锁定同一版本
-IMAGE_TAG=4.0.1
+IMAGE_TAG=4.0.4
 
 # 或仅覆盖前端（后端仍用 IMAGE_TAG / latest）
-# FRONTEND_TAG=4.0.1
-# BACKEND_TAG=4.0.1
+# FRONTEND_TAG=4.0.4
+# BACKEND_TAG=4.0.4
 ```
 
 标签解析优先级（高者生效）：**`FRONTEND_TAG` → `IMAGE_TAG` → `latest`**。
@@ -218,7 +218,7 @@ docker compose up -d --no-deps frontend
 
 | 要求 | 版本 |
 |------|------|
-| Node.js | 建议 **18 LTS**（最低 16.13+，需支持 [corepack](https://nodejs.org/api/corepack.html)） |
+| Node.js | 建议整个工作区统一使用 **22 LTS**。PC 前端本身支持 Node 18+，但移动端 H5 仓库要求 Node 20.19+ 或 22.12+（Vite 7），所以 Node 22 可以避免来回切版本。 |
 | pnpm | **10.x** — 版本由 `package.json` 的 `packageManager` 锁定；通过 `corepack enable` 安装 |
 | Git | 必需 — 生产构建会从本地仓库写入提交与精确 release tag 信息 |
 | Backend | QuantDinger 后端可访问，默认 `http://localhost:5000`（见下文） |
@@ -263,6 +263,14 @@ pnpm run serve
 - 默认目标地址：`http://localhost:5000`
 
 如果后端运行在其他地址或端口，请在本地环境设置 `VITE_DEV_PROXY_TARGET`，或相应调整代理配置。
+
+示例：
+
+```bash
+VITE_DEV_PROXY_TARGET=http://127.0.0.1:5000 pnpm run serve
+```
+
+如果开发者工具里看到 `http://localhost:8000/api/...`，这是正常的：浏览器先请求 Vite 开发服务器，Vite 再把请求转发到 `VITE_DEV_PROXY_TARGET`。
 
 ### 生产构建（源码）
 
@@ -387,17 +395,17 @@ QuantDinger-Vue/
 |------|------|
 | Telegram | [t.me/worldinbroker](https://t.me/worldinbroker) |
 | GitHub Issues | [问题反馈 / 功能建议](https://github.com/brokermr810/QuantDinger/issues) |
-| Email | [brokermr810@gmail.com](mailto:brokermr810@gmail.com) |
+| Email | [support@quantdinger.com](mailto:support@quantdinger.com) |
 
 ## License
 
-本仓库采用 **QuantDinger Frontend Source-Available License v1.0**。完整条款见 [`LICENSE`](./LICENSE)。
+本仓库采用 **QuantDinger Frontend Source-Available License v1.0**。完整条款见 [`LICENSE`](./LICENSE)。QuantDinger 是 **Open Byte Inc** 的产品。
 
 许可证摘要如下：
 
 - 非商业用途可免费使用。
 - 符合条件的非营利机构用途可在许可证定义范围内免费使用。
-- 商业用途必须另行获得 QuantDinger 的商业授权。
+- 商业用途必须另行获得 Open Byte Inc 的商业授权。
 - 品牌、商标、署名与水印相关内容，未经事先书面许可，不得移除、修改或误导性展示。
 
 | 使用类型 | 成本 | 范围 |
@@ -410,7 +418,7 @@ QuantDinger-Vue/
 
 - Website: [quantdinger.com](https://quantdinger.com)
 - Telegram: [t.me/worldinbroker](https://t.me/worldinbroker)
-- Email: [brokermr810@gmail.com](mailto:brokermr810@gmail.com)
+- Email: [support@quantdinger.com](mailto:support@quantdinger.com)
 
 ## 法律声明与合规提示
 

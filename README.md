@@ -32,7 +32,7 @@
 
 ## Overview
 
-This repository contains the Vue.js frontend source code for QuantDinger. It is the web application layer that connects traders, researchers, and operators to the QuantDinger backend for AI analysis, charting, strategy development, backtesting, execution, billing, and user management.
+This repository contains the Vue.js frontend source code for QuantDinger, a product of **Open Byte Inc**. It is the web application layer that connects traders, researchers, and operators to the QuantDinger backend for AI analysis, charting, strategy development, backtesting, execution, billing, and user management.
 
 If you are looking for one-click deployment, Docker Compose, backend APIs, or the full product documentation, start with the main repository:
 
@@ -82,7 +82,7 @@ If you are looking for one-click deployment, Docker Compose, backend APIs, or th
 | Image | Registry path |
 |-------|----------------|
 | Official frontend | `ghcr.io/brokermr810/quantdinger-frontend` |
-| Tags | `latest`, semver (`4.0.1`), `{major}.{minor}` (`4.0`) |
+| Tags | `latest`, semver (`4.0.4`), `{major}.{minor}` (`4.0`) |
 
 See available tags on [QuantDinger Releases](https://github.com/brokermr810/QuantDinger/releases) and [QuantDinger-Vue Releases](https://github.com/brokermr810/QuantDinger-Vue/releases).
 
@@ -130,7 +130,7 @@ docker run -d --name quantdinger-frontend \
 Pin a release instead of `latest`:
 
 ```bash
-docker pull ghcr.io/brokermr810/quantdinger-frontend:4.0.1
+docker pull ghcr.io/brokermr810/quantdinger-frontend:4.0.4
 ```
 
 ### Pin and update image tags (Compose)
@@ -139,11 +139,11 @@ In the **main repo project root**, create or edit `.env`:
 
 ```ini
 # Lock both backend and frontend to the same release
-IMAGE_TAG=4.0.1
+IMAGE_TAG=4.0.4
 
 # Or override frontend only (backend keeps IMAGE_TAG / latest)
-# FRONTEND_TAG=4.0.1
-# BACKEND_TAG=4.0.1
+# FRONTEND_TAG=4.0.4
+# BACKEND_TAG=4.0.4
 ```
 
 Tag resolution (highest wins): **`FRONTEND_TAG` → `IMAGE_TAG` → `latest`**.
@@ -211,7 +211,7 @@ docker compose up -d --no-deps frontend   # if using main repo bind-mount path
 
 | Requirement | Version |
 |-------------|---------|
-| Node.js | **18 LTS** recommended (16.13+ minimum for [corepack](https://nodejs.org/api/corepack.html)) |
+| Node.js | **22 LTS recommended** for this workspace. The desktop web app also supports Node 18+, but the mobile H5 repo requires Node 20.19+ or 22.12+ (Vite 7), so Node 22 avoids version switching. |
 | pnpm | **10.x** — version pinned in `package.json` (`packageManager`); installed via `corepack enable` |
 | Git | Required — production builds stamp commit and exact release tag metadata from the local repository |
 | Backend | QuantDinger API reachable at `http://localhost:5000` (see below) |
@@ -256,6 +256,14 @@ In local development, `/api/*` requests are proxied to the backend through `vite
 - Default backend target: `http://localhost:5000`
 
 If your backend runs elsewhere, set `VITE_DEV_PROXY_TARGET` in your local environment or update the proxy target accordingly.
+
+Examples:
+
+```bash
+VITE_DEV_PROXY_TARGET=http://127.0.0.1:5000 pnpm run serve
+```
+
+If DevTools shows `http://localhost:8000/api/...`, that is expected in development: the browser calls Vite on port 8000, and Vite forwards the request to `VITE_DEV_PROXY_TARGET`.
 
 ### Production build (source)
 
@@ -380,17 +388,17 @@ Please also review the main repository contribution guidance:
 |---------|------|
 | Telegram | [t.me/worldinbroker](https://t.me/worldinbroker) |
 | GitHub Issues | [Report bugs / Request features](https://github.com/brokermr810/QuantDinger/issues) |
-| Email | [brokermr810@gmail.com](mailto:brokermr810@gmail.com) |
+| Email | [support@quantdinger.com](mailto:support@quantdinger.com) |
 
 ## License
 
-This repository is released under the **QuantDinger Frontend Source-Available License v1.0**. See [`LICENSE`](./LICENSE) for the full license text.
+This repository is released under the **QuantDinger Frontend Source-Available License v1.0**. See [`LICENSE`](./LICENSE) for the full license text. QuantDinger is a product of **Open Byte Inc**.
 
 Summary of the license position:
 
 - Non-Commercial Use is permitted free of charge.
 - Qualified Non-Profit Entity use is permitted free of charge within the scope defined by the license.
-- Commercial Use requires a separate commercial license from QuantDinger.
+- Commercial Use requires a separate commercial license from Open Byte Inc.
 - Branding, trademarks, attribution, and watermark notices may not be removed, altered, or misrepresented without prior written permission.
 
 | Use Category | Cost | Scope |
@@ -403,7 +411,7 @@ For commercial licensing:
 
 - Website: [quantdinger.com](https://quantdinger.com)
 - Telegram: [t.me/worldinbroker](https://t.me/worldinbroker)
-- Email: [brokermr810@gmail.com](mailto:brokermr810@gmail.com)
+- Email: [support@quantdinger.com](mailto:support@quantdinger.com)
 
 ## Legal Notice and Compliance
 

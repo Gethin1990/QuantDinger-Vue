@@ -402,7 +402,7 @@
 <script>
 import { mapState } from 'vuex'
 import { listExchangeCredentials } from '@/api/credentials'
-import { formatExchangeCredentialLabel } from '@/utils/exchangeCredential'
+import { formatExchangeCredentialLabel, isQuickTradeExchangeCredential } from '@/utils/exchangeCredential'
 import ExchangeAccountModal from '@/components/ExchangeAccountModal/ExchangeAccountModal.vue'
 import { placeQuickOrder, getQuickTradeBalance, getQuickTradePosition, getQuickTradeHistory, closeQuickTradePosition } from '@/api/quick-trade'
 import { searchSymbols, getWatchlist } from '@/api/market'
@@ -534,7 +534,10 @@ export default {
       return 4
     },
     canSubmit () {
-      return this.selectedCredentialId && this.currentSymbol && this.amount > 0 && !this.submitting
+      return this.selectedCredentialId && this.selectedCredential && this.currentSymbol && this.amount > 0 && !this.submitting
+    },
+    selectedCredential () {
+      return this.credentials.find(c => c.id === this.selectedCredentialId)
     },
     priceChangeClass () {
       return ''
@@ -830,12 +833,17 @@ export default {
         const res = await listExchangeCredentials()
         if (res.code === 1 && res.data) {
           const all = res.data.items || res.data || []
-          // Quick Trade only supports crypto exchanges — filter out IBKR, MT5, etc.
-          const NON_CRYPTO = ['ibkr', 'mt5']
-          this.credentials = all.filter(c => {
-            const eid = (c.exchange_id || c.name || '').toLowerCase()
-            return !NON_CRYPTO.includes(eid)
-          })
+          this.credentials = all.filter(isQuickTradeExchangeCredential)
+          if (this.selectedCredentialId && !this.credentials.some(c => c.id === this.selectedCredentialId)) {
+            this.selectedCredentialId = undefined
+            this.balance = {
+              available: 0,
+              total: 0,
+              swap: { available: 0, total: 0 },
+              spot: { available: 0, total: 0 }
+            }
+            this.currentPositions = []
+          }
           // Auto-select first if none selected
           if (!this.selectedCredentialId && this.credentials.length > 0) {
             this.selectedCredentialId = this.credentials[0].id
@@ -852,15 +860,22 @@ export default {
       const prevId = this.selectedCredentialId
       await this.loadCredentials()
       const newId = data && (data.id || data.credential_id)
-      if (newId) {
+      if (newId && this.credentials.some(c => c.id === newId)) {
         this.selectedCredentialId = newId
         await this.onCredentialChange(newId)
+      } else if (newId) {
+        this.$message.warning(this.$t('quickTrade.noExchange'))
       } else if (!prevId && this.credentials.length === 1) {
         this.selectedCredentialId = this.credentials[0].id
         await this.onCredentialChange(this.selectedCredentialId)
       }
     },
     async onCredentialChange (credId) {
+      if (!this.credentials.some(c => c.id === credId)) {
+        this.selectedCredentialId = undefined
+        this.$message.warning(this.$t('quickTrade.noExchange'))
+        return
+      }
       this.selectedCredentialId = credId
       await this.loadBalance()
       await this.loadPosition()
@@ -1577,7 +1592,7 @@ export default {
   }
 
   ::v-deep .ant-slider-mark-text-active {
-    color: #1890ff;
+    color: var(--primary-color, #1890ff);
     font-weight: 600;
   }
 
@@ -1689,7 +1704,7 @@ export default {
   &:hover { color: #595959; }
   &.active {
     background: #fff;
-    color: #1890ff;
+    color: var(--primary-color, #1890ff);
     font-weight: 600;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
