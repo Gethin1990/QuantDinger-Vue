@@ -1746,7 +1746,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
-@primary-color: #1890ff;
+@primary-color: var(--primary-color, #1890ff);
 
 .profile-page {
   padding: 24px;
@@ -2446,8 +2446,8 @@ export default {
       }
 
       .mfa-icon {
-        color: #6ea8ff;
-        background: rgba(110, 168, 255, 0.12);
+        color: var(--primary-color-hover, var(--primary-color, #1890ff));
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
       }
 
       .mfa-title {
@@ -2461,9 +2461,9 @@ export default {
 
       .mfa-feature-list {
         span {
-          background: rgba(24, 144, 255, 0.1);
-          border-color: rgba(24, 144, 255, 0.22);
-          color: #7db6ff;
+          background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
+          border-color: color-mix(in srgb, var(--primary-color, #1890ff) 24%, transparent);
+          color: var(--primary-color-hover, var(--primary-color, #1890ff));
         }
       }
 
@@ -2549,7 +2549,11 @@ export default {
       }
       .ant-tag-red { background: rgba(245,34,45,0.25); border-color: #f5222d; color: #ff7875; }
       .ant-tag-green { background: rgba(82,196,26,0.25); border-color: #52c41a; color: #73d13d; }
-      .ant-tag-blue { background: rgba(24,144,255,0.25); border-color: var(--primary-color, #1890ff); color: #69c0ff; }
+      .ant-tag-blue {
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 24%, transparent);
+        border-color: var(--primary-color, #1890ff);
+        color: var(--primary-color-hover, var(--primary-color, #1890ff));
+      }
       .ant-tag-orange { background: rgba(250,173,20,0.25); border-color: #faad14; color: #ffc53d; }
       .ant-tag-gold { background: rgba(250,173,20,0.25); border-color: #faad14; color: #ffc53d; }
       .ant-tag-cyan { background: rgba(19,194,194,0.25); border-color: #13c2c2; color: #5cdbd3; }

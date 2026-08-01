@@ -80,7 +80,7 @@
           ]"
         >
           <div class="avatar">
-            <a-icon :type="msg.role === 'assistant' ? 'robot' : 'user'" />
+            <a-icon :type="msg.role === 'assistant' ? 'thunderbolt' : 'smile'" />
           </div>
           <div class="bubble">
             <div v-if="msg.attachments && msg.attachments.length" class="attachment-row">
@@ -106,6 +106,17 @@
               />
             </div>
             <div v-if="msg.meta" class="message-meta">{{ msg.meta }}</div>
+            <div v-if="agentUsageItems(msg).length" class="agent-usage">
+              <span class="agent-usage-title"><a-icon type="apartment" /> {{ text.usedThisTurn }}</span>
+              <span
+                v-for="item in agentUsageItems(msg)"
+                :key="item.kind + '-' + item.id"
+                :class="['agent-usage-chip', `agent-usage-chip--${item.kind}`]"
+              >
+                <a-icon :type="item.kind === 'tool' ? 'api' : 'experiment'" />
+                {{ item.label }}
+              </span>
+            </div>
             <div v-if="visibleMessageActions(msg).length || strategyCodeForMessage(msg)" class="message-actions">
               <button v-for="action in visibleMessageActions(msg)" :key="action.key || action.label" type="button" @click="runMessageAction(action)">
                 <a-icon :type="action.icon || 'arrow-right'" /> {{ action.label }}
@@ -584,8 +595,6 @@ export default {
       return locale.toLowerCase().startsWith('zh')
     },
     text () {
-      const locale = this.$i18n ? this.$i18n.locale : ''
-      void locale
       const t = (key, fallback, values) => this.i18nText(`aiAssetAnalysis.copilot.${key}`, fallback, values)
       return {
         title: t('title', 'AI Copilot'),
@@ -655,21 +664,21 @@ export default {
         monitorUpdated: t('monitorUpdated', 'Scheduled analysis updated'),
         monitorDeleted: t('monitorDeleted', 'Scheduled analysis deleted'),
         strategyFlowTitle: t('strategyFlowTitle', 'Choose the strategy type to create'),
-        indicatorStrategy: t('indicatorStrategy', 'Strategy R&D'),
+        indicatorStrategy: t('indicatorStrategy', 'Indicator Strategy'),
         indicatorStrategyDesc: t('indicatorStrategyDesc', 'Draft strategies for research, backtesting, and publishing.'),
-        scriptStrategy: t('scriptStrategy', 'Script Strategy'),
-        scriptStrategyDesc: t('scriptStrategyDesc', 'Generate Python ScriptStrategy for complex logic and automated execution.'),
-        tradingBot: t('tradingBot', 'Template Strategy'),
+        scriptStrategy: t('scriptStrategy', 'Trading Script'),
+        scriptStrategyDesc: t('scriptStrategyDesc', 'Generate Python ScriptStrategy code for the Trading Script editor.'),
+        tradingBot: t('tradingBot', 'Strategy Template'),
         tradingBotDesc: t('tradingBotDesc', 'Recommend grid, trend, DCA, or martingale template parameters from market context.'),
         strategyRouteIndicatorTitle: t('strategyRouteIndicatorTitle', 'Output: Indicator strategy code'),
-        strategyRouteIndicatorDesc: t('strategyRouteIndicatorDesc', 'Runs in Strategy R&D / Indicator IDE. It must use QuantDinger Python indicator contracts and four signal columns for backtest/live handoff.'),
-        strategyRouteScriptTitle: t('strategyRouteScriptTitle', 'Output: ScriptStrategy code'),
-        strategyRouteScriptDesc: t('strategyRouteScriptDesc', 'Runs in Script Strategy IDE. Use this for stateful logic, position management, API calls, logging, and automated execution.'),
-        strategyRouteTemplateTitle: t('strategyRouteTemplateTitle', 'Output: Template strategy parameters'),
-        strategyRouteTemplateDesc: t('strategyRouteTemplateDesc', 'Runs in Template Strategy. It recommends grid/trend/DCA and other preset parameters for manual review before launch.'),
+        strategyRouteIndicatorDesc: t('strategyRouteIndicatorDesc', 'Runs in the Indicator Strategy editor. It must use QuantDinger Python indicator contracts and four signal columns for backtest/live handoff.'),
+        strategyRouteScriptTitle: t('strategyRouteScriptTitle', 'Output: Trading Script code'),
+        strategyRouteScriptDesc: t('strategyRouteScriptDesc', 'Runs in the Trading Script editor. Use this for stateful logic, position management, API calls, logging, and automated execution.'),
+        strategyRouteTemplateTitle: t('strategyRouteTemplateTitle', 'Output: Strategy Template parameters'),
+        strategyRouteTemplateDesc: t('strategyRouteTemplateDesc', 'Runs as a Strategy Template. It recommends grid/trend/DCA and other preset parameters for manual review before launch.'),
         strategyStartIndicator: t('strategyStartIndicator', 'Create indicator strategy prompt'),
-        strategyStartScript: t('strategyStartScript', 'Create script strategy prompt'),
-        strategyStartTemplate: t('strategyStartTemplate', 'Create template strategy prompt'),
+        strategyStartScript: t('strategyStartScript', 'Create trading script prompt'),
+        strategyStartTemplate: t('strategyStartTemplate', 'Create strategy template prompt'),
         analysisRunning: t('analysisRunning', 'Analysis is running...'),
         analysisComplete: t('analysisComplete', 'Analysis complete'),
         strategyGenerated: t('strategyGenerated', 'Strategy draft generated'),
@@ -680,6 +689,7 @@ export default {
         uploadImage: t('uploadImage', 'Upload image'),
         quickTools: t('quickTools', 'Quick tools'),
         hideQuickTools: t('hideQuickTools', 'Hide quick tools'),
+        usedThisTurn: t('usedThisTurn', 'Used this turn'),
         imageAttachment: t('imageAttachment', 'Image attachment'),
         copyCode: t('copyCode', 'Copy code'),
         currentSymbol: t('currentSymbol', 'this symbol'),
@@ -693,10 +703,10 @@ export default {
         strategyExamplesDesc: t('strategyExamplesDesc', 'Pick one, then edit the details before sending.'),
         strategyExampleMomentum: t('strategyExampleMomentum', 'Momentum breakout'),
         strategyExampleReversal: t('strategyExampleReversal', 'Mean reversion'),
-        strategyExampleCode: t('strategyExampleCode', 'Code from idea'),
+        strategyExampleCode: t('strategyExampleCode', 'Trading script from idea'),
         strategyExampleStateful: t('strategyExampleStateful', 'Stateful risk script'),
-        strategyExampleGrid: t('strategyExampleGrid', 'Grid template'),
-        strategyExampleTrendTemplate: t('strategyExampleTrendTemplate', 'Trend template'),
+        strategyExampleGrid: t('strategyExampleGrid', 'Grid strategy template'),
+        strategyExampleTrendTemplate: t('strategyExampleTrendTemplate', 'Trend strategy template'),
         calendarUnavailable: t('calendarUnavailable', 'Calendar unavailable')
       }
     },
@@ -707,20 +717,16 @@ export default {
       return this.text.thinking
     },
     quickPrompts () {
-      const locale = this.$i18n ? this.$i18n.locale : ''
-      void locale
       const symbol = this.context.symbol || this.text.currentSymbol
       const prompt = (key, fallback) => this.localizedQuickPrompt(key, fallback, { symbol })
       return [
         { key: 'diagnose', action: 'analysis', icon: 'line-chart', label: this.i18nText('aiAssetAnalysis.copilot.quickTasks.market_diagnosis.label', 'Diagnose symbol'), prompt: prompt('diagnose', 'Diagnose {symbol}: trend, momentum, support/resistance, liquidity, and risk.') },
-        { key: 'strategy', action: 'strategy', icon: 'experiment', label: this.i18nText('aiAssetAnalysis.copilot.quickTasks.indicator_strategy.label', 'Strategy R&D'), prompt: prompt('strategy', 'Design an executable strategy workflow for {symbol}, including conditions, risk controls, and validation plan.') },
+        { key: 'strategy', action: 'strategy', icon: 'experiment', label: this.i18nText('aiAssetAnalysis.copilot.quickTasks.indicator_strategy.label', 'Indicator Strategy'), prompt: prompt('strategy', 'Design an executable strategy workflow for {symbol}, including conditions, risk controls, and validation plan.') },
         { key: 'logs', action: 'chat', icon: 'bug', label: this.i18nText('aiAssetAnalysis.copilot.quickTasks.debug_logs.label', 'Debug logs'), prompt: prompt('logs', 'Help me inspect recent errors and suggest the next debugging steps.') },
         { key: 'radar', action: 'chat', icon: 'aim', label: this.i18nText('aiAssetAnalysis.copilot.quickTasks.opportunity_radar.label', 'Opportunity radar'), prompt: prompt('radar', 'Scan {symbol} for likely opportunities in the next 24 hours, with triggers and invalidation.') }
       ]
     },
     systemQuickTasks () {
-      const locale = this.$i18n ? this.$i18n.locale : ''
-      void locale
       const symbol = this.context.symbol || this.text.currentSymbol
       const task = (key, action, icon, tone, labelKey, descKey, promptKey, promptFallback) => ({
         key,
@@ -735,7 +741,7 @@ export default {
         task('diagnose', 'analysis', 'line-chart', 'blue', 'market_diagnosis', 'market_diagnosis', 'diagnose', 'Diagnose {symbol}: trend, momentum, support/resistance, liquidity, and risk.'),
         task('chart', 'chart', 'picture', 'purple', 'chart_review', 'chart_review', 'chart', 'I will paste or upload a chart image. Judge whether the setup is tradable and give stop loss, take profit, and invalidation.'),
         task('strategy', 'strategy', 'line-chart', 'green', 'indicator_strategy', 'indicator_strategy', 'strategy', 'Create a strategy research plan for {symbol}, including entry/exit logic, risk controls, and validation steps.'),
-        task('monitor', 'schedule', 'clock-circle', 'orange', 'scheduled_analysis', 'scheduled_analysis', 'monitor', 'Create a scheduled analysis task for {symbol}: track trend changes, risks, and key levels.'),
+        task('trade_plan', 'chat', 'profile', 'orange', 'trade_plan', 'trade_plan', 'tradePlan', 'Create a practical trading plan for {symbol}: bias, key levels, trigger, stop loss, take profit, position sizing, and when to stay out.'),
         task('news', 'chat', 'global', 'cyan', 'news_research', 'news_research', 'news', 'Search recent news and events for {symbol}; separate facts, interpretation, and uncertainty.'),
         task('logs', 'chat', 'bug', 'red', 'debug_logs', 'debug_logs', 'logs', 'Help me inspect strategy, bot, or API logs and identify likely causes and fixes.'),
         task('macro', 'chat', 'global', 'indigo', 'macro_economic_data', 'macro_economic_data', 'macro', 'Review macro data such as CPI, FOMC, rates, GDP, and PCE, and explain the market impact.'),
@@ -743,8 +749,6 @@ export default {
       ]
     },
     quickTaskDisplayText () {
-      const locale = this.$i18n ? this.$i18n.locale : ''
-      void locale
       const make = (id, labelFallback, descFallback) => ({
         label: this.i18nText(`aiAssetAnalysis.copilot.quickTasks.${id}.label`, labelFallback),
         desc: this.i18nText(`aiAssetAnalysis.copilot.quickTasks.${id}.desc`, descFallback)
@@ -752,8 +756,8 @@ export default {
       return {
         market_diagnosis: make('market_diagnosis', 'Diagnose symbol', 'Trend, momentum, support/resistance, liquidity, and risk.'),
         chart_review: make('chart_review', 'Chart review', 'Judge entries, stops, take profit, and invalidation from a chart image.'),
-        indicator_strategy: make('indicator_strategy', 'Strategy R&D', 'Generate a strategy draft that can be reviewed, backtested, and published.'),
-        scheduled_analysis: make('scheduled_analysis', 'Scheduled tracking', 'Review watchlist changes on a schedule and save results.'),
+        indicator_strategy: make('indicator_strategy', 'Indicator Strategy', 'Generate a strategy draft that can be reviewed, backtested, and published.'),
+        trade_plan: make('trade_plan', 'Trading plan', 'Turn the current market context into a concrete execution checklist.'),
         news_research: make('news_research', 'News / event research', 'Search company, asset, macro, and industry news to build usable research context.'),
         debug_logs: make('debug_logs', 'Debug logs', 'Locate strategy, bot, and API errors.'),
         macro_economic_data: make('macro_economic_data', 'Macro data', 'Query CPI, FOMC, rates, GDP, PCE, and other macro events.'),
@@ -761,8 +765,6 @@ export default {
       }
     },
     registeredQuickTasks () {
-      const locale = this.$i18n ? this.$i18n.locale : ''
-      void locale
       const symbol = this.context.symbol || this.text.currentSymbol
       const registry = Array.isArray(this.skillRegistry) ? this.skillRegistry : []
       if (!registry.length) return this.systemQuickTasks
@@ -771,32 +773,34 @@ export default {
         'market_diagnosis',
         'chart_review',
         'indicator_strategy',
-        'scheduled_analysis',
+        'trade_plan',
         'news_research',
         'debug_logs',
         'macro_economic_data',
         'opportunity_radar'
       ]
-      const byId = new Map(registry.map(item => [item.id, item]))
+      const byId = new Map(this.systemQuickTasks.map(item => [item.key, item]))
+      registry
+        .filter(item => item && item.id !== 'scheduled_analysis')
+        .forEach(item => byId.set(item.id, item))
       return order
         .map(id => byId.get(id))
         .filter(Boolean)
         .map(skill => {
           const actionType = skill.action_type || ''
-          const displayText = this.quickTaskDisplayText[skill.id] || {}
-          const promptKey = this.quickTaskPromptKey(skill.id)
+          const skillId = skill.id || skill.key
+          const displayText = this.quickTaskDisplayText[skillId] || {}
+          const promptKey = this.quickTaskPromptKey(skillId)
           return {
-            key: skill.id,
-            skillId: skill.id,
+            key: skillId,
+            skillId,
             action: actionType === 'strategy'
               ? 'strategy'
               : actionType === 'addWatch'
                 ? 'addWatch'
-                : skill.id === 'market_diagnosis'
+                : skillId === 'market_diagnosis'
                   ? 'analysis'
-                  : skill.id === 'scheduled_analysis'
-                    ? 'monitor'
-                    : 'prompt',
+                  : skill.action || 'prompt',
             icon: skill.icon || 'appstore',
             tone: (skill.ui && skill.ui.tone) || skill.category || '',
             label: displayText.label || skill.label,
@@ -889,7 +893,7 @@ export default {
           title: this.text.strategyExampleGrid,
           prompt: this.i18nText(
             'aiAssetAnalysis.copilot.strategyExamples.gridTemplate',
-            'Evaluate whether {symbol} is suitable for a grid template strategy. Recommend price range, grid count, budget, stop condition, and when not to run it.',
+            'Evaluate whether {symbol} is suitable for a grid strategy template. Recommend price range, grid count, budget, stop condition, and when not to run it.',
             { symbol }
           )
         },
@@ -899,7 +903,7 @@ export default {
           title: this.text.strategyExampleTrendTemplate,
           prompt: this.i18nText(
             'aiAssetAnalysis.copilot.strategyExamples.trendTemplate',
-            'Create a trend-following template strategy plan for {symbol}: entry trigger, trailing stop, take-profit logic, position size, and manual review checklist.',
+            'Create a trend-following strategy template plan for {symbol}: entry trigger, trailing stop, take-profit logic, position size, and manual review checklist.',
             { symbol }
           )
         }]
@@ -977,6 +981,7 @@ export default {
         market_diagnosis: 'diagnose',
         chart_review: 'chart',
         indicator_strategy: 'strategy',
+        trade_plan: 'tradePlan',
         scheduled_analysis: 'monitor',
         monitor_setup: 'monitor',
         debug_logs: 'logs',
@@ -992,8 +997,6 @@ export default {
     },
     i18nText (key, fallback, values = {}) {
       values = values || {}
-      const locale = this.$i18n ? this.$i18n.locale : ''
-      void locale
       let value = this.$t ? this.$t(key, values) : ''
       if (/\?{4,}/.test(String(value || ''))) value = ''
       if (value && value !== key) return value
@@ -1026,6 +1029,7 @@ export default {
         'market_diagnosis',
         'strategy',
         'indicator_strategy',
+        'trade_plan',
         'opportunity_radar',
         'radar'
       ])
@@ -1592,9 +1596,9 @@ export default {
       const task = this.pendingAgentTask
       if (!task || task.type !== 'strategy_design') return
       const labels = {
-        indicator: this.i18nText('aiAssetAnalysis.copilot.actions.generateIndicatorStrategy', 'Generate Strategy R&D code'),
-        script: this.i18nText('aiAssetAnalysis.copilot.actions.generateScriptStrategy', 'Generate script strategy'),
-        bot: this.i18nText('aiAssetAnalysis.copilot.actions.generateTemplateStrategy', 'Generate template strategy plan')
+        indicator: this.i18nText('aiAssetAnalysis.copilot.actions.generateIndicatorStrategy', 'Generate indicator strategy code'),
+        script: this.i18nText('aiAssetAnalysis.copilot.actions.generateScriptStrategy', 'Generate trading script'),
+        bot: this.i18nText('aiAssetAnalysis.copilot.actions.generateTemplateStrategy', 'Generate strategy template plan')
       }
       assistantMsg.actions = assistantMsg.actions || []
       assistantMsg.actions.push({
@@ -1615,6 +1619,7 @@ export default {
         '/billing',
         '/profile',
         '/indicator-ide',
+        '/strategy-ide',
         '/strategy-live',
         '/strategy-script',
         '/strategy-scripts',
@@ -1676,15 +1681,35 @@ export default {
         return action && (
           action.group === 'strategy_workflow' ||
           path === '/indicator-ide' ||
+          path === '/strategy-ide' ||
           path === '/strategy-script' ||
           path === '/strategy-scripts' ||
           path === '/trading-bot'
         )
       }) || null
     },
+    agentUsageAction (msg) {
+      const actions = Array.isArray(msg && msg.actions) ? msg.actions : []
+      return actions.find(action => action && action.type === 'agent_usage') || null
+    },
+    agentUsageItems (msg) {
+      const action = this.agentUsageAction(msg)
+      const payload = action && action.payload ? action.payload : {}
+      const normalize = (items, kind) => (Array.isArray(items) ? items : [])
+        .map(item => ({
+          kind,
+          id: String((item && item.id) || '').trim(),
+          label: String((item && (item.label || item.id)) || '').trim()
+        }))
+        .filter(item => item.id && item.label)
+      return [
+        ...normalize(payload.skills, 'skill'),
+        ...normalize(payload.tools, 'tool')
+      ].slice(0, 8)
+    },
     visibleMessageActions (msg) {
       const actions = Array.isArray(msg && msg.actions) ? msg.actions : []
-      return actions.filter(action => action && action.type !== 'generate_strategy_code')
+      return actions.filter(action => action && !['generate_strategy_code', 'agent_usage'].includes(action.type))
     },
     strategyCodeForMessage (msg) {
       const action = this.workflowActionForMessage(msg)
@@ -2092,6 +2117,22 @@ export default {
       }
       return null
     },
+    symbolContextMode (locked, mentioned, resolved, selected) {
+      if (locked) return 'locked_selected_context'
+      if (mentioned) return 'mentioned_in_message'
+      if (resolved) return 'resolved_from_message'
+      if (selected) return 'optional_selected_context'
+      return 'auto_infer'
+    },
+    pendingAgentTaskContext () {
+      if (!this.pendingAgentTask) return null
+      return {
+        type: this.pendingAgentTask.type,
+        targetType: this.pendingAgentTask.targetType,
+        target: this.pendingAgentTask.target,
+        workflow: this.pendingAgentTask.workflow
+      }
+    },
     buildChatContext (message = '', resolvedSymbol = null) {
       const recent = (this.messages || [])
         .filter(msg => msg && msg.content)
@@ -2104,7 +2145,7 @@ export default {
       const locked = resolvedSymbol && resolvedSymbol.locked ? this.normalizeSymbolOption(resolvedSymbol) : null
       const selected = this.normalizeSymbolOption(this.context)
       const mentioned = this.inferSymbolFromText(message)
-      const resolved = locked ? locked : this.normalizeSymbolOption(resolvedSymbol)
+      const resolved = locked || this.normalizeSymbolOption(resolvedSymbol)
       const active = locked || mentioned || resolved || selected
       const activePrice = active ? this.priceFor(active) : null
       const macroContext = this.macroContextForMessage(message)
@@ -2123,7 +2164,7 @@ export default {
         resolved_symbol: resolved ? resolved.symbol : '',
         locked_market: locked ? locked.market : '',
         locked_symbol: locked ? locked.symbol : '',
-        symbol_context_mode: locked ? 'locked_selected_context' : (mentioned ? 'mentioned_in_message' : (resolved ? 'resolved_from_message' : (selected ? 'optional_selected_context' : 'auto_infer'))),
+        symbol_context_mode: this.symbolContextMode(locked, mentioned, resolved, selected),
         allow_symbol_switch: !locked,
         locked_symbol_policy: locked
           ? this.i18nText(
@@ -2134,12 +2175,7 @@ export default {
           : '',
         use_system_data_source: true,
         active_price: activePrice || null,
-        agent_task: this.pendingAgentTask ? {
-          type: this.pendingAgentTask.type,
-          targetType: this.pendingAgentTask.targetType,
-          target: this.pendingAgentTask.target,
-          workflow: this.pendingAgentTask.workflow
-        } : null,
+        agent_task: this.pendingAgentTaskContext(),
         user_memories: (this.userMemories || []).slice(0, 12),
         economic_calendar_context: macroContext.events,
         macro_data_policy: macroContext.enabled
@@ -2175,6 +2211,15 @@ export default {
         if (key === 'indicator_strategy') {
           this.clearPendingAgentTask()
           this.strategyFlowVisible = true
+          return
+        }
+        if (key === 'trade_plan') {
+          this.pendingAgentTask = {
+            type: 'trade_plan',
+            target,
+            workflow: 'QuantDinger Research Context'
+          }
+          this.usePrompt(this.buildLockedQuickPrompt(activeItem, target), { contextLock: target })
           return
         }
         if (key === 'opportunity_radar' || key === 'radar') {
@@ -2369,7 +2414,10 @@ export default {
     },
     async exportReportPdf (reportId) {
       if (!reportId) return
-      const msg = (this.messages || []).find(item => this.reportId(item) === String(reportId))
+      const id = String(reportId)
+      const msg = (this.messages || []).find(item => this.reportId(item) === id) ||
+        (this.messages || []).find(item => item && item.report && Array.isArray(item.actions) &&
+          item.actions.some(action => String(action && action.payload && action.payload.reportId) === id))
       if (!msg || !msg.report) {
         this.$message.warning(this.i18nText('aiAssetAnalysis.copilot.noReportData', 'No report data to export'))
         return
@@ -2431,15 +2479,15 @@ export default {
         : this.i18nText('aiAssetAnalysis.copilot.strategySymbolPlaceholder', '[enter symbol here, e.g. Crypto:BTC/USDT or USStock:AAPL]')
       const promptText = (key, fallback, values = {}) => this.i18nText(`aiAssetAnalysis.copilot.strategyPrompt.${key}`, fallback, values)
       const workflowLine = targetKey === 'indicator'
-        ? promptText('workflowIndicator', 'Run location: Strategy R&D / Indicator IDE. Generate QuantDinger Python indicator-strategy code, not ScriptStrategy code.')
+        ? promptText('workflowIndicator', 'Run location: Indicator Strategy editor. Generate QuantDinger Python indicator-strategy code, not ScriptStrategy code.')
         : (targetKey === 'script'
-          ? promptText('workflowScript', 'Run location: Script Strategy IDE. Generate QuantDinger Python ScriptStrategy code, not indicator output code.')
-          : promptText('workflowTemplate', 'Run location: Template Strategy. Generate a template strategy recommendation and parameters, not custom Python code.'))
+          ? promptText('workflowScript', 'Run location: Trading Script editor. Generate QuantDinger Python ScriptStrategy code, not indicator output code.')
+          : promptText('workflowTemplate', 'Run location: Strategy Template. Generate a strategy template recommendation and parameters, not custom Python code.'))
       const typeLine = targetKey === 'indicator'
-        ? promptText('targetIndicator', 'Target type: Strategy R&D. Prefer an indicator-strategy draft that supports chart display and backtesting, with parameters, buy/sell signals, stop/take-profit, and invalidation conditions.')
+        ? promptText('targetIndicator', 'Target type: Indicator Strategy. Prefer an indicator-strategy draft that supports chart display and backtesting, with parameters, buy/sell signals, stop/take-profit, and invalidation conditions.')
         : (targetKey === 'script'
-          ? promptText('targetScript', 'Target type: Script Strategy. It should fit Python ScriptStrategy with state management, order logic, risk parameters, error handling, and logging.')
-          : promptText('targetTemplate', 'Target type: Template Strategy. First decide whether grid, trend, DCA, martingale, or another template strategy type fits best, then explain why and list key parameters.'))
+          ? promptText('targetScript', 'Target type: Trading Script. It should fit Python ScriptStrategy with state management, order logic, risk parameters, error handling, and logging.')
+          : promptText('targetTemplate', 'Target type: Strategy Template. First decide whether grid, trend, DCA, martingale, or another strategy template type fits best, then explain why and list key parameters.'))
       const contractLine = targetKey === 'indicator'
         ? promptText('contractIndicator', 'Code contract: use df boolean columns open_long, close_long, open_short, close_short as executable signals. output.signals and output.layers are chart annotations only.')
         : (targetKey === 'script'
@@ -2504,12 +2552,12 @@ export default {
         promptText('ruleConservativeDefaults', '- Use conservative defaults for missing parameters and document them in the output.'),
         promptText('ruleEnglishComments', '- Code comments must be English.'),
         promptText('ruleNativeWorkflow', '- Stay inside QuantDinger native workflows.'),
-        promptText('ruleIndicatorCode', '- For Strategy R&D, generate runnable QuantDinger strategy Python code, not Pine Script.'),
-        promptText('ruleIndicatorSignals', '- For Strategy R&D, execution must use df four-way boolean columns; output signals are chart markers only.'),
-        promptText('ruleChartAnnotations', '- For Strategy R&D chart annotations, you may use output.layers for zones, support/resistance lines, and labels when it improves readability.'),
+        promptText('ruleIndicatorCode', '- For Indicator Strategy, generate runnable QuantDinger strategy Python code, not Pine Script.'),
+        promptText('ruleIndicatorSignals', '- For Indicator Strategy, execution must use df four-way boolean columns; output signals are chart markers only.'),
+        promptText('ruleChartAnnotations', '- For Indicator Strategy chart annotations, you may use output.layers for zones, support/resistance lines, and labels when it improves readability.'),
         promptText('ruleSparseAnnotations', '- Keep chart annotations professional and sparse: use short labels, dashed borders, translucent fills, and avoid opaque gray boxes that cover candles.'),
-        promptText('ruleScriptDraft', '- For Script Strategy, generate a Python ScriptStrategy draft that can be validated by QuantDinger.'),
-        promptText('ruleTemplatePlan', '- For Template Strategy, return a concrete template strategy plan with parameters; do not auto-start live trading.'),
+        promptText('ruleScriptDraft', '- For Trading Script, generate a Python ScriptStrategy draft that can be validated by QuantDinger.'),
+        promptText('ruleTemplatePlan', '- For Strategy Template, return a concrete strategy template plan with parameters; do not auto-start live trading.'),
         promptText('ruleVerification', '- Include verification steps: open in QuantDinger, run backtest, inspect drawdown/win rate/trades, then save manually.'),
         memoryLines ? `\n${promptText('userMemory', 'User memory:')}\n${memoryLines}` : '',
         '',
@@ -2587,8 +2635,8 @@ export default {
         targetType: targetKey,
         target,
         workflow: targetKey === 'indicator'
-          ? 'QuantDinger Strategy R&D'
-          : (targetKey === 'script' ? 'QuantDinger Python ScriptStrategy' : 'QuantDinger Template Strategy'),
+          ? 'QuantDinger Indicator Strategy'
+          : (targetKey === 'script' ? 'QuantDinger Trading Script' : 'QuantDinger Strategy Template'),
         originalPrompt: seedPrompt || ''
       }
       this.usePrompt(this.buildStrategyPrompt(targetKey, target, seedPrompt))
@@ -2604,10 +2652,10 @@ export default {
         .map(item => `- ${item.title || item.category}: ${item.content}`)
         .join('\n')
       const workflow = targetType === 'indicator'
-        ? promptText('workflowIndicator', 'QuantDinger Strategy R&D')
+        ? promptText('workflowIndicator', 'QuantDinger Indicator Strategy')
         : (targetType === 'script'
-          ? promptText('workflowScript', 'QuantDinger Python ScriptStrategy')
-          : promptText('workflowTemplate', 'QuantDinger Template Strategy'))
+          ? promptText('workflowScript', 'QuantDinger Trading Script')
+          : promptText('workflowTemplate', 'QuantDinger Strategy Template'))
       const hardRules = [
         promptText('workflow', 'Workflow: {workflow}', { workflow }),
         promptText('target', 'Target: {target}', { target: `${target && target.market ? target.market : ''}:${target && target.symbol ? target.symbol : ''}` }),
@@ -2629,16 +2677,16 @@ export default {
         hardRules.splice(
           6,
           0,
-          promptText('ruleIndicatorRunnable', '- Strategy R&D output must be runnable in QuantDinger Strategy R&D and suitable for chart display/backtest.'),
-          promptText('ruleIndicatorSignals', '- Strategy R&D execution must use df four-way boolean columns: open_long, close_long, open_short, close_short.'),
+          promptText('ruleIndicatorRunnable', '- Indicator Strategy output must be runnable in QuantDinger and suitable for chart display/backtest.'),
+          promptText('ruleIndicatorSignals', '- Indicator Strategy execution must use df four-way boolean columns: open_long, close_long, open_short, close_short.'),
           promptText('ruleOutputSignalsChartOnly', '- output.signals is chart-only. It must never be the only source of backtest/live orders.'),
           promptText('ruleOutputLayers', '- You may add output.layers for K-line zones, support/resistance lines, BOS/CHoCH labels, invalidation ranges, or premium/discount areas. Keep overlays sparse.'),
           promptText('ruleLightChartLayers', '- Chart layers must look like lightweight analysis annotations, not blocking panels: short text, no opaque gray fill, opacity <= 0.08 for zones, dashed borders, and labels near the right edge or outside dense candles.')
         )
       } else if (targetType === 'script') {
-        hardRules.splice(6, 0, promptText('ruleScriptDraft', '- Script output must be a Python strategy draft for QuantDinger Script Strategy.'))
+        hardRules.splice(6, 0, promptText('ruleScriptDraft', '- Trading Script output must be a Python ScriptStrategy draft for the QuantDinger Trading Script editor.'))
       } else {
-        hardRules.splice(6, 0, promptText('ruleTemplatePlan', '- Template strategy output must recommend a QuantDinger template strategy type and concrete parameters.'))
+        hardRules.splice(6, 0, promptText('ruleTemplatePlan', '- Strategy Template output must recommend a QuantDinger template strategy type and concrete parameters.'))
       }
       return hardRules.join('\n')
     },
@@ -2647,7 +2695,7 @@ export default {
       const assistantMsg = {
         localId: 'local-' + (localId++),
         role: 'assistant',
-        content: this.i18nText('aiAssetAnalysis.copilot.generatingIndicatorStrategy', 'Generating Strategy R&D draft...'),
+        content: this.i18nText('aiAssetAnalysis.copilot.generatingIndicatorStrategy', 'Generating indicator strategy draft...'),
         meta: 'indicator_strategy'
       }
       this.messages.push(assistantMsg)
@@ -2692,7 +2740,7 @@ export default {
               assistantMsg.content = [
                 `## ${target.symbol} ${this.text.indicatorStrategy}`,
                 '',
-                this.i18nText('aiAssetAnalysis.copilot.indicatorStrategyReady', 'A Strategy R&D draft is ready. Keep refining entries, exits, risk controls, or parameters here, then open Strategy R&D when you are satisfied.'),
+                this.i18nText('aiAssetAnalysis.copilot.indicatorStrategyReady', 'An indicator strategy draft is ready. Keep refining entries, exits, risk controls, or parameters here, then open the Indicator Strategy editor when you are satisfied.'),
                 '',
                 '```python',
                 code,
@@ -2709,7 +2757,7 @@ export default {
           key: 'open-indicator-ide',
           group: 'strategy_workflow',
           icon: 'line-chart',
-          label: this.i18nText('aiAssetAnalysis.copilot.openStrategyResearch', 'Open Strategy R&D'),
+          label: this.i18nText('aiAssetAnalysis.copilot.openStrategyResearch', 'Open Indicator Strategy editor'),
           path: '/indicator-ide',
           storageKey: 'qd_copilot_indicator_code',
           storageValue: code,
@@ -2728,7 +2776,7 @@ export default {
       const assistantMsg = {
         localId: 'local-' + (localId++),
         role: 'assistant',
-        content: this.i18nText('aiAssetAnalysis.copilot.generatingScriptStrategy', 'Generating script strategy draft...'),
+        content: this.i18nText('aiAssetAnalysis.copilot.generatingScriptStrategy', 'Generating trading script draft...'),
         meta: 'strategy_build'
       }
       this.messages.push(assistantMsg)
@@ -2737,11 +2785,17 @@ export default {
         const agentPrompt = this.buildNativeStrategyGenerationPrompt('script', prompt, target)
         const res = await aiGenerateStrategy({ prompt: agentPrompt, intent: 'generate_code' })
         if (!res || !res.code) throw new Error((res && res.msg) || 'AI generation failed')
+        const scriptDraftMeta = {
+          symbol: target.symbol,
+          market: target.market,
+          name: `${target.symbol} ${this.text.scriptStrategy}`
+        }
         sessionStorage.setItem('qd_copilot_script_strategy_code', res.code)
+        sessionStorage.setItem('qd_copilot_script_strategy_meta', JSON.stringify(scriptDraftMeta))
         assistantMsg.content = [
           `## ${target.symbol} ${this.text.scriptStrategy}`,
           '',
-          this.i18nText('aiAssetAnalysis.copilot.scriptStrategyReady', 'A script strategy draft is ready. Keep refining it here, or open Script Strategy IDE to edit, backtest, and publish it.'),
+          this.i18nText('aiAssetAnalysis.copilot.scriptStrategyReady', 'A trading script draft is ready. Keep refining it here, or open the Trading Script editor to edit, backtest, and publish it.'),
           '',
           '```python',
           res.code,
@@ -2752,11 +2806,14 @@ export default {
           key: 'open-script-strategy',
           group: 'strategy_workflow',
           icon: 'code',
-          label: this.i18nText('aiAssetAnalysis.copilot.openScriptStrategyIde', 'Open Script Strategy IDE'),
-          path: '/strategy-scripts',
+          label: this.i18nText('aiAssetAnalysis.copilot.openScriptStrategyIde', 'Open Trading Script editor'),
+          path: '/strategy-ide',
           storageKey: 'qd_copilot_script_strategy_code',
           storageValue: res.code,
-          query: { aiDraft: '1', symbol: target.symbol, market: target.market }
+          extraStorage: {
+            qd_copilot_script_strategy_meta: JSON.stringify(scriptDraftMeta)
+          },
+          query: { tab: 'script', aiDraft: '1', symbol: target.symbol, market: target.market }
         }]
         await this.persistCopilotMessage(assistantMsg, 'strategy_build')
       } catch (e) {
@@ -2771,7 +2828,7 @@ export default {
       const assistantMsg = {
         localId: 'local-' + (localId++),
         role: 'assistant',
-        content: this.i18nText('aiAssetAnalysis.copilot.generatingTemplateStrategy', 'Generating template strategy recommendation...'),
+        content: this.i18nText('aiAssetAnalysis.copilot.generatingTemplateStrategy', 'Generating strategy template recommendation...'),
         meta: 'bot_recommend'
       }
       this.messages.push(assistantMsg)
@@ -2798,7 +2855,7 @@ export default {
           key: 'open-trading-bot',
           group: 'strategy_workflow',
           icon: 'robot',
-          label: this.i18nText('aiAssetAnalysis.copilot.openTemplateStrategy', 'Open Template Strategy'),
+          label: this.i18nText('aiAssetAnalysis.copilot.openTemplateStrategy', 'Open Strategy Template'),
           path: '/trading-bot',
           storageKey: 'qd_copilot_bot_recommend',
           storageValue: recommendation,
@@ -3113,7 +3170,7 @@ export default {
           const ts = Date.parse(msg.created_at || msg.createdAt || '')
           if (!prevTs || !ts || Math.abs(ts - prevTs) < 10000) return
         }
-        if (msg.report && (!Array.isArray(msg.actions) || !msg.actions.length)) {
+        if (msg.report) {
           msg.actions = this.reportActions(msg)
         }
         out.push(msg)
@@ -3197,6 +3254,7 @@ export default {
       if (eventName === 'meta') {
         this.sessionId = payload.session_id || this.sessionId
         assistantMsg.meta = payload.intent || ''
+        this.setAgentUsageActions(assistantMsg, payload.actions, payload.agent_usage)
       } else if (eventName === 'delta') {
         if (payload.text) this.clearThinkingMessage(assistantMsg)
         assistantMsg.content += payload.text || ''
@@ -3205,11 +3263,27 @@ export default {
         if (payload.message_id) this.$set ? this.$set(assistantMsg, 'id', payload.message_id) : (assistantMsg.id = payload.message_id)
         assistantMsg.created_at = assistantMsg.created_at || new Date().toISOString()
         assistantMsg.meta = payload.intent ? `${payload.intent} - ${payload.confidence || 50}%` : assistantMsg.meta
+        this.setAgentUsageActions(assistantMsg, payload.actions, payload.agent_usage)
         this.appendMemoryActions(assistantMsg, payload.memory_candidates)
         this.appendAgentNextActions(assistantMsg)
       } else if (eventName === 'error') {
         throw new Error(payload.msg || this.text.chatUnavailable)
       }
+    },
+    setAgentUsageActions (message, actions = [], usage = null) {
+      if (!message) return
+      const current = (Array.isArray(message.actions) ? message.actions : []).filter(action => action && action.type !== 'agent_usage')
+      let usageAction = (Array.isArray(actions) ? actions : []).find(action => action && action.type === 'agent_usage')
+      if (!usageAction && usage) {
+        usageAction = {
+          key: 'agent-usage',
+          type: 'agent_usage',
+          icon: 'apartment',
+          label: this.text.usedThisTurn,
+          payload: usage
+        }
+      }
+      message.actions = usageAction ? [usageAction, ...current] : current
     },
     getAccessToken () {
       return storage.get(ACCESS_TOKEN) || storage.get('Authorization') || storage.get('token') || ''
@@ -3586,16 +3660,6 @@ export default {
       const pct = this.priceChangePercent(price)
       if (pct === null) return '--'
       return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`
-    },
-    i18nText (key, fallback, values) {
-      values = values || {}
-      const locale = this.$i18n ? this.$i18n.locale : ''
-      void locale
-      const translated = this.$t ? this.$t(key, values) : key
-      if (translated && translated !== key) return translated
-      return Object.entries(values).reduce((text, [name, value]) => {
-        return String(text == null ? '' : text).replace(new RegExp('\\{' + name + '\\}', 'g'), value)
-      }, fallback)
     },
     marketLabel (market) {
       const key = `dashboard.analysis.market.${market}`
@@ -4301,21 +4365,23 @@ export default {
 }
 
 .avatar {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--qd-accent) 20%, transparent);
-  border-radius: 8px;
-  background: var(--qd-accent-soft);
-  color: var(--qd-accent);
-  flex: 0 0 34px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(251, 191, 36, 0.2), rgba(255, 255, 255, 0.06));
+  color: #fbbf24;
+  flex: 0 0 32px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  font-size: 14px;
 }
 
 .message.user .avatar {
-  border-color: rgba(10, 163, 117, 0.16);
-  background: rgba(10, 163, 117, 0.1);
-  color: var(--qd-green);
+  border-color: rgba(56, 189, 248, 0.26);
+  background: linear-gradient(145deg, rgba(56, 189, 248, 0.14), rgba(255, 255, 255, 0.05));
+  color: #7dd3fc;
 }
 
 .bubble {
@@ -4549,6 +4615,47 @@ export default {
   margin-top: 8px;
   color: var(--qd-text-subtle);
   font-size: 12px;
+}
+
+.agent-usage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--qd-border-soft);
+}
+
+.agent-usage-title,
+.agent-usage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.agent-usage-title {
+  color: var(--qd-text-subtle);
+}
+
+.agent-usage-chip {
+  max-width: 190px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--qd-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--qd-accent) 10%, transparent);
+  color: var(--qd-text-main);
+  text-overflow: ellipsis;
+}
+
+.agent-usage-chip--tool {
+  border-color: rgba(56, 189, 248, 0.28);
+  background: rgba(56, 189, 248, 0.08);
 }
 
 .message-time {
@@ -5733,7 +5840,6 @@ export default {
   padding: 12px;
   border-radius: 10px;
 }
-
 
 .copilot-workbench .message-actions {
   border-top: 1px solid var(--qd-border-soft);

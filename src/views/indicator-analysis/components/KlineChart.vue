@@ -1887,14 +1887,15 @@ registerOverlay({
               market: props.market,
               symbol: props.symbol,
               timeframe: props.timeframe,
-              limit: 500
-            }
+              limit: 300
+            },
+            timeout: 45000
           })
 
           if (response.code === 1 && response.data && Array.isArray(response.data)) {
             formattedData = formatKlineData(response.data)
           } else {
-            let errMsg = response.msg || '获取K线数据失败'
+            let errMsg = response.msg || 'Failed to load K-line data'
             if (response.hint === 'tiingo_subscription') {
               errMsg = proxy.$t('dashboard.indicator.error.tiingoSubscription') || 'Forex 1-minute data requires Tiingo paid subscription'
             }
@@ -1905,7 +1906,7 @@ registerOverlay({
         }
 
         if (!formattedData || formattedData.length === 0) {
-          throw new Error('未获取到K线数据')
+          throw new Error('No K-line data returned')
         }
 
         klineData.value = formattedData
@@ -1997,92 +1998,89 @@ registerOverlay({
         await nextTick()
 
         try {
-        const beforeTime = Math.floor(timestamp / 1000)
-
-        const response = await request({
-          url: '/api/indicator/kline',
-          method: 'get',
-          params: {
-            market: props.market,
-            symbol: props.symbol,
-            timeframe: props.timeframe,
-            limit: 500,
-            before_time: beforeTime // 获取此时间之前的数据
-          }
-        })
-
-        if (response.code === 1 && response.data && Array.isArray(response.data)) {
-          const newData = formatKlineData(response.data)
-
-          if (newData.length === 0) {
-            hasMoreHistory.value = false
-            if (chartRef.value && typeof chartRef.value.noMoreData === 'function') {
-              chartRef.value.noMoreData()
-            }
-            return
-          }
-
-          const filteredNewData = newData.filter(item => item.timestamp < timestamp)
-
-          if (filteredNewData.length === 0) {
-            hasMoreHistory.value = false
-            if (chartRef.value && typeof chartRef.value.noMoreData === 'function') {
-              chartRef.value.noMoreData()
-            }
-            return
-          }
-
-          let savedVisibleRange = null
-          try {
-            if (chartRef.value && typeof chartRef.value.getVisibleRange === 'function') {
-              savedVisibleRange = chartRef.value.getVisibleRange()
-            }
-          } catch (e) {
-          }
-
-          const newDataCount = filteredNewData.length
-
-          klineData.value = [...filteredNewData, ...klineData.value]
-
-          nextTick(() => {
-            if (chartRef.value) {
-              chartRef.value.applyNewData(klineData.value)
-
-              if (savedVisibleRange && typeof savedVisibleRange.from === 'number') {
-                const newFrom = savedVisibleRange.from + newDataCount
-                const newTo = savedVisibleRange.to + newDataCount
-
-                setTimeout(() => {
-                  try {
-                    if (chartRef.value) {
-                      if (typeof chartRef.value.scrollToDataIndex === 'function') {
-                        chartRef.value.scrollToDataIndex(newFrom)
-                      } else if (typeof chartRef.value.setVisibleRange === 'function') {
-                        chartRef.value.setVisibleRange(newFrom, newTo)
-                      }
-                    }
-                  } catch (e) {
-                  }
-                }, 50)
-              }
-
-              updateIndicators()
-            }
+          const beforeTime = Math.floor(timestamp / 1000)
+          const response = await request({
+            url: '/api/indicator/kline',
+            method: 'get',
+            params: {
+              market: props.market,
+              symbol: props.symbol,
+              timeframe: props.timeframe,
+              limit: 300,
+              before_time: beforeTime
+            },
+            timeout: 45000
           })
-        } else {
-          if (chartRef.value && typeof chartRef.value.noMoreData === 'function') {
+
+          if (response.code === 1 && response.data && Array.isArray(response.data)) {
+            const newData = formatKlineData(response.data)
+
+            if (newData.length === 0) {
+              hasMoreHistory.value = false
+              if (chartRef.value && typeof chartRef.value.noMoreData === 'function') {
+                chartRef.value.noMoreData()
+              }
+              return
+            }
+
+            const filteredNewData = newData.filter(item => item.timestamp < timestamp)
+
+            if (filteredNewData.length === 0) {
+              hasMoreHistory.value = false
+              if (chartRef.value && typeof chartRef.value.noMoreData === 'function') {
+                chartRef.value.noMoreData()
+              }
+              return
+            }
+
+            let savedVisibleRange = null
+            try {
+              if (chartRef.value && typeof chartRef.value.getVisibleRange === 'function') {
+                savedVisibleRange = chartRef.value.getVisibleRange()
+              }
+            } catch (e) {
+            }
+
+            const newDataCount = filteredNewData.length
+            klineData.value = [...filteredNewData, ...klineData.value]
+
+            nextTick(() => {
+              if (chartRef.value) {
+                chartRef.value.applyNewData(klineData.value)
+
+                if (savedVisibleRange && typeof savedVisibleRange.from === 'number') {
+                  const newFrom = savedVisibleRange.from + newDataCount
+                  const newTo = savedVisibleRange.to + newDataCount
+
+                  setTimeout(() => {
+                    try {
+                      if (chartRef.value) {
+                        if (typeof chartRef.value.scrollToDataIndex === 'function') {
+                          chartRef.value.scrollToDataIndex(newFrom)
+                        } else if (typeof chartRef.value.setVisibleRange === 'function') {
+                          chartRef.value.setVisibleRange(newFrom, newTo)
+                        }
+                      }
+                    } catch (e) {
+                    }
+                  }, 50)
+                }
+
+                updateIndicators()
+              }
+            })
+          } else if (chartRef.value && typeof chartRef.value.noMoreData === 'function') {
             chartRef.value.noMoreData()
           }
-        }
         } catch (err) {
           if (chartRef.value && typeof chartRef.value.noMoreData === 'function') {
             chartRef.value.noMoreData()
           }
         } finally {
           loadingHistory.value = false
-          loadingHistoryPromise = null // 清除请求追踪
+          loadingHistoryPromise = null
         }
-      })() // 立即执行 Promise
+      })()
 
       try {
         await loadingHistoryPromise
@@ -2103,7 +2101,7 @@ registerOverlay({
 
       try {
         const earliestTimestamp = klineData.value[0].timestamp
-        const earliestTime = Math.floor(earliestTimestamp / 1000) // 转换为秒级
+        const earliestTime = Math.floor(earliestTimestamp / 1000)
         const response = await request({
           url: '/api/indicator/kline',
           method: 'get',
@@ -2111,9 +2109,10 @@ registerOverlay({
             market: props.market,
             symbol: props.symbol,
             timeframe: props.timeframe,
-            limit: 500,
-            before_time: earliestTime // 获取此时间之前的数据
-          }
+            limit: 300,
+            before_time: earliestTime
+          },
+          timeout: 45000
         })
 
         if (response.code === 1 && response.data && Array.isArray(response.data)) {
@@ -2121,7 +2120,6 @@ registerOverlay({
 
           if (newData.length === 0) {
             hasMoreHistory.value = false
-            loadingHistory.value = false
             return
           }
 
@@ -2129,7 +2127,6 @@ registerOverlay({
 
           if (filteredNewData.length === 0) {
             hasMoreHistory.value = false
-            loadingHistory.value = false
             return
           }
 
@@ -2143,7 +2140,7 @@ registerOverlay({
           })
         }
       } catch (err) {
-        // Ignore incremental history failures; the current chart stays usable.
+        // Keep the current chart usable when older history fails.
       } finally {
         loadingHistory.value = false
       }
@@ -2151,7 +2148,7 @@ registerOverlay({
 
     const updateKlineRealtime = async () => {
       if (!props.symbol || !klineData.value || klineData.value.length === 0) {
-        return // 如果没有现有数据，不进行增量更新
+        return
       }
       if (realtimeFetchInFlight.value) {
         return
@@ -2166,8 +2163,9 @@ registerOverlay({
             market: props.market,
             symbol: props.symbol,
             timeframe: props.timeframe,
-            limit: 5 // 只获取最新5根
-          }
+            limit: 3
+          },
+          timeout: 12000
         })
 
         if (response.code === 1 && response.data && Array.isArray(response.data) && response.data.length > 0) {
@@ -2175,7 +2173,7 @@ registerOverlay({
           const existingData = [...klineData.value]
 
           if (newData.length > 0) {
-            const lastNewTime = Math.floor(newData[newData.length - 1].timestamp / 1000) // 转回秒级用于比较
+            const lastNewTime = Math.floor(newData[newData.length - 1].timestamp / 1000)
             const lastExistingTime = Math.floor(existingData[existingData.length - 1].timestamp / 1000)
 
             if (isSameTimeframe(lastNewTime, lastExistingTime, props.timeframe)) {
@@ -2183,12 +2181,12 @@ registerOverlay({
               const newLast = newData[newData.length - 1]
 
               const mergedLast = {
-                timestamp: existingLast.timestamp, // 保持原有时间戳（毫秒）
-                open: existingLast.open, // 开盘价保持不变
-                high: Math.max(existingLast.high, newLast.high), // 最高价取最大值
-                low: Math.min(existingLast.low, newLast.low), // 最低价取最小值
-                close: newLast.close, // 收盘价更新为最新价格
-                volume: newLast.volume // 成交量使用API返回的最新值（已是该周期的总成交量）
+                timestamp: existingLast.timestamp,
+                open: existingLast.open,
+                high: Math.max(existingLast.high, newLast.high),
+                low: Math.min(existingLast.low, newLast.low),
+                close: newLast.close,
+                volume: newLast.volume
               }
               if (klineBarSnapshotKey(mergedLast) === klineBarSnapshotKey(existingLast)) {
                 return
@@ -2250,20 +2248,22 @@ registerOverlay({
         clearInterval(realtimeTimer.value)
       }
       const intervalMap = {
-        '1m': 5000,
-        '5m': 10000,
-        '15m': 15000,
-        '30m': 30000,
+        '1m': 30000,
+        '3m': 30000,
+        '5m': 30000,
+        '15m': 45000,
+        '30m': 60000,
         '1H': 60000,
-        '4H': 300000,
-        '1D': 600000,
-        '1W': 1800000
+        '4H': 60000,
+        '1D': 60000,
+        '1W': 60000
       }
-      const base = intervalMap[props.timeframe] || 10000
-      realtimeInterval.value = Math.min(Math.max(base, 2000), 15000)
+      const base = intervalMap[props.timeframe] || 30000
+      realtimeInterval.value = Math.min(Math.max(base, 30000), 60000)
 
       if (props.realtimeEnabled && props.symbol && klineData.value.length > 0) {
         realtimeTimer.value = setInterval(() => {
+          if (typeof document !== 'undefined' && document.hidden) return
           if (!loading.value && props.symbol && klineData.value && klineData.value.length > 0) {
             updateKlineRealtime()
           }

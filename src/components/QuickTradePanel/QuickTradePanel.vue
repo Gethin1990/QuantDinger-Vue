@@ -408,6 +408,7 @@ import { placeQuickOrder, getQuickTradeBalance, getQuickTradePosition, getQuickT
 import { searchSymbols, getWatchlist } from '@/api/market'
 import { getUserInfo } from '@/api/login'
 import request from '@/utils/request'
+import { createVisibilityPolling } from '@/utils/visibilityPolling'
 
 export default {
   name: 'QuickTradePanel',
@@ -464,10 +465,9 @@ export default {
       quickAmountPcts: [10, 25, 50, 75, 100],
       // polling
       pollTimer: null,
-      showAddExchangeModal: false,
-      // error suppression — prevent repeated toasts from polling
-      _lastBalanceErrorKey: '',
-      _lastBalanceErrorTime: 0
+      pricePoller: null,
+      accountPoller: null,
+      showAddExchangeModal: false
     }
   },
   computed: {
@@ -1093,18 +1093,29 @@ export default {
     },
     startPolling () {
       this.stopPolling()
-      this.pollTimer = setInterval(() => {
+      this.pricePoller = createVisibilityPolling(() => {
         if (this.currentSymbol) {
-          // Always update price
           this.loadPrice()
         }
+      }, 10000, { immediate: false })
+      this.accountPoller = createVisibilityPolling(() => {
         if (this.selectedCredentialId && this.currentSymbol) {
           this.loadBalance()
           this.loadPosition()
         }
-      }, 10000)
+      }, 15000, { immediate: false })
+      this.pricePoller.start()
+      this.accountPoller.start()
     },
     stopPolling () {
+      if (this.pricePoller) {
+        this.pricePoller.stop()
+        this.pricePoller = null
+      }
+      if (this.accountPoller) {
+        this.accountPoller.stop()
+        this.accountPoller = null
+      }
       if (this.pollTimer) {
         clearInterval(this.pollTimer)
         this.pollTimer = null

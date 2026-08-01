@@ -1375,6 +1375,85 @@ export default {
     }
   }
   .header-info h3 { color: #e8e8e8; }
+  .header-tags,
+  .params-grid,
+  .hedge-stat__tags {
+    ::v-deep .ant-tag {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    ::v-deep .ant-tag-green {
+      background: rgba(82, 196, 26, 0.14);
+      border-color: rgba(82, 196, 26, 0.28);
+      color: #95de64;
+    }
+
+    ::v-deep .ant-tag-red {
+      background: rgba(255, 77, 79, 0.14);
+      border-color: rgba(255, 77, 79, 0.3);
+      color: #ff7875;
+    }
+
+    ::v-deep .ant-tag-purple {
+      background: rgba(114, 46, 209, 0.16);
+      border-color: rgba(114, 46, 209, 0.32);
+      color: #b37feb;
+    }
+
+    ::v-deep .ant-tag-blue {
+      background: rgba(24, 144, 255, 0.14);
+      border-color: rgba(24, 144, 255, 0.3);
+      color: #69c0ff;
+    }
+
+    ::v-deep .ant-tag-orange {
+      background: rgba(250, 173, 20, 0.14);
+      border-color: rgba(250, 173, 20, 0.3);
+      color: #ffd666;
+    }
+
+    ::v-deep .ant-tag-cyan {
+      background: rgba(19, 194, 194, 0.14);
+      border-color: rgba(19, 194, 194, 0.28);
+      color: #5cdbd3;
+    }
+  }
+  .header-actions {
+    ::v-deep .ant-btn:not(.ant-btn-primary):not(.ant-btn-danger) {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.78);
+
+      &:hover,
+      &:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(250, 173, 20, 0.42);
+        color: #ffd666;
+      }
+
+      &[disabled] {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.34);
+      }
+    }
+
+    ::v-deep .ant-btn-dangerous.ant-btn-background-ghost,
+    ::v-deep .ant-btn-danger.ant-btn-background-ghost {
+      background: rgba(255, 77, 79, 0.08);
+      border-color: rgba(255, 77, 79, 0.42);
+      color: #ff7875;
+
+      &:hover,
+      &:focus {
+        background: rgba(255, 77, 79, 0.14);
+        border-color: rgba(255, 77, 79, 0.58);
+        color: #ffa39e;
+      }
+    }
+  }
   .params-section__title { color: #d9d9d9; border-bottom-color: #303030; }
   .param-item { background: #141414; border-color: #303030;
     .param-label { color: #8c8c8c; }
