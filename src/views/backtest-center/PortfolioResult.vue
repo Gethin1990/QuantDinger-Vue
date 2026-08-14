@@ -127,17 +127,25 @@
 
       <a-tab-pane key="closed" :tab="$t('strategyV2.backtest.tabs.tradesWithCount', { count: tradeRows.length })">
         <a-empty v-if="!tradeRows.length" :description="$t('strategyV2.backtest.noClosedTrades')" />
-        <a-table
-          v-else
-          :columns="tradeColumns"
-          :data-source="tradeRows"
-          :row-key="(row, index) => row.id || index"
-          :custom-row="tradeRowProps"
-          size="small"
-          :scroll="{ x: 1610 }"
-          :pagination="{ pageSize: 8 }"
-          class="clickable-table"
-        />
+        <template v-else>
+          <a-alert
+            v-if="hasGridMatchedTrades"
+            type="info"
+            show-icon
+            class="grid-accounting-alert"
+            :message="$t('strategyV2.backtest.gridAccountingTitle')"
+            :description="$t('strategyV2.backtest.gridAccountingHint')" />
+          <a-table
+            :columns="tradeColumns"
+            :data-source="tradeRows"
+            :row-key="(row, index) => row.id || index"
+            :custom-row="tradeRowProps"
+            size="small"
+            :scroll="{ x: hasGridMatchedTrades ? 1850 : 1610 }"
+            :pagination="{ pageSize: 8 }"
+            class="clickable-table"
+          />
+        </template>
       </a-tab-pane>
 
       <a-tab-pane key="executions" :tab="$t('strategyV2.backtest.tabs.executionsWithCount', { count: executionRows.length })">
@@ -312,6 +320,9 @@ export default {
       return (this.result.holdingSnapshots || []).flatMap(snapshot => Object.keys(snapshot.positions || {}).map(symbol => ({ time: snapshot.time, symbol, ...snapshot.positions[symbol], cash: snapshot.cash, grossExposure: snapshot.grossExposure, netExposure: snapshot.netExposure }))).reverse()
     },
     tradeRows () { return this.result.closedTrades || this.result.trades || [] },
+    hasGridMatchedTrades () {
+      return this.tradeRows.some(row => row && row.profit_basis === 'grid_cell')
+    },
     executionRows () { return this.result.executions || this.result.rawTrades || [] },
     reviewInstrument () {
       const raw = String(this.selectedTrade.symbol || '')
@@ -353,21 +364,36 @@ export default {
       ]
     },
     tradeColumns () {
-      return [
+      const columns = [
         { title: this.$t('backtest-center.symbol'), dataIndex: 'symbol', width: 165 },
         { title: this.$t('backtest-center.tradeColumns.side'), dataIndex: 'side', width: 72 },
         { title: this.$t('backtest-center.tradeColumns.entryTime'), dataIndex: 'entry_time', width: 165, customRender: this.formatDate },
         { title: this.$t('backtest-center.tradeColumns.exitTime'), dataIndex: 'exit_time', width: 165, customRender: this.formatDate },
         { title: this.$t('backtest-center.tradeColumns.quantity'), dataIndex: 'quantity', customRender: value => this.formatNumber(value, 4) },
         { title: this.$t('backtest-center.tradeColumns.valueUsd'), key: 'value_usd', customRender: (value, row) => this.formatNullableNumber(calculateTradeValueUsd(row)) },
-        { title: this.$t('backtest-center.tradeColumns.entryPrice'), dataIndex: 'entry_price', customRender: value => this.formatNumber(value, 4) },
+        { title: this.$t(this.hasGridMatchedTrades ? 'strategyV2.backtest.gridMatchedEntry' : 'backtest-center.tradeColumns.entryPrice'), dataIndex: 'entry_price', customRender: value => this.formatNumber(value, 4) },
         { title: this.$t('backtest-center.tradeColumns.exitPrice'), dataIndex: 'exit_price', customRender: value => this.formatNumber(value, 4) },
         { title: this.$t('trading-assistant.costs.openingCommission'), dataIndex: 'entry_commission', customRender: value => this.formatNumber(value, 4) },
         { title: this.$t('trading-assistant.costs.closingCommission'), dataIndex: 'exit_commission', customRender: value => this.formatNumber(value, 4) },
-        { title: this.$t('backtest-center.tradeColumns.profit'), dataIndex: 'profit', customRender: value => this.$createElement('span', { class: ['trade-profit', this.profitTone(value)] }, this.formatSignedNumber(value)) },
+        { title: this.$t(this.hasGridMatchedTrades ? 'strategyV2.backtest.gridMatchedProfit' : 'backtest-center.tradeColumns.profit'), dataIndex: 'profit', customRender: value => this.$createElement('span', { class: ['trade-profit', this.profitTone(value)] }, this.formatSignedNumber(value)) },
         { title: this.$t('backtest-center.tradeColumns.balance'), dataIndex: 'balance', customRender: value => this.formatNumber(value) },
         { title: this.$t('backtest-center.tradeColumns.closeReason'), dataIndex: 'close_reason', width: 150 }
       ]
+      if (this.hasGridMatchedTrades) {
+        columns.splice(8, 0, {
+          title: this.$t('strategyV2.backtest.accountAverageEntry'),
+          dataIndex: 'account_avg_entry_price',
+          customRender: value => this.formatNullableNumber(value === undefined ? null : value, 4)
+        })
+        columns.splice(columns.length - 2, 0, {
+          title: this.$t('strategyV2.backtest.accountRealizedProfit'),
+          dataIndex: 'account_realized_profit',
+          customRender: value => value === undefined || value === null
+            ? '-'
+            : this.$createElement('span', { class: ['trade-profit', this.profitTone(value)] }, this.formatSignedNumber(value))
+        })
+      }
+      return columns
     },
     executionColumns () {
       return [
@@ -617,6 +643,7 @@ export default {
 .status-card.status-deferred { border-color: rgba(24, 144, 255, .45); }
 .status-card.status-rejected { border-color: rgba(255, 77, 79, .45); }
 .result-tabs { margin-top: 12px; }
+.grid-accounting-alert { margin-bottom: 12px; }
 .audit-summary { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 12px; border-radius: 8px; }
 .audit-summary.passed { color: #52c41a; background: rgba(82, 196, 26, .08); }
 .audit-summary.failed { color: #ff4d4f; background: rgba(255, 77, 79, .08); }
