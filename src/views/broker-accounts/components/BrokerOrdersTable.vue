@@ -49,6 +49,7 @@
 
 <script>
 import { broker } from '@/api/broker'
+import { brokerOrderStatusColor } from '@/utils/brokerOrderStatus'
 
 function money (v) {
   const n = Number(v)
@@ -89,11 +90,7 @@ export default {
   methods: {
     formatMoney: money,
     statusColor (s) {
-      const v = String(s || '').toLowerCase()
-      if (v === 'filled') return 'green'
-      if (v === 'canceled' || v === 'cancelled' || v === 'rejected' || v === 'expired') return 'default'
-      if (v === 'partially_filled' || v === 'pending_new' || v === 'accepted' || v === 'new') return 'blue'
-      return 'orange'
+      return brokerOrderStatusColor(s)
     },
     canCancel (record) {
       const s = String(record.status || '').toLowerCase()
