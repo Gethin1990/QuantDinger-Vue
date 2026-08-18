@@ -2787,7 +2787,12 @@ export default {
     },
     buildExecutableStrategyPrompt (plan, message, target) {
       const entities = plan && plan.entities ? plan.entities : {}
-      const timeframe = entities.timeframe || ''
+      const timeframes = [...new Set(
+        (Array.isArray(entities.timeframes) ? entities.timeframes : [entities.timeframe])
+          .map(item => String(item || '').trim().toLowerCase())
+          .filter(Boolean)
+      )]
+      const timeframe = timeframes[0] || String(entities.timeframe || '').trim()
       const template = entities.strategy_template || ''
       const workflow = plan && plan.workflow ? plan.workflow : 'script_strategy'
       const isIndicatorWorkflow = String(workflow || '').toLowerCase() === 'indicator_ide'
@@ -2820,8 +2825,14 @@ export default {
           ? (timeframe
               ? promptText('indicatorTimeframe', 'Chart context timeframe: {timeframe}. Use it only to interpret the request; indicator code must not hardcode a timeframe.', { timeframe })
               : promptText('indicatorTimeframeDefault', 'No chart timeframe was supplied. Indicator code must remain timeframe-agnostic.'))
-          : (timeframe
-              ? promptText('strategyTimeframe', 'Source timeframe: {timeframe}. Preserve it in context.subscribe(frequency=...).', { timeframe })
+          : (timeframes.length > 1
+              ? promptText(
+                'strategyTimeframes',
+                'Source timeframes: {timeframes}. Preserve every one with a separate context.subscribe(frequency=...) call; the fastest timeframe drives execution and higher-timeframe reads use completed bars only.',
+                { timeframes: timeframes.join(', ') }
+              )
+              : timeframe
+                ? promptText('strategyTimeframe', 'Source timeframe: {timeframe}. Preserve it in context.subscribe(frequency=...).', { timeframe })
               : promptText('strategyTimeframeDefault', 'No timeframe was supplied. Choose a conservative source-owned default and encode it in context.subscribe(frequency=...).')),
         template ? promptText('referenceTemplate', 'Reference strategy/template: {template}', { template }) : '',
         '',
@@ -2920,7 +2931,8 @@ export default {
         entities: {
           market: target.market,
           symbol: target.symbol,
-          timeframe: ''
+          timeframe: '',
+          timeframes: []
         }
       }
       const prompt = this.buildExecutableStrategyPrompt(plan, content, target)
