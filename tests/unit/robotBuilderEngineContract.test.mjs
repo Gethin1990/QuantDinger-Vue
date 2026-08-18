@@ -35,9 +35,6 @@ test('robot configuration keeps high-frequency choices in compact horizontal con
   assert.match(builderSource, /v-model="form\.grid_mode" class="compact-segmented"/)
   assert.match(builderSource, /\.compact-segmented[\s\S]*?display: flex[\s\S]*?flex-wrap: nowrap/)
   assert.match(builderSource, /grid-template-columns: minmax\(430px, 480px\) minmax\(0, 1fr\)/)
-  for (const timeframe of ['1m', '3m', '5m', '15m', '30m', '1H', '4H', '1D', '1W']) {
-    assert.match(builderSource, new RegExp(`value="${timeframe}"`))
-  }
 })
 
 test('generated robot metadata is preserved for save, backtest and live deployment', () => {

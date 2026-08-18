@@ -662,14 +662,9 @@
                   <label>{{ t('executorStrategies.samplingInterval') }}</label>
                   <a-select v-model="form.timeframe">
                     <a-select-option value="1m">1m</a-select-option>
-                    <a-select-option value="3m">3m</a-select-option>
                     <a-select-option value="5m">5m</a-select-option>
                     <a-select-option value="15m">15m</a-select-option>
-                    <a-select-option value="30m">30m</a-select-option>
                     <a-select-option value="1H">1H</a-select-option>
-                    <a-select-option value="4H">4H</a-select-option>
-                    <a-select-option value="1D">1D</a-select-option>
-                    <a-select-option value="1W">1W</a-select-option>
                   </a-select>
                 </div>
                 <div class="field-block">

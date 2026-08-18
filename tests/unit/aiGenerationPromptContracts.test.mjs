@@ -23,10 +23,12 @@ test('indicator conversion prompt protects direction, edge, execution, and risk 
 test('copilot builds workflow-specific artifact rules instead of mixing indicator and strategy rules', () => {
   assert.match(copilot, /const artifactRules = isIndicatorWorkflow/)
   assert.match(copilot, /\.\.\.artifactRules/)
-  assert.match(copilot, /Choose a conservative source-owned default and encode it in context\.subscribe/)
+  assert.match(copilot, /Choose one conservative source-owned default and encode exactly one context\.subscribe/)
   assert.match(copilot, /Array\.isArray\(entities\.timeframes\)/)
   assert.match(copilot, /Preserve every one with a separate context\.subscribe/)
   assert.match(copilot, /the fastest timeframe drives execution and higher-timeframe reads use completed bars only/)
+  assert.match(copilot, /only timeframe unless the original request explicitly names additional confirmation timeframes/)
+  assert.match(copilot, /Do not invent multi-timeframe confirmation/)
   assert.doesNotMatch(copilot, /Timeframe remains owned by the run panel/)
   assert.match(copilot, /The strategy source owns its canonical instrument/)
   assert.match(copilot, /never use get_current_data, quantity\/cost_basis, or context\.run_daily/)

@@ -2828,12 +2828,12 @@ export default {
           : (timeframes.length > 1
               ? promptText(
                 'strategyTimeframes',
-                'Source timeframes: {timeframes}. Preserve every one with a separate context.subscribe(frequency=...) call; the fastest timeframe drives execution and higher-timeframe reads use completed bars only.',
+                'The user explicitly requested these source timeframes: {timeframes}. Preserve every one with a separate context.subscribe(frequency=...) call; the fastest timeframe drives execution and higher-timeframe reads use completed bars only. Do not add any other timeframe.',
                 { timeframes: timeframes.join(', ') }
               )
               : timeframe
-                ? promptText('strategyTimeframe', 'Source timeframe: {timeframe}. Preserve it in context.subscribe(frequency=...).', { timeframe })
-              : promptText('strategyTimeframeDefault', 'No timeframe was supplied. Choose a conservative source-owned default and encode it in context.subscribe(frequency=...).')),
+                ? promptText('strategyTimeframe', 'Source timeframe: {timeframe}. Preserve it as the strategy\'s only timeframe unless the original request explicitly names additional confirmation timeframes.', { timeframe })
+              : promptText('strategyTimeframeDefault', 'No timeframe was supplied. Choose one conservative source-owned default and encode exactly one context.subscribe(frequency=...) call. Do not invent multi-timeframe confirmation.')),
         template ? promptText('referenceTemplate', 'Reference strategy/template: {template}', { template }) : '',
         '',
         promptText('executionRules', 'Execution rules:'),
