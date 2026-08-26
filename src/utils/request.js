@@ -13,6 +13,11 @@ const LOCALE_KEY = 'lang'
 // Prevent multiple concurrent 401 redirects
 let isRedirectingToLogin = false
 
+function isLoginRequest (config) {
+  const url = String(config && config.url ? config.url : '').split('?')[0]
+  return url === '/api/auth/login' || url === '/api/auth/login-code'
+}
+
 function getToken () {
   let token = storage.get(ACCESS_TOKEN)
   if (!token) {
@@ -39,6 +44,10 @@ export const ANALYSIS_TIMEOUT = 180000 // 3 minutes for AI analysis
 
 // Extended timeout for AI code/bot generation (LLM + auto-fix loop)
 export const AI_GENERATE_TIMEOUT = 180000 // 3 minutes for AI generation
+
+// Extended timeout for AI Copilot chat. Local Ollama models can need several
+// minutes before returning a full non-streaming response.
+export const AI_CHAT_TIMEOUT = 600000 // 10 minutes for AI chat fallback
 
 // Extended timeout for backtest APIs (can take several minutes)
 export const BACKTEST_TIMEOUT = 600000 // 10 minutes for backtest
@@ -104,9 +113,27 @@ function normalizeBacktestRangeLimitError (error) {
   )
 }
 
+function normalizeInsufficientCreditsError (error) {
+  const envelope = error && error.response && error.response.data
+  const details = envelope && envelope.data
+  if (!details || details.error_type !== 'INSUFFICIENT_CREDITS') return ''
+  const current = Number(details.current || 0)
+  const required = Number(details.required || 0)
+  const shortage = Number.isFinite(Number(details.shortage))
+    ? Number(details.shortage)
+    : Math.max(0, required - current)
+  return tf(
+    'fastAnalysis.insufficientCreditsDetail',
+    'Insufficient credits: need {required}, you have {current}, short by {shortage}.',
+    { current, required, shortage }
+  )
+}
+
 function normalizeBusinessErrorMessage (message, error) {
   const backtestRangeLimit = normalizeBacktestRangeLimitError(error)
   if (backtestRangeLimit) return backtestRangeLimit
+  const insufficientCredits = normalizeInsufficientCreditsError(error)
+  if (insufficientCredits) return insufficientCredits
   if (!message) return ''
   const liveConflict = message.match(/Live strategy conflict: another running strategy already uses the same API key\/exchange\/market\/symbol \(([^)]+)\)\. Please stop strategy (\d+)(?: \((.+)\))? first\./i)
   if (liveConflict) {
@@ -156,7 +183,11 @@ const errorHandler = (error) => {
           tt('request.forbiddenDesc', 'You do not have permission to perform this action.')
       })
     }
-    if (error.response.status === 401 && !(data.result && data.result.isLogin)) {
+    if (
+      error.response.status === 401 &&
+      !isLoginRequest(error.config) &&
+      !(data.result && data.result.isLogin)
+    ) {
       // Token invalid/expired: MUST clear local auth state, otherwise route guard will
       // detect a stale token and immediately bounce user away from login page.
       if (!isRedirectingToLogin) {
@@ -191,8 +222,10 @@ request.interceptors.request.use(config => {
   if (config.url && isDefaultTimeout) {
     if (config.url.includes('/backtest/aiAnalyze')) {
       config.timeout = ANALYSIS_TIMEOUT
-    } else if (config.url.includes('/strategies/ai-generate') || config.url.includes('/indicator/aiGenerate')) {
+    } else if (config.url.includes('/strategies/generate') || config.url.includes('/strategies/ai-generate') || config.url.includes('/indicator/aiGenerate')) {
       config.timeout = AI_GENERATE_TIMEOUT
+    } else if (config.url.includes('/api/ai/chat/message')) {
+      config.timeout = AI_CHAT_TIMEOUT
     } else if (config.url.includes('/global-market/heatmap')) {
       config.timeout = 90000
     } else if (config.url.includes('/backtest')) {
@@ -207,11 +240,15 @@ request.interceptors.request.use(config => {
   // We keep both a custom header and the standard Accept-Language for compatibility.
   config.headers['X-App-Lang'] = lang
   config.headers['Accept-Language'] = lang
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (timezone) config.headers['X-App-Timezone'] = timezone
+  } catch (e) { /* use the saved server timezone or UTC */ }
 
   if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`
+    config.headers.Authorization = `Bearer ${token}`
     config.headers[ACCESS_TOKEN] = token
-    config.headers['token'] = token
+    config.headers.token = token
   } else {
     if (config.url && config.url.includes('/api/auth/info')) {
       const rawToken = storage.get(ACCESS_TOKEN)
@@ -223,7 +260,7 @@ request.interceptors.request.use(config => {
   }
 
   config.headers['Cache-Control'] = 'no-cache'
-  config.headers['Pragma'] = 'no-cache'
+  config.headers.Pragma = 'no-cache'
   config.headers['If-Modified-Since'] = '0'
 
   if ((config.method || 'get').toLowerCase() === 'get') {
@@ -254,6 +291,13 @@ request.interceptors.request.use(config => {
 
 // response interceptor
 request.interceptors.response.use((response) => {
+  // A previous expired session may have redirected to the hash-based login route
+  // without reloading the JavaScript bundle. Reset the redirect guard as soon as
+  // a new login succeeds so future token invalidations are handled normally.
+  if (isLoginRequest(response.config)) {
+    isRedirectingToLogin = false
+  }
+
   try {
     if (typeof document !== 'undefined') {
       const cookies = document.cookie

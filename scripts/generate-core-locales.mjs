@@ -4,6 +4,9 @@ import { join, resolve } from 'node:path'
 
 const root = resolve(process.cwd())
 const langDir = join(root, 'src', 'locales', 'lang')
+const seedLangDir = process.env.QUANTDINGER_LOCALE_SEED_DIR
+  ? resolve(process.env.QUANTDINGER_LOCALE_SEED_DIR)
+  : langDir
 
 const specs = {
   'ar-SA': {
@@ -380,8 +383,7 @@ const translationPacks = {
   }
 }
 
-function extractLocaleObject(source, fileName) {
-  const marker = 'const locale ='
+function extractObjectSource(source, fileName, marker) {
   const markerIndex = source.indexOf(marker)
   if (markerIndex < 0) throw new Error(`${fileName}: missing "const locale ="`)
 
@@ -449,11 +451,31 @@ function extractLocaleObject(source, fileName) {
   throw new Error(`${fileName}: missing locale object end`)
 }
 
-function loadLocale(localeName) {
+function extractLocaleObject(source, fileName) {
+  return extractObjectSource(source, fileName, 'const locale =')
+}
+
+function extractComponentMessages(source, fileName) {
+  const objectSource = extractObjectSource(source, fileName, 'const components =')
+  const messages = {}
+  const linePattern = /^\s*("(?:[^"\\]|\\.)*")\s*:\s*("(?:[^"\\]|\\.)*")\s*,?\s*$/gm
+  let match
+  while ((match = linePattern.exec(objectSource)) !== null) {
+    messages[JSON.parse(match[1])] = JSON.parse(match[2])
+  }
+  return messages
+}
+
+function loadLocale(localeName, sourceDir = langDir) {
   const fileName = `${localeName}.js`
-  const source = readFileSync(join(langDir, fileName), 'utf8')
+  const source = readFileSync(join(sourceDir, fileName), 'utf8')
   const objectSource = extractLocaleObject(source, fileName)
-  return vm.runInNewContext(`(${objectSource})`, {}, { filename: fileName })
+  return {
+    ...(source.includes('const components =')
+      ? extractComponentMessages(source, fileName)
+      : {}),
+    ...vm.runInNewContext(`(${objectSource})`, {}, { filename: fileName })
+  }
 }
 
 function escapeKey(key) {
@@ -467,11 +489,17 @@ function renderLocaleObject(locale) {
     .join(',\n')
 }
 
-function buildLocale(target, bases) {
+function buildLocale(target, bases, preservedLocales) {
   const spec = specs[target]
   const base = {}
   for (const baseName of spec.bases || [spec.base]) {
     Object.assign(base, bases[baseName])
+  }
+  const preserved = preservedLocales[target] || {}
+  for (const key of Object.keys(base)) {
+    if (typeof preserved[key] === 'string' && preserved[key].trim()) {
+      base[key] = preserved[key]
+    }
   }
   return {
     ...base,
@@ -483,9 +511,12 @@ const bases = {
   'en-US': loadLocale('en-US'),
   'zh-CN': loadLocale('zh-CN')
 }
+const preservedLocales = Object.fromEntries(
+  Object.keys(specs).map(localeName => [localeName, loadLocale(localeName, seedLangDir)])
+)
 
 for (const [localeName, spec] of Object.entries(specs)) {
-  const locale = buildLocale(localeName, bases)
+  const locale = buildLocale(localeName, bases, preservedLocales)
   const body = `import ${spec.antdVar} from '${spec.antdPath}'
 import ${spec.momentVar} from '${spec.momentPath}'
 
@@ -508,4 +539,6 @@ export default {
   writeFileSync(join(langDir, `${localeName}.js`), body, 'utf8')
 }
 
-console.log(`Generated ${Object.keys(specs).length} complete locale files.`)
+console.log(
+  `Generated ${Object.keys(specs).length} complete locale files while preserving translations from ${seedLangDir}.`
+)
