@@ -142,6 +142,19 @@
           <span class="perf-label">{{ $t('fastAnalysis.avgReturn') || '平均收益' }}</span>
         </div>
       </div>
+      <div v-if="regimePerformanceRows.length" class="regime-performance">
+        <div class="regime-performance-title">
+          <a-icon type="area-chart" /> {{ $t('fastAnalysis.regimePerformanceTitle') }}
+        </div>
+        <div class="regime-performance-grid">
+          <div v-for="row in regimePerformanceRows" :key="row.market_regime" class="regime-performance-row">
+            <strong>{{ translateTrend(row.market_regime) }}</strong>
+            <span>B {{ row.decision_distribution.buy }} · S {{ row.decision_distribution.sell }} · H {{ row.decision_distribution.hold }}</span>
+            <span>{{ $t('fastAnalysis.accuracyRate') }} {{ formatNumber(row.accuracy_pct, 1) }}%</span>
+            <span :class="row.avg_return_pct >= 0 ? 'positive' : 'negative'">{{ $t('fastAnalysis.avgReturn') }} {{ formatNumber(row.avg_return_pct, 2) }}%</span>
+          </div>
+        </div>
+      </div>
 
       <!-- Price Info Row -->
       <div class="price-info-row" :class="{ 'hold-mode': isHoldDecision }">
@@ -175,8 +188,21 @@
               </a-tooltip>
             </div>
           </div>
+          <div v-if="tradingPlan.risk_reward_ratio != null" class="price-card rr" :class="{ 'rr-low': hasLowRiskReward }">
+            <div class="price-label">{{ $t('fastAnalysis.riskReward') }}</div>
+            <div class="price-value">1 : {{ formatNumber(tradingPlan.risk_reward_ratio, 2) }}</div>
+            <div class="price-hint">{{ $t('fastAnalysis.finalPlanRatio') }}</div>
+          </div>
         </template>
       </div>
+      <a-alert
+        v-if="hasLowRiskReward"
+        class="rr-warning-alert"
+        type="warning"
+        show-icon
+        :message="$t('fastAnalysis.rrWarningTitle')"
+        :description="$t('fastAnalysis.rrWarningDescription')"
+      />
 
       <div v-if="trendOutlookBlocks.length || trendOutlookSummaryText" class="trend-outlook-card">
         <div class="trend-outlook-header section-clickable" @click="toggleSection('trendOutlook')">
@@ -596,6 +622,10 @@ export default {
       if (c.consensus_decision == null && c.consensus_score == null) return null
       return c
     },
+    regimePerformanceRows () {
+      const rows = this.performanceStats?.regime_performance
+      return Array.isArray(rows) ? rows.filter(row => row && row.total > 0) : []
+    },
     tradingPlan () {
       const tp = this.result?.trading_plan || {}
       const entry = tp.entry_price ?? tp.entryPrice
@@ -604,8 +634,15 @@ export default {
       return {
         entry_price: entry,
         stop_loss: sl,
-        take_profit: tpv
+        take_profit: tpv,
+        risk_reward_ratio: tp.risk_reward_ratio ?? tp.riskRewardRatio,
+        rr_warning: tp.rr_warning ?? tp.rrWarning,
+        source: tp.source
       }
+    },
+    hasLowRiskReward () {
+      const rr = Number(this.tradingPlan.risk_reward_ratio)
+      return Boolean(this.tradingPlan.rr_warning) || (Number.isFinite(rr) && rr >= 0 && rr < 1)
     },
     trendOutlookRaw () {
       return this.result?.trend_outlook || this.result?.trendOutlook || null
@@ -1137,6 +1174,33 @@ export default {
     }
   }
 
+  .regime-performance {
+    padding: 10px 14px 12px;
+    margin-bottom: 2px;
+    background: @rpt-surface;
+    border-top: 1px solid @rpt-border;
+
+    .regime-performance-title {
+      margin-bottom: 8px;
+      color: @rpt-text2;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .regime-performance-grid { display: grid; gap: 6px; }
+    .regime-performance-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 1.2fr) minmax(110px, 1fr) minmax(100px, 1fr) minmax(110px, 1fr);
+      gap: 10px;
+      align-items: center;
+      color: @rpt-text2;
+      font-size: 11px;
+      strong { color: @rpt-text; }
+      .positive { color: @rpt-green; }
+      .negative { color: @rpt-red; }
+    }
+  }
+
   // ── Report Section (Collapsible) ──
   .report-section {
     background: @rpt-surface;
@@ -1229,7 +1293,7 @@ export default {
 
     // ─ Price Strip (no separate cards) ─
     .price-info-row {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
       background: @rpt-surface; margin-bottom: 2px;
 
       &.hold-mode { grid-template-columns: 1fr; }
@@ -1251,7 +1315,15 @@ export default {
         &.entry .price-label { color: var(--primary-color, #1890ff); }
         &.stop .price-label { color: @rpt-red; }
         &.target .price-label { color: @rpt-green; }
+        &.rr .price-label { color: var(--primary-color, #1890ff); }
+        &.rr-low { background: rgba(250, 173, 20, 0.08); .price-label, .price-value { color: @rpt-amber; } }
       }
+    }
+
+    .rr-warning-alert {
+      margin: 0 0 2px;
+      border-radius: 0;
+      border-left: 3px solid @rpt-amber;
     }
 
     // ─ Trend Outlook ─
@@ -1522,6 +1594,13 @@ export default {
       .perf-value { color: #f0f0f2; &.positive { color: #34d399; } &.negative { color: #f87171; } }
       .perf-label { color: @dk-text3; }
     }
+  }
+
+  .regime-performance {
+    background: @dk-surface;
+    border-color: @dk-border;
+    .regime-performance-title, .regime-performance-row { color: @dk-text2; }
+    .regime-performance-row strong { color: @dk-text; }
   }
 
   .report-section { background: @dk-surface; }
