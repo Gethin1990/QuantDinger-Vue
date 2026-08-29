@@ -149,20 +149,6 @@
           </div>
 
           <div class="section-title">{{ t('executorStrategies.section.capitalRisk') }}</div>
-          <div class="field-grid">
-            <div class="field-block">
-              <label>{{ t('executorStrategies.initialCapital') }}</label>
-              <a-input-number
-                v-model="form.initial_capital"
-                :min="10"
-                :max="1000000"
-                :step="100"
-                :precision="2"
-                style="width: 100%" />
-              <small class="field-hint">{{ t('executorStrategies.initialCapitalHint') }}</small>
-            </div>
-          </div>
-
           <div v-if="supportsTrailingTakeProfit" class="risk-scope-label">
             {{ t('executorStrategies.cycleRiskTitle') }}
             <small>{{ t('executorStrategies.cycleRiskHint') }}</small>
@@ -911,8 +897,6 @@ export default {
     validationIssues () {
       const issues = []
       if (!String(this.form.symbol || '').trim()) issues.push('symbol')
-      const initialCapital = Number(this.form.initial_capital || 0)
-      if (initialCapital < 10 || initialCapital > 1000000) issues.push('initialCapital')
       if (this.form.executor_type === 'grid') {
         const start = Number(this.form.start_price || 0)
         const end = Number(this.form.end_price || 0)
@@ -1086,7 +1070,6 @@ export default {
         side: 'long',
         market_type: 'swap',
         execution_mode: 'signal',
-        initial_capital: 1000,
         dynamic_anchor: true,
         start_price: 0.98,
         end_price: 1.02,
@@ -1241,6 +1224,7 @@ export default {
         templateConfig.market_type = 'spot'
         templateConfig.timeframe = '1H'
       }
+      delete templateConfig.initial_capital
       delete templateConfig.leverage
       return {
         ...templateConfig,

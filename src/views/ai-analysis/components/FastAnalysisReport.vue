@@ -59,8 +59,8 @@
         :sub-title="error"
       >
         <template #extra>
-          <a-button type="primary" @click="$emit('retry')">
-            {{ $t('fastAnalysis.retry') }}
+          <a-button type="primary" @click="handleErrorAction">
+            {{ insufficientCreditsError ? $t('fastAnalysis.rechargeNow') : $t('fastAnalysis.retry') }}
           </a-button>
         </template>
       </a-result>
@@ -278,14 +278,14 @@
         <div class="report-section-header" @click="toggleSection('cryptoFactors')">
           <span class="rsh-title">
             <a-icon type="fund" />
-            {{ ($i18n && $i18n.locale === 'zh-CN') ? 'Crypto 交易大数据' : 'Crypto Market Structure' }}
+            {{ $t('fastAnalysis.cryptoMarketStructure') }}
           </span>
           <a-icon type="right" class="section-toggle-arrow" :class="{ open: !sectionCollapsed.cryptoFactors }" />
         </div>
         <div v-show="!sectionCollapsed.cryptoFactors">
           <div class="crypto-factor-summary">
             <div class="crypto-factor-score" :class="cryptoFactorScoreClass">
-              {{ ($i18n && $i18n.locale === 'zh-CN') ? '因子偏向' : 'Factor Bias' }}:
+              {{ $t('fastAnalysis.factorBias') }}:
               <strong>{{ cryptoFactorScoreText }}</strong>
               <span v-if="result.crypto_factor_score !== undefined && result.crypto_factor_score !== null" class="crypto-factor-score__num">
                 {{ formatNumber(result.crypto_factor_score, 1) }}
@@ -454,7 +454,7 @@
             <div v-if="professionalIndicatorRows.length" class="indicators-pro-wrap">
               <div class="indicators-pro-title">
                 <a-icon type="deployment-unit" />
-                {{ ($i18n && $i18n.locale === 'zh-CN') ? '量化参数明细' : 'Quant Parameters' }}
+                {{ $t('fastAnalysis.quantParameters') }}
               </div>
               <a-descriptions
                 bordered
@@ -761,42 +761,39 @@ export default {
         const num = parseFloat(val)
         return isNaN(num) ? '--' : `${num.toFixed(2)}%`
       }
-      const localZh = this.$i18n && this.$i18n.locale === 'zh-CN'
-
-      add('volume_24h', localZh ? '24h成交额' : '24h Volume', usd(cf.volume_24h))
-      add('volume_change_24h', localZh ? '成交活跃度变化' : 'Volume Activity Change', pct(cf.volume_change_24h), Number(cf.volume_change_24h) > 0 ? 'bullish' : (Number(cf.volume_change_24h) < 0 ? 'bearish' : ''))
-      add('funding_rate', localZh ? '资金费率' : 'Funding Rate', pct(cf.funding_rate), Number(cf.funding_rate) > 0 ? 'bullish' : (Number(cf.funding_rate) < 0 ? 'bearish' : ''))
-      add('open_interest', localZh ? '未平仓量 OI' : 'Open Interest', usd(cf.open_interest))
-      add('open_interest_change_24h', localZh ? 'OI变化(24h)' : 'OI Change (24h)', pct(cf.open_interest_change_24h), Number(cf.open_interest_change_24h) > 0 ? 'bullish' : (Number(cf.open_interest_change_24h) < 0 ? 'bearish' : ''))
-      add('long_short_ratio', localZh ? '多空比' : 'Long / Short Ratio', this.formatCompactNum(cf.long_short_ratio))
-      add('exchange_netflow', localZh ? '交易所净流' : 'Exchange Netflow', usd(cf.exchange_netflow), Number(cf.exchange_netflow) < 0 ? 'bullish' : (Number(cf.exchange_netflow) > 0 ? 'bearish' : ''))
-      add('stablecoin_netflow', localZh ? '稳定币净流' : 'Stablecoin Netflow', usd(cf.stablecoin_netflow), Number(cf.stablecoin_netflow) > 0 ? 'bullish' : (Number(cf.stablecoin_netflow) < 0 ? 'bearish' : ''))
+      add('volume_24h', this.$t('fastAnalysis.cryptoVolume24h'), usd(cf.volume_24h))
+      add('volume_change_24h', this.$t('fastAnalysis.cryptoVolumeActivityChange'), pct(cf.volume_change_24h), Number(cf.volume_change_24h) > 0 ? 'bullish' : (Number(cf.volume_change_24h) < 0 ? 'bearish' : ''))
+      add('funding_rate', this.$t('fastAnalysis.cryptoFundingRate'), pct(cf.funding_rate), Number(cf.funding_rate) > 0 ? 'bullish' : (Number(cf.funding_rate) < 0 ? 'bearish' : ''))
+      add('open_interest', this.$t('fastAnalysis.cryptoOpenInterest'), usd(cf.open_interest))
+      add('open_interest_change_24h', this.$t('fastAnalysis.cryptoOpenInterestChange'), pct(cf.open_interest_change_24h), Number(cf.open_interest_change_24h) > 0 ? 'bullish' : (Number(cf.open_interest_change_24h) < 0 ? 'bearish' : ''))
+      add('long_short_ratio', this.$t('fastAnalysis.cryptoLongShortRatio'), this.formatCompactNum(cf.long_short_ratio))
+      add('exchange_netflow', this.$t('fastAnalysis.cryptoExchangeNetflow'), usd(cf.exchange_netflow), Number(cf.exchange_netflow) < 0 ? 'bullish' : (Number(cf.exchange_netflow) > 0 ? 'bearish' : ''))
+      add('stablecoin_netflow', this.$t('fastAnalysis.cryptoStablecoinNetflow'), usd(cf.stablecoin_netflow), Number(cf.stablecoin_netflow) > 0 ? 'bullish' : (Number(cf.stablecoin_netflow) < 0 ? 'bearish' : ''))
       return rows
     },
     cryptoSignals () {
       if (!this.isCryptoResult) return []
       const sig = (this.result?.crypto_factors || {}).signals || {}
-      const localZh = this.$i18n && this.$i18n.locale === 'zh-CN'
       const items = []
       if (sig.derivatives_bias) {
         items.push({
           key: 'derivatives_bias',
           color: sig.derivatives_bias === 'bullish' ? 'green' : (sig.derivatives_bias === 'bearish' ? 'red' : 'blue'),
-          label: `${localZh ? '衍生品' : 'Derivatives'}: ${sig.derivatives_bias}`
+          label: `${this.$t('fastAnalysis.cryptoDerivatives')}: ${this.cryptoSignalValueLabel(sig.derivatives_bias)}`
         })
       }
       if (sig.flow_bias) {
         items.push({
           key: 'flow_bias',
           color: sig.flow_bias === 'bullish' ? 'green' : (sig.flow_bias === 'bearish' ? 'red' : 'blue'),
-          label: `${localZh ? '资金流' : 'Flow'}: ${sig.flow_bias}`
+          label: `${this.$t('fastAnalysis.cryptoFlow')}: ${this.cryptoSignalValueLabel(sig.flow_bias)}`
         })
       }
       if (sig.squeeze_risk) {
         items.push({
           key: 'squeeze_risk',
           color: sig.squeeze_risk === 'high' ? 'red' : (sig.squeeze_risk === 'medium' ? 'orange' : 'green'),
-          label: `${localZh ? '挤仓风险' : 'Squeeze Risk'}: ${sig.squeeze_risk}`
+          label: `${this.$t('fastAnalysis.cryptoSqueezeRisk')}: ${this.cryptoSignalValueLabel(sig.squeeze_risk)}`
         })
       }
       return items
@@ -810,13 +807,12 @@ export default {
     },
     cryptoFactorScoreText () {
       const score = Number(this.result?.crypto_factor_score)
-      const localZh = this.$i18n && this.$i18n.locale === 'zh-CN'
-      if (Number.isNaN(score)) return localZh ? '数据不足' : 'Insufficient data'
-      if (score >= 40) return localZh ? '明显偏多' : 'Bullish'
-      if (score >= 20) return localZh ? '轻度偏多' : 'Mild Bullish'
-      if (score <= -40) return localZh ? '明显偏空' : 'Bearish'
-      if (score <= -20) return localZh ? '轻度偏空' : 'Mild Bearish'
-      return localZh ? '中性' : 'Neutral'
+      if (Number.isNaN(score)) return this.$t('fastAnalysis.cryptoInsufficientData')
+      if (score >= 40) return this.$t('fastAnalysis.signalBullish')
+      if (score >= 20) return this.$t('fastAnalysis.cryptoMildBullish')
+      if (score <= -40) return this.$t('fastAnalysis.signalBearish')
+      if (score <= -20) return this.$t('fastAnalysis.cryptoMildBearish')
+      return this.$t('fastAnalysis.signalNeutral')
     },
     insufficientCreditsError () {
       if (!this.error) return false
@@ -860,6 +856,13 @@ export default {
     this.stopProgressTimer()
   },
   methods: {
+    handleErrorAction () {
+      if (this.insufficientCreditsError) {
+        this.$router.push({ name: 'Billing' }).catch(() => {})
+        return
+      }
+      this.$emit('retry')
+    },
     formatPrice (value) {
       if (value === undefined || value === null) return '--'
       const num = parseFloat(value)
@@ -895,6 +898,20 @@ export default {
       if (d === 'BUY') return this.$t('fastAnalysis.outlookBull')
       if (d === 'SELL') return this.$t('fastAnalysis.outlookBear')
       return this.$t('fastAnalysis.outlookNeutral')
+    },
+    cryptoSignalValueLabel (value) {
+      const key = String(value || '').trim().toLowerCase()
+      const translationKeys = {
+        bullish: 'signalBullish',
+        bearish: 'signalBearish',
+        neutral: 'signalNeutral',
+        high: 'signalHigh',
+        medium: 'signalMedium',
+        low: 'signalLow'
+      }
+      return translationKeys[key]
+        ? this.$t(`fastAnalysis.${translationKeys[key]}`)
+        : String(value || '--')
     },
     neutralizeDecisionText (text) {
       if (text === undefined || text === null) return ''
@@ -1586,6 +1603,45 @@ export default {
   background: @dk-bg;
 
   &::-webkit-scrollbar-thumb { background: #333; }
+
+  .rr-warning-alert {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.35);
+    border-left-color: @rpt-amber;
+
+    ::v-deep .ant-alert-icon { color: #fbbf24; }
+    ::v-deep .ant-alert-message { color: #fbbf24; }
+    ::v-deep .ant-alert-description { color: #c7c7ce; }
+  }
+
+  .crypto-factor-summary {
+    background: linear-gradient(135deg, rgba(24, 144, 255, 0.08), rgba(82, 196, 26, 0.05));
+    border-color: rgba(255, 255, 255, 0.16);
+
+    &__text { color: @dk-text2; }
+  }
+
+  .crypto-factor-score {
+    color: @dk-text;
+
+    &.bullish { color: #34d399; }
+    &.bearish { color: #f87171; }
+    &.neutral { color: #fbbf24; }
+
+    &__num { background: rgba(255, 255, 255, 0.08); }
+  }
+
+  .crypto-factor-item {
+    background: @dk-surface2;
+    border-color: @dk-border;
+
+    &__label, &__hint { color: @dk-text2; }
+    &__value {
+      color: @dk-text;
+      &.bullish { color: #34d399; }
+      &.bearish { color: #f87171; }
+    }
+  }
 
   .performance-strip {
     background: @dk-surface;

@@ -38,6 +38,7 @@ const api = {
   updateScriptSource: '/api/strategies/script-sources/update',
   deleteScriptSource: '/api/strategies/script-sources/delete',
   publishScriptSource: '/api/strategies/script-sources/publish',
+  scriptSourcePublishReadiness: '/api/strategies/script-sources/publish-readiness',
   scriptSourceVersions: '/api/strategies/script-sources/versions',
   restoreScriptSourceVersion: '/api/strategies/script-sources/versions/restore',
   compileScriptSource: '/api/strategies/script-sources/compile',
@@ -401,6 +402,14 @@ export function publishScriptSource (data) {
     url: api.publishScriptSource,
     method: 'post',
     data
+  })
+}
+
+export function getScriptSourcePublishReadiness (sourceId) {
+  return request({
+    url: api.scriptSourcePublishReadiness,
+    method: 'get',
+    params: { id: sourceId }
   })
 }
 

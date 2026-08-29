@@ -13,6 +13,33 @@ test('fast analysis displays final R/R warning and regime outcome monitoring', (
   assert.match(report, /regime_performance/)
 })
 
+test('fast analysis keeps warning and crypto factor content readable in dark mode', () => {
+  const report = read('src/views/ai-analysis/components/FastAnalysisReport.vue')
+  const darkTheme = report.slice(report.indexOf('.fast-analysis-report.theme-dark'))
+
+  assert.match(darkTheme, /\.rr-warning-alert[\s\S]*?\.ant-alert-description \{ color: #c7c7ce; \}/)
+  assert.match(darkTheme, /\.crypto-factor-summary[\s\S]*?&__text \{ color: @dk-text2; \}/)
+  assert.match(darkTheme, /\.crypto-factor-item[\s\S]*?background: @dk-surface2;/)
+  assert.match(darkTheme, /&__label, &__hint \{ color: @dk-text2; \}/)
+})
+
+test('fast analysis crypto cards use locale keys instead of Chinese-or-English branches', () => {
+  const report = read('src/views/ai-analysis/components/FastAnalysisReport.vue')
+
+  assert.doesNotMatch(report, /const localZh/)
+  assert.match(report, /fastAnalysis\.cryptoVolume24h/)
+  assert.match(report, /fastAnalysis\.cryptoFundingRate/)
+  assert.match(report, /cryptoSignalValueLabel/)
+})
+
+test('insufficient credits opens billing while other failures keep retry', () => {
+  const report = read('src/views/ai-analysis/components/FastAnalysisReport.vue')
+
+  assert.match(report, /insufficientCreditsError \? \$t\('fastAnalysis\.rechargeNow'\) : \$t\('fastAnalysis\.retry'\)/)
+  assert.match(report, /this\.\$router\.push\(\{ name: 'Billing' \}\)/)
+  assert.match(report, /this\.\$emit\('retry'\)/)
+})
+
 test('strategy logs render typed market-data failures with actionable reasons', () => {
   const logs = read('src/views/strategy-center/components/StrategyLogs.vue')
 

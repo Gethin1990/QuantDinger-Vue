@@ -1,6 +1,15 @@
 <template>
   <div class="strategy-ide-shell" :class="{ 'theme-dark': isDarkTheme }">
     <div class="strategy-ide-layout">
+      <a-alert
+        v-if="adaptedBacktestRequired"
+        class="adapted-backtest-alert"
+        type="warning"
+        show-icon
+        :message="$t('community.backtestBeforeDeployment')"
+      >
+        <a-button slot="action" size="small" type="primary" ghost @click="openBacktestCenter">{{ text.backtestTitle }}</a-button>
+      </a-alert>
       <section class="script-panel script-panel--editor">
         <strategy-editor
           ref="scriptEditor"
@@ -120,6 +129,14 @@
 
               <div class="toolbar-right">
                 <a-button
+                  v-if="currentAssetType === 'script'"
+                  class="ai-strategy-create-button"
+                  @click="openAiStrategyGenerator"
+                >
+                  <a-icon type="robot" />
+                  {{ aiStrategyText.title }}
+                </a-button>
+                <a-button
                   v-if="currentAssetType === 'portfolio_strategy'"
                   class="universe-library-button"
                   :class="{ 'universe-library-button--selected': currentAssetType === 'portfolio_strategy' && !!selectedUniverseId }"
@@ -171,12 +188,36 @@
     </div>
 
     <a-modal
+      v-model="showAiStrategyGenerator"
+      :title="aiStrategyText.title"
+      :confirm-loading="aiStrategyGenerating"
+      :ok-text="aiStrategyText.generate"
+      :cancel-text="text.cancel"
+      :ok-button-props="{ props: { disabled: !String(aiStrategyPrompt || '').trim() } }"
+      :wrap-class-name="isDarkTheme ? 'ai-strategy-generator-modal ai-strategy-generator-modal--dark' : 'ai-strategy-generator-modal'"
+      width="680px"
+      @ok="generateAiStrategyDraft"
+      @cancel="closeAiStrategyGenerator"
+    >
+      <div class="ai-strategy-generator">
+        <a-alert type="info" show-icon :message="aiStrategyText.hint" />
+        <a-textarea
+          v-model="aiStrategyPrompt"
+          :rows="8"
+          :placeholder="aiStrategyText.placeholder"
+          :disabled="aiStrategyGenerating"
+        />
+      </div>
+    </a-modal>
+
+    <a-modal
       :visible="showPublishModal"
       :title="text.publishModalTitle"
       :width="620"
       :confirmLoading="publishingScript"
       :ok-text="text.publishConfirm"
       :cancel-text="text.cancel"
+      :ok-button-props="{ props: { disabled: publishBacktestStatus !== 'passed' } }"
       :wrap-class-name="isDarkTheme ? 'script-publish-modal script-publish-modal--dark' : 'script-publish-modal'"
       @ok="confirmPublish"
       @cancel="closePublishModal"
@@ -196,6 +237,47 @@
         <div class="publish-note">
           <a-icon type="info-circle" />
           <span>{{ text.publishHint }}</span>
+        </div>
+
+        <div class="publish-backtest-gate" :class="`is-${publishBacktestStatus}`">
+          <div class="publish-backtest-gate__icon">
+            <a-icon
+              :type="publishBacktestStatus === 'checking' ? 'loading' : (publishBacktestStatus === 'passed' ? 'check-circle' : 'experiment')"
+              :spin="publishBacktestStatus === 'checking'"
+            />
+          </div>
+          <div class="publish-backtest-gate__copy">
+            <strong>
+              {{ publishBacktestStatus === 'checking'
+                ? text.publishBacktestChecking
+                : (publishBacktestStatus === 'passed' ? text.publishBacktestPassed : text.publishBacktestRequired) }}
+            </strong>
+            <span v-if="publishBacktestStatus === 'required'">{{ text.publishBacktestRequiredHint }}</span>
+          </div>
+          <a-button
+            v-if="publishBacktestStatus === 'required'"
+            class="publish-backtest-gate__button"
+            type="primary"
+            @click="goToBacktestFromPublish"
+          >
+            <a-icon type="bar-chart" />
+            {{ text.publishGoBacktest }}
+          </a-button>
+        </div>
+
+        <div v-if="publishContractPreview" class="publish-contract-preview">
+          <div class="publish-contract-preview__head">
+            <strong>{{ $t('community.publishApplicability') }}</strong>
+            <a-tag :color="publishContractPreview.binding_mode === 'parameterized' ? 'green' : 'orange'">
+              {{ $t(`community.binding.${publishContractPreview.binding_mode || 'unknown'}`) }}
+            </a-tag>
+          </div>
+          <div class="publish-contract-preview__grid">
+            <span><small>{{ $t('community.filterMarket') }}</small><b>{{ (publishContractPreview.markets || []).join(' · ') || '—' }}</b></span>
+            <span><small>{{ $t('community.boundTo') }}</small><b>{{ (publishContractPreview.bound_instruments || []).join(' · ') || publishContractPreview.universe_reference || '—' }}</b></span>
+            <span><small>{{ $t('community.filterTimeframe') }}</small><b>{{ (publishContractPreview.frequencies || []).join(' · ') || '—' }}</b></span>
+          </div>
+          <p>{{ $t('community.publishApplicabilityHint') }}</p>
         </div>
 
         <div class="publish-section">
@@ -420,8 +502,8 @@ import {
   aiGenerateStrategy,
   createScriptSource,
   deleteScriptSource,
-  getStrategyBacktestHistory,
   getIndicatorListForStrategy,
+  getScriptSourcePublishReadiness,
   getScriptSourceDetail,
   getScriptSourceList,
   getScriptSourceVersion,
@@ -439,18 +521,20 @@ Describe the strategy logic, supported markets, entry/exit rules, and risk contr
 """
 
 def initialize(context):
-    context.set_universe(["USStock:SPY"])
+    g.symbol = "USStock:SPY"
+    context.set_universe([g.symbol])
     context.subscribe(frequency="1d")
+    context.set_metadata(direction_mode="long_only")
     context.set_warmup(55)
     g.period = 50
 
 def handle_data(context, data):
-    bars = get_history(g.period + 2, "1d", "close", "USStock:SPY")
+    bars = get_history(g.period + 2, "1d", "close", g.symbol)
     if len(bars) < g.period:
         return
     average = float(bars["close"].tail(g.period).mean())
     target = 1.0 if float(bars["close"].iloc[-1]) > average else 0.0
-    order_target_percent("USStock:SPY", target, reason="single_ma_regime")
+    order_target_percent(g.symbol, target, reason="single_ma_regime")
 `
 
 const DEFAULT_PORTFOLIO_CODE = `"""
@@ -515,6 +599,7 @@ export default {
       deletingScript: false,
       publishingScript: false,
       showPublishModal: false,
+      publishBacktestStatus: 'idle',
       publishForm: {
         name: '',
         description: '',
@@ -523,6 +608,7 @@ export default {
         vipFree: false,
         codeHidden: false
       },
+      publishContractPreview: null,
       showVersionDrawer: false,
       scriptVersionLoading: false,
       scriptVersions: [],
@@ -531,6 +617,9 @@ export default {
       showFactorLibrary: false,
       showUniverseLibrary: false,
       showRobotBuilder: false,
+      showAiStrategyGenerator: false,
+      aiStrategyPrompt: '',
+      aiStrategyGenerating: false,
       showIndicatorConvertModal: false,
       indicatorConvertLoading: false,
       indicatorConvertIndicatorLoading: false,
@@ -562,12 +651,14 @@ export default {
         this.navTheme === 'realdark' ||
         !!(body && (body.classList.contains('dark') || body.classList.contains('realdark')))
     },
-    isZh () {
-      return String((this.$i18n && this.$i18n.locale) || '').toLowerCase().startsWith('zh')
-    },
     userId () {
       const userInfo = this.$store && this.$store.getters && this.$store.getters.userInfo
       return (userInfo && userInfo.id) || 1
+    },
+    adaptedBacktestRequired () {
+      const metadata = this.parseObject(this.currentSource && this.currentSource.metadata)
+      const adaptation = this.parseObject(metadata.marketplace_adaptation)
+      return String((this.$route.query || {}).requiresBacktest || '') === '1' || !!adaptation.requires_backtest
     },
     editorKey () {
       return `script-editor-${this.currentSourceId || 'draft'}-${this.editorKeySeed}`
@@ -620,6 +711,17 @@ export default {
     currentNewScriptLabel () {
       return this.currentAssetType === 'portfolio_strategy' ? this.text.newPortfolioStrategy : this.text.newCtaStrategy
     },
+    aiStrategyText () {
+      const t = key => this.$t(`strategyIde.aiGenerate.${key}`)
+      return {
+        title: t('title'),
+        generate: t('generate'),
+        hint: t('hint'),
+        placeholder: t('placeholder'),
+        success: t('success'),
+        failed: t('failed')
+      }
+    },
     hasUnsavedScriptChanges () {
       if (this.scriptCodeHidden) return false
       if (!this.currentSourceId) return !!String(this.scriptCode || '').trim()
@@ -660,6 +762,10 @@ export default {
         'publishSuccess',
         'publishFailed',
         'publishBacktestRequired',
+        'publishBacktestChecking',
+        'publishBacktestPassed',
+        'publishBacktestRequiredHint',
+        'publishGoBacktest',
         'publishModalTitle',
         'publishConfirm',
         'marketTag',
@@ -738,6 +844,16 @@ export default {
     window.addEventListener('keydown', this._saveShortcut, true)
     this.initPage()
   },
+  activated () {
+    if (this._saveShortcut) {
+      window.addEventListener('keydown', this._saveShortcut, true)
+    }
+  },
+  deactivated () {
+    if (this._saveShortcut) {
+      window.removeEventListener('keydown', this._saveShortcut, true)
+    }
+  },
   beforeDestroy () {
     if (this._saveShortcut) {
       window.removeEventListener('keydown', this._saveShortcut, true)
@@ -745,6 +861,47 @@ export default {
     }
   },
   methods: {
+    openAiStrategyGenerator () {
+      this.aiStrategyPrompt = ''
+      this.showAiStrategyGenerator = true
+    },
+    closeAiStrategyGenerator () {
+      if (this.aiStrategyGenerating) return
+      this.showAiStrategyGenerator = false
+    },
+    buildAiStrategyPrompt () {
+      const source = String(this.aiStrategyPrompt || '').trim()
+      return [
+        'Generate one runnable QuantDinger Python Strategy API V2 draft for the Trading Script editor.',
+        'Use only supported Strategy API V2 APIs. Confirm signals on completed bars and rely on next-bar execution.',
+        'Declare tunable settings with # @param, include explicit risk controls, avoid duplicate orders, and keep code comments in English.',
+        'Return the complete Python source code.',
+        '',
+        `User requirement:\n${source}`
+      ].join('\n')
+    },
+    async generateAiStrategyDraft () {
+      if (!String(this.aiStrategyPrompt || '').trim()) return
+      this.aiStrategyGenerating = true
+      try {
+        const res = await aiGenerateStrategy({ prompt: this.buildAiStrategyPrompt() })
+        const code = this.extractAiGeneratedCode(res)
+        if (!code) throw new Error((res && res.msg) || this.aiStrategyText.failed)
+        this.createNewDraft({ openTemplate: false, assetType: 'script' })
+        this.scriptCode = code
+        await this.$nextTick()
+        const editor = this.$refs.scriptEditor
+        if (editor && typeof editor.setCode === 'function') editor.setCode(code)
+        this.lastSavedSnapshot = ''
+        this.scriptVerified = false
+        this.showAiStrategyGenerator = false
+        this.$message.success(this.aiStrategyText.success)
+      } catch (e) {
+        this.$message.error((e && (e.backendMessage || e.message)) || this.aiStrategyText.failed)
+      } finally {
+        this.aiStrategyGenerating = false
+      }
+    },
     async initPage () {
       await this.loadSources()
       if (this.isIndicatorConvertRoute()) {
@@ -1298,6 +1455,7 @@ export default {
           return false
         }
         this.scriptVerified = true
+        this.publishContractPreview = verification.marketplace_contract || null
         if (!options.silentSuccess) this.$message.success(this.text.verifyPassed)
         return true
       } catch (e) {
@@ -1401,10 +1559,6 @@ export default {
       if (!await this.verifyScriptCode()) return
       const sourceId = await this.saveScript(false, { silent: true, loadingMode: 'publish' })
       if (!sourceId) return
-      if (!await this.hasSuccessfulBacktest(sourceId)) {
-        this.$message.warning(this.text.publishBacktestRequired)
-        return
-      }
       const meta = this.extractScriptMetadataFromCode(this.scriptCode)
       this.publishForm = {
         name: meta.name || this.deriveScriptName(),
@@ -1414,28 +1568,46 @@ export default {
         vipFree: false,
         codeHidden: false
       }
+      this.publishBacktestStatus = 'checking'
       this.showPublishModal = true
+      const passed = await this.hasSuccessfulBacktest(sourceId)
+      if (this.showPublishModal) {
+        this.publishBacktestStatus = passed ? 'passed' : 'required'
+      }
     },
     async hasSuccessfulBacktest (sourceId) {
       const id = Number(sourceId || 0)
       if (!id) return false
       try {
-        const res = await getStrategyBacktestHistory({
-          assetType: 'script',
-          assetId: id,
-          status: 'success',
-          limit: 1
-        })
-        const rows = Array.isArray(res && res.data) ? res.data : []
-        return res && res.code === 1 && rows.length > 0
+        const res = await getScriptSourcePublishReadiness(id)
+        return !!(res && res.code === 1 && res.data && res.data.ready)
       } catch (_) {
         return false
       }
     },
     closePublishModal () {
-      if (!this.publishingScript) this.showPublishModal = false
+      if (!this.publishingScript) {
+        this.showPublishModal = false
+        this.publishBacktestStatus = 'idle'
+      }
+    },
+    isBacktestRequiredPublishResponse (payload) {
+      const envelope = payload && payload.response ? payload.response.data : payload
+      const details = envelope && envelope.data
+      return !!(details && (details.requires_backtest || details.error_type === 'BACKTEST_REQUIRED'))
+    },
+    goToBacktestFromPublish () {
+      if (this.publishingScript) return
+      this.showPublishModal = false
+      this.publishBacktestStatus = 'idle'
+      this.openBacktestCenter()
     },
     async confirmPublish () {
+      if (this.publishBacktestStatus !== 'passed') {
+        this.publishBacktestStatus = 'required'
+        this.$message.warning(this.text.publishBacktestRequired)
+        return
+      }
       const sourceId = this.currentSourceId || await this.saveScript(false, { silent: true, loadingMode: 'publish' })
       if (!sourceId) return
       const pricingType = this.publishForm.pricingType === 'paid' ? 'paid' : 'free'
@@ -1459,11 +1631,20 @@ export default {
         if (res && res.code === 1) {
           this.$message.success(this.text.publishSuccess)
           this.showPublishModal = false
+          this.publishBacktestStatus = 'idle'
+        } else if (this.isBacktestRequiredPublishResponse(res)) {
+          this.publishBacktestStatus = 'required'
+          this.$message.warning(this.text.publishBacktestRequired)
         } else {
           this.$message.error((res && res.msg) || this.text.publishFailed)
         }
       } catch (e) {
-        this.$message.error(e.backendMessage || e.message || this.text.publishFailed)
+        if (this.isBacktestRequiredPublishResponse(e)) {
+          this.publishBacktestStatus = 'required'
+          this.$message.warning(this.text.publishBacktestRequired)
+        } else {
+          this.$message.error(e.backendMessage || e.message || this.text.publishFailed)
+        }
       } finally {
         this.publishingScript = false
       }
@@ -1529,6 +1710,11 @@ export default {
           updateRoute: false
         })
       if (!sourceId) return
+      if (this.adaptedBacktestRequired && !await this.hasSuccessfulBacktest(sourceId)) {
+        this.$message.warning(this.$t('community.backtestBeforeDeployment'))
+        this.openBacktestCenter()
+        return
+      }
       if (this.currentAssetType === 'portfolio_strategy') {
         this.$router.push({
           path: '/strategy-center',
@@ -1898,13 +2084,21 @@ export default {
   overflow: hidden;
 }
 
+.adapted-backtest-alert {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
 .strategy-ide-layout {
   height: 100%;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .script-panel {
-  height: 100%;
+  height: auto;
+  flex: 1;
   min-height: 0;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -2043,9 +2237,23 @@ export default {
 .script-backtest-button,
 .indicator-convert-button,
 .factor-library-button,
-.universe-library-button {
+.universe-library-button,
+.ai-strategy-create-button {
   height: 36px;
   font-weight: 700;
+}
+
+.ai-strategy-create-button {
+  border-color: color-mix(in srgb, var(--primary-color, #52c41a) 38%, #d9d9d9);
+  color: var(--primary-color, #52c41a);
+  background: color-mix(in srgb, var(--primary-color, #52c41a) 8%, #fff);
+}
+
+.ai-strategy-create-button:hover,
+.ai-strategy-create-button:focus {
+  border-color: var(--primary-color, #52c41a);
+  color: var(--primary-color, #52c41a);
+  background: color-mix(in srgb, var(--primary-color, #52c41a) 13%, #fff);
 }
 
 .script-save-button,
@@ -2163,6 +2371,42 @@ export default {
   .executor-page {
     min-height: 0;
     flex: 1;
+  }
+}
+
+.ai-strategy-generator {
+  display: grid;
+  gap: 14px;
+}
+
+.ai-strategy-generator-modal--dark {
+  .ant-modal-content,
+  .ant-modal-header,
+  .ant-modal-body,
+  .ant-modal-footer {
+    border-color: #303030;
+    background: #1f1f1f;
+  }
+
+  .ant-modal-title,
+  .ant-modal-close,
+  .ant-modal-body {
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .ant-input {
+    border-color: #434343;
+    background: #141414;
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .ant-alert-info {
+    border-color: rgba(82, 196, 26, 0.28);
+    background: rgba(82, 196, 26, 0.08);
+  }
+
+  .ant-alert-message {
+    color: rgba(255, 255, 255, 0.76);
   }
 }
 
@@ -2285,6 +2529,135 @@ export default {
   .publish-note .anticon {
     margin-top: 3px;
     color: var(--primary-color, #ff4d4f);
+  }
+
+  .publish-backtest-gate {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 64px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+
+    &.is-checking {
+      color: #1677ff;
+      border-color: rgba(22, 119, 255, 0.24);
+      background: rgba(22, 119, 255, 0.04);
+    }
+
+    &.is-passed {
+      color: #389e0d;
+      border-color: rgba(82, 196, 26, 0.34);
+      background: rgba(82, 196, 26, 0.07);
+    }
+
+    &.is-required {
+      color: #d48806;
+      border-color: rgba(250, 173, 20, 0.38);
+      background: rgba(250, 173, 20, 0.08);
+    }
+
+    &__icon {
+      display: flex;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: currentColor;
+
+      .anticon {
+        color: #fff;
+        font-size: 16px;
+      }
+    }
+
+    &__copy {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 3px;
+
+      strong {
+        color: #1f2937;
+        font-size: 13px;
+      }
+
+      span {
+        color: #6b7280;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+    }
+
+    .ant-btn {
+      flex-shrink: 0;
+    }
+
+    &__button,
+    &__button:hover,
+    &__button:focus {
+      border-color: var(--primary-color, #52c41a);
+      background: var(--primary-color, #52c41a);
+      color: #fff;
+
+      .anticon {
+        color: #fff;
+      }
+    }
+
+    &__button:hover,
+    &__button:focus {
+      opacity: 0.9;
+    }
+  }
+
+  .publish-contract-preview {
+    padding: 12px;
+    border: 1px solid rgba(82, 196, 26, 0.28);
+    border-radius: 10px;
+    background: rgba(82, 196, 26, 0.06);
+
+    &__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    &__grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+
+      span {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        padding: 8px;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      small { color: #6b7280; }
+      b {
+        overflow: hidden;
+        color: #1f2937;
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    p {
+      margin: 8px 0 0;
+      color: #6b7280;
+      font-size: 12px;
+    }
   }
 
   .publish-section,
@@ -2600,6 +2973,7 @@ export default {
   }
 
   .publish-note,
+  .publish-backtest-gate,
   .publish-section,
   .publish-option-card,
   .indicator-convert-selector,
@@ -2608,6 +2982,15 @@ export default {
   .code-version-preview {
     border-color: rgba(255, 255, 255, 0.1);
     background: #1f1f1f;
+  }
+
+  .publish-backtest-gate {
+    &.is-checking { background: rgba(22, 119, 255, 0.12); }
+    &.is-passed { background: rgba(82, 196, 26, 0.12); }
+    &.is-required { background: rgba(250, 173, 20, 0.12); }
+
+    &__copy strong { color: rgba(255, 255, 255, 0.88); }
+    &__copy span { color: rgba(255, 255, 255, 0.58); }
   }
 
   .publish-option-card.active {
