@@ -60,7 +60,13 @@
                     <a-button size="small" :disabled="!selectedIndicatorId" @click="openCodeVersionDrawer"><a-icon type="history" /></a-button>
                   </a-tooltip>
                 </div>
-                <a-button class="ide-ai-create-button" size="small" @click="openAiGenerator">
+                <a-button
+                  class="ide-ai-create-button"
+                  size="small"
+                  :disabled="selectedIndicatorCodeHidden"
+                  :title="selectedIndicatorCodeHidden ? $t('indicatorIde.aiHiddenSourceUnavailable') : $t('indicatorIde.aiCollaborate')"
+                  @click="openAiGenerator"
+                >
                   <a-icon type="robot" /> {{ $t('indicatorIde.aiCollaborate') }}
                 </a-button>
                 <a-tooltip :title="selectedIndicatorCodeHidden ? $t('indicatorIde.saveBlockedHiddenCode') : $t('indicatorIde.saveShortcutHint')">
@@ -218,7 +224,7 @@
                 <div v-show="aiPanelExpanded" class="ai-gen-body">
                   <div v-if="!selectedIndicatorId || selectedIndicatorCodeHidden" class="ai-workspace-blocked">
                     <a-icon :type="selectedIndicatorCodeHidden ? 'lock' : 'save'" />
-                    <span>{{ selectedIndicatorCodeHidden ? $t('indicatorIde.saveBlockedHiddenCode') : $t('indicatorIde.aiNoSavedIndicator') }}</span>
+                    <span>{{ selectedIndicatorCodeHidden ? $t('indicatorIde.aiHiddenSourceUnavailable') : $t('indicatorIde.aiNoSavedIndicator') }}</span>
                   </div>
                   <template v-else>
                     <div ref="aiConversation" class="ai-conversation">
@@ -1063,6 +1069,7 @@ import { getNotificationSettings } from '@/api/user'
 import { getWatchlist, addWatchlist, searchSymbols } from '@/api/market'
 import { getPublicSettingsConfig } from '@/api/settings'
 import { extractIndicatorSignalLabels } from '@/utils/indicatorSignalOptions'
+import { renderSafeMarkdown } from '@/utils/safeMarkdown'
 import KlineChart from '@/views/indicator-analysis/components/KlineChart.vue'
 import QuickTradePanel from '@/components/QuickTradePanel/QuickTradePanel'
 import { Modal } from 'ant-design-vue'
@@ -1469,6 +1476,10 @@ export default {
       if (typeof document !== 'undefined') document.body.classList.remove('qd-code-ai-resizing')
     },
     openAiGenerator () {
+      if (this.selectedIndicatorCodeHidden) {
+        this.$message.warning(this.$t('indicatorIde.aiHiddenSourceUnavailable'))
+        return
+      }
       this.codeDrawerVisible = true
       this.aiPanelExpanded = true
       this.$nextTick(() => {
@@ -3129,34 +3140,8 @@ export default {
         this.aiGenerating = false
       }
     },
-    escapeAiHtml (value) {
-      return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-    },
     renderAiMessage (value) {
-      const codeBlocks = []
-      const source = String(value || '').replace(/\r\n/g, '\n').replace(/```([\w+-]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-        const index = codeBlocks.length
-        codeBlocks.push(`<pre class="ai-message__code"><code>${this.escapeAiHtml(code.trim())}</code></pre>`)
-        return `@@AI_CODE_${index}@@`
-      })
-      const inline = this.escapeAiHtml(source)
-        .replace(/`([^`]+)`/g, '<code class="ai-message__inline-code">$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      return inline.split('\n').map((line) => {
-        const codeMatch = line.match(/^@@AI_CODE_(\d+)@@$/)
-        if (codeMatch) return codeBlocks[Number(codeMatch[1])] || ''
-        if (/^\s*---+\s*$/.test(line)) return '<hr class="ai-message__divider">'
-        const heading = line.match(/^\s*#{1,4}\s+(.+)$/)
-        if (heading) return `<div class="ai-message__heading">${heading[1]}</div>`
-        const bullet = line.match(/^\s*[-*]\s+(.+)$/)
-        if (bullet) return `<div class="ai-message__bullet"><span>•</span><span>${bullet[1]}</span></div>`
-        return line ? `<div>${line}</div>` : '<div class="ai-message__spacer"></div>'
-      }).join('')
+      return renderSafeMarkdown(value)
     },
     normalizeAiDebugSummary (summary) {
       if (!summary || typeof summary !== 'object') return null
@@ -3419,15 +3404,13 @@ export default {
               this.chartVisibleIndicatorIds = [...this.chartVisibleIndicatorIds, tid]
             }
             this.selectedIndicatorId = targetId
-            this.currentCode = code
-            this.codeDirty = false
-            if (this.cmInstance) {
-              this.cmInstance.setValue(code)
-              this.cmInstance.refresh()
-            }
-            this.syncSelectedIndicatorToChart(code)
             const ind = this.indicators.find(i => i.id === targetId)
             if (ind) ind.code = code
+            // A newly-created indicator owns a fresh AI workspace. Select and
+            // load it immediately so the previous indicator's conversation can
+            // never remain visible until a manual save/reselect cycle.
+            this.onIndicatorChange(targetId)
+            this.aiPanelExpanded = true
             this.$message.success(this.$t('indicatorIde.newIndicatorCreated'))
           } else {
             this.$message.error(this.$t('indicatorIde.newIndicatorFailed'))
@@ -3823,7 +3806,8 @@ export default {
     selectedIndicatorIsPurchased () {
       this.$nextTick(() => this.applyCodeMirrorReadOnly())
     },
-    selectedIndicatorCodeHidden () {
+    selectedIndicatorCodeHidden (hidden) {
+      if (hidden) this.resetAiWorkspaceState()
       this.$nextTick(() => this.applyCodeMirrorReadOnly())
     },
     isDarkTheme () {
@@ -5149,14 +5133,20 @@ body.dark .ide-signal-alert-modal-wrap {
   background: #f1f4f8;
   font-size: 11px;
   line-height: 1.55;
-  white-space: pre-wrap;
+  white-space: normal;
   word-break: break-word;
 }
-.ai-message__content ::v-deep .ai-message__heading { margin: 7px 0 3px; color: inherit; font-weight: 600; }
-.ai-message__content ::v-deep .ai-message__bullet { display: flex; gap: 6px; padding-left: 2px; }
-.ai-message__content ::v-deep .ai-message__spacer { height: 6px; }
-.ai-message__content ::v-deep .ai-message__divider { margin: 7px 0; border: 0; border-top: 1px solid rgba(127, 140, 160, 0.2); }
-.ai-message__content ::v-deep .ai-message__inline-code {
+.ai-message__content ::v-deep p { margin: 0 0 7px; }
+.ai-message__content ::v-deep p:last-child { margin-bottom: 0; }
+.ai-message__content ::v-deep h3,
+.ai-message__content ::v-deep h4,
+.ai-message__content ::v-deep h5 { margin: 9px 0 4px; color: inherit; font-size: 12px; line-height: 1.45; }
+.ai-message__content ::v-deep ul,
+.ai-message__content ::v-deep ol { margin: 5px 0 7px; padding-left: 19px; }
+.ai-message__content ::v-deep li { margin: 2px 0; }
+.ai-message__content ::v-deep blockquote { margin: 7px 0; padding: 5px 8px; border-left: 3px solid var(--primary-color, #52c41a); color: #68758a; background: rgba(82, 196, 26, 0.06); }
+.ai-message__content ::v-deep hr { margin: 7px 0; border: 0; border-top: 1px solid rgba(127, 140, 160, 0.2); }
+.ai-message__content ::v-deep code {
   padding: 1px 4px;
   border-radius: 4px;
   color: #d46b08;
@@ -5164,7 +5154,7 @@ body.dark .ide-signal-alert-modal-wrap {
   font-family: 'Fira Code', Consolas, monospace;
   font-size: 10px;
 }
-.ai-message__content ::v-deep .ai-message__code {
+.ai-message__content ::v-deep .qd-markdown-code {
   margin: 6px 0;
   padding: 8px;
   overflow-x: auto;
@@ -5174,6 +5164,12 @@ body.dark .ide-signal-alert-modal-wrap {
   font: 10px/1.5 'Fira Code', Consolas, monospace;
   white-space: pre;
 }
+.ai-message__content ::v-deep .qd-markdown-code code { padding: 0; color: inherit; background: transparent; }
+.ai-message__content ::v-deep a { color: #1677ff; text-decoration: underline; }
+.ai-message__content ::v-deep .qd-markdown-table-wrap { max-width: 100%; margin: 7px 0; overflow-x: auto; }
+.ai-message__content ::v-deep .qd-markdown-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.ai-message__content ::v-deep .qd-markdown-table th,
+.ai-message__content ::v-deep .qd-markdown-table td { padding: 5px 6px; border: 1px solid rgba(127, 140, 160, 0.22); text-align: left; }
 .ai-message--user .ai-message__content {
   border-radius: 10px 10px 3px 10px;
   color: #24570f;

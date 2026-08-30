@@ -15,6 +15,7 @@ const api = {
   unreadNotificationCount: '/api/strategies/notifications/unread-count',
   verifyCode: '/api/strategies/verify',
   aiGenerate: '/api/strategies/generate',
+  aiWorkspace: '/api/strategies/ai-workspace',
   scriptTemplates: '/api/strategies/script-templates',
   reviewReport: '/api/strategies/review-report',
   reviewReportHistory: '/api/strategies/review-report/history',
@@ -220,6 +221,39 @@ export function aiGenerateStrategy (data) {
     method: 'post',
     data,
     timeout: AI_GENERATE_TIMEOUT
+  })
+}
+
+export function getStrategyAiWorkspace (sourceId, params = {}) {
+  return request({
+    url: `${api.aiWorkspace}/${sourceId}`,
+    method: 'get',
+    params
+  })
+}
+
+export function clearStrategyAiWorkspace (sourceId, params = {}) {
+  return request({
+    url: `${api.aiWorkspace}/${sourceId}`,
+    method: 'delete',
+    params
+  })
+}
+
+export function runStrategyAiTurn (data) {
+  return request({
+    url: `${api.aiWorkspace}/turn`,
+    method: 'post',
+    data,
+    timeout: AI_GENERATE_TIMEOUT
+  })
+}
+
+export function setStrategyAiCandidateStatus (changeId, status) {
+  return request({
+    url: `${api.aiWorkspace}/changes/${changeId}/status`,
+    method: 'post',
+    data: { status }
   })
 }
 

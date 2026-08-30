@@ -21,6 +21,23 @@ test('indicator AI is indicator-scoped and does not overwrite the editor while s
   assert.doesNotMatch(streamingBlock, /cmInstance\.setValue/)
 })
 
+test('new indicators immediately bind a fresh AI workspace without a manual reselect', () => {
+  const createBlock = viewSource.slice(
+    viewSource.indexOf('async _createIndicatorInIde ()'),
+    viewSource.indexOf('async handlePublishIndicator', viewSource.indexOf('async _createIndicatorInIde ()'))
+  )
+  assert.match(createBlock, /this\.selectedIndicatorId = targetId[\s\S]*?this\.onIndicatorChange\(targetId\)/)
+  assert.match(createBlock, /this\.aiPanelExpanded = true/)
+  assert.match(viewSource, /onIndicatorChange \(id\)[\s\S]*?this\.loadAiWorkspace\(id\)/)
+})
+
+test('hidden purchased indicators cannot open or call AI collaboration', () => {
+  assert.match(viewSource, /:disabled="selectedIndicatorCodeHidden"[\s\S]*?indicatorIde\.aiHiddenSourceUnavailable/)
+  assert.match(viewSource, /v-if="!selectedIndicatorId \|\| selectedIndicatorCodeHidden"/)
+  assert.match(viewSource, /if \(this\.selectedIndicatorCodeHidden\) \{[\s\S]*?indicatorIde\.aiHiddenSourceUnavailable[\s\S]*?return/)
+  assert.match(viewSource, /selectedIndicatorCodeHidden \(hidden\) \{[\s\S]*?this\.resetAiWorkspaceState\(\)/)
+})
+
 test('indicator AI separates discussion from explicit code changes', () => {
   assert.match(viewSource, /interactionMode: requestMode/)
   assert.match(viewSource, /replyType === 'discussion'/)

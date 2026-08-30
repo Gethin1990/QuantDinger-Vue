@@ -28,7 +28,7 @@
           :readonly="false"
           :consume-copilot-draft="false"
           side-mode="split"
-          @verified="scriptVerified = true"
+          @verified="handleStrategyVerified"
           @template-change="handleTemplateChange"
         >
           <template #toolbar>
@@ -129,14 +129,6 @@
 
               <div class="toolbar-right">
                 <a-button
-                  v-if="currentAssetType === 'script'"
-                  class="ai-strategy-create-button"
-                  @click="openAiStrategyGenerator"
-                >
-                  <a-icon type="robot" />
-                  {{ aiStrategyText.title }}
-                </a-button>
-                <a-button
                   v-if="currentAssetType === 'portfolio_strategy'"
                   class="universe-library-button"
                   :class="{ 'universe-library-button--selected': currentAssetType === 'portfolio_strategy' && !!selectedUniverseId }"
@@ -183,31 +175,161 @@
               </div>
             </div>
           </template>
+
+          <template #ai-workspace>
+            <div
+              class="strategy-ai-workspace"
+              :class="{ 'strategy-ai-workspace--collapsed': !aiPanelExpanded }"
+            >
+              <div class="strategy-ai-header" @click="toggleStrategyAiPanel">
+                <div class="strategy-ai-header__title">
+                  <a-icon type="robot" />
+                  <strong>{{ aiWorkspaceText.title }}</strong>
+                  <span class="strategy-ai-contract-badge">
+                    {{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.portfolioContract : aiWorkspaceText.ctaContract }}
+                  </span>
+                  <span class="strategy-ai-memory-badge">
+                    <a-icon :type="scriptCodeHidden ? 'lock' : (currentSourceId ? 'link' : 'clock-circle')" />
+                    {{ scriptCodeHidden ? aiWorkspaceText.hiddenSourceBadge : (currentSourceId ? aiWorkspaceText.memoryActive : aiWorkspaceText.temporaryMemory) }}
+                  </span>
+                </div>
+                <div class="strategy-ai-header__actions">
+                  <a-button
+                    v-if="!scriptCodeHidden && currentSourceId && (aiMessages.length || aiCandidate)"
+                    type="link"
+                    size="small"
+                    :disabled="aiStrategyGenerating"
+                    @click.stop="clearStrategyAiConversation"
+                  >{{ aiWorkspaceText.clear }}</a-button>
+                  <a-icon :type="aiPanelExpanded ? 'up' : 'down'" />
+                </div>
+              </div>
+
+              <div v-show="aiPanelExpanded" class="strategy-ai-body">
+                <div v-if="scriptCodeHidden" class="strategy-ai-locked">
+                  <a-icon type="lock" />
+                  <strong>{{ aiWorkspaceText.hiddenSourceTitle }}</strong>
+                  <span>{{ aiWorkspaceText.hiddenSourceUnavailable }}</span>
+                </div>
+                <template v-else>
+                  <div ref="strategyAiConversation" class="strategy-ai-conversation">
+                    <div v-if="aiWorkspaceLoading" class="strategy-ai-empty">
+                      <a-icon type="loading" spin />
+                      <span>{{ aiWorkspaceText.loading }}</span>
+                    </div>
+                    <div v-else-if="!aiMessages.length" class="strategy-ai-empty">
+                      <a-icon type="message" />
+                      <strong>{{ aiWorkspaceText.emptyTitle }}</strong>
+                      <span>{{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.portfolioEmptyDesc : aiWorkspaceText.ctaEmptyDesc }}</span>
+                      <div class="strategy-ai-quick-prompts">
+                        <button
+                          v-for="item in aiStrategyQuickPrompts"
+                          :key="item.label"
+                          type="button"
+                          @click="useStrategyAiQuickPrompt(item)"
+                        >{{ item.label }}</button>
+                      </div>
+                    </div>
+
+                    <div
+                      v-for="messageItem in aiMessages"
+                      :key="messageItem.localId || messageItem.id"
+                      :class="['strategy-ai-message', `strategy-ai-message--${messageItem.role || 'assistant'}`]"
+                    >
+                      <div class="strategy-ai-message__role">
+                        {{ messageItem.role === 'user' ? aiWorkspaceText.you : 'AI' }}
+                        <span v-if="messageItem.role !== 'user'" class="strategy-ai-message__badge">
+                          {{ messageItem.message_type === 'candidate' ? aiWorkspaceText.candidateBadge : aiWorkspaceText.discussionBadge }}
+                        </span>
+                      </div>
+                      <div class="strategy-ai-message__content" v-html="renderStrategyAiMessage(messageItem)" />
+                      <div
+                        v-if="isActiveStrategyCandidateMessage(messageItem)"
+                        class="strategy-ai-candidate"
+                        :class="{ 'strategy-ai-candidate--warning': !aiCandidateValidationPassed }"
+                      >
+                        <div>
+                          <a-icon :type="aiCandidateValidationPassed ? 'check-circle' : 'exclamation-circle'" />
+                          <span>{{ aiCandidateValidationPassed ? aiWorkspaceText.candidateValid : aiWorkspaceText.candidateNeedsReview }}</span>
+                        </div>
+                        <div class="strategy-ai-candidate__actions">
+                          <a-button size="small" @click="previewStrategyAiCandidate"><a-icon type="eye" /> {{ aiWorkspaceText.preview }}</a-button>
+                          <a-button size="small" type="primary" :disabled="!aiCandidateValidationPassed" @click="applyStrategyAiCandidate"><a-icon type="check" /> {{ aiWorkspaceText.apply }}</a-button>
+                          <a-button size="small" type="link" @click="discardStrategyAiCandidate">{{ aiWorkspaceText.discard }}</a-button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-if="aiStrategyGenerating" class="strategy-ai-message strategy-ai-message--assistant strategy-ai-message--thinking">
+                      <div class="strategy-ai-message__role">AI</div>
+                      <div class="strategy-ai-message__content"><a-icon type="loading" spin /> {{ aiWorkspaceText.thinking }}</div>
+                    </div>
+                  </div>
+
+                  <div class="strategy-ai-composer">
+                    <a-textarea
+                      ref="strategyAiPrompt"
+                      v-model="aiStrategyPrompt"
+                      :rows="2"
+                      :placeholder="aiWorkspaceText.placeholder"
+                      :disabled="aiStrategyGenerating || scriptCodeHidden"
+                      @input="aiInteractionMode = 'auto'"
+                      @pressEnter="handleStrategyAiEnter"
+                    />
+                    <div class="strategy-ai-composer__footer">
+                      <span>{{ aiWorkspaceText.shortcut }}</span>
+                      <a-button
+                        type="primary"
+                        class="strategy-ai-send"
+                        :loading="aiStrategyGenerating"
+                        :disabled="!String(aiStrategyPrompt || '').trim() || scriptCodeHidden"
+                        @click="sendStrategyAiTurn"
+                      >{{ aiWorkspaceText.send }}</a-button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <template #strategy-contract>
+            <div class="strategy-side-panel">
+              <div class="strategy-side-panel__hero">
+                <a-icon :type="currentAssetType === 'portfolio_strategy' ? 'cluster' : 'line-chart'" />
+                <div>
+                  <strong>{{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.portfolioContract : aiWorkspaceText.ctaContract }}</strong>
+                  <span>{{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.portfolioContractDesc : aiWorkspaceText.ctaContractDesc }}</span>
+                </div>
+              </div>
+              <div class="strategy-contract-list">
+                <div><span>{{ aiWorkspaceText.manifestType }}</span><b>{{ expectedStrategyManifestType }}</b></div>
+                <div><span>{{ aiWorkspaceText.instrumentRule }}</span><b>{{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.multiInstrument : aiWorkspaceText.singleInstrument }}</b></div>
+                <div><span>{{ aiWorkspaceText.marketRule }}</span><b>{{ aiWorkspaceText.marketRuleValue }}</b></div>
+                <div><span>{{ aiWorkspaceText.executionRule }}</span><b>{{ aiWorkspaceText.nextBarRule }}</b></div>
+              </div>
+              <a-alert type="info" show-icon :message="aiWorkspaceText.contractSourceTruth" />
+            </div>
+          </template>
+
         </strategy-editor>
       </section>
     </div>
 
     <a-modal
-      v-model="showAiStrategyGenerator"
-      :title="aiStrategyText.title"
-      :confirm-loading="aiStrategyGenerating"
-      :ok-text="aiStrategyText.generate"
-      :cancel-text="text.cancel"
-      :ok-button-props="{ props: { disabled: !String(aiStrategyPrompt || '').trim() } }"
-      :wrap-class-name="isDarkTheme ? 'ai-strategy-generator-modal ai-strategy-generator-modal--dark' : 'ai-strategy-generator-modal'"
-      width="680px"
-      @ok="generateAiStrategyDraft"
-      @cancel="closeAiStrategyGenerator"
+      v-model="aiPreviewVisible"
+      :title="aiWorkspaceText.previewTitle"
+      :footer="null"
+      :wrap-class-name="isDarkTheme ? 'strategy-ai-preview-modal strategy-ai-preview-modal--dark' : 'strategy-ai-preview-modal'"
+      width="920px"
     >
-      <div class="ai-strategy-generator">
-        <a-alert type="info" show-icon :message="aiStrategyText.hint" />
-        <a-textarea
-          v-model="aiStrategyPrompt"
-          :rows="8"
-          :placeholder="aiStrategyText.placeholder"
-          :disabled="aiStrategyGenerating"
-        />
+      <div class="strategy-ai-preview-toolbar">
+        <span>{{ aiWorkspaceText.previewHint }}</span>
+        <div>
+          <a-button size="small" @click="aiPreviewVisible = false">{{ text.cancel }}</a-button>
+          <a-button size="small" type="primary" :disabled="!aiCandidateValidationPassed" @click="applyStrategyAiCandidate">{{ aiWorkspaceText.apply }}</a-button>
+        </div>
       </div>
+      <pre class="strategy-ai-code-preview">{{ (aiCandidate && aiCandidate.code) || '' }}</pre>
     </a-modal>
 
     <a-modal
@@ -498,11 +620,14 @@ import FactorLibraryModal from './FactorLibraryModal.vue'
 import UniverseLibraryModal from './UniverseLibraryModal.vue'
 import ExecutorStrategies from '@/views/executor-strategies'
 import { resolveIndicatorStrategyContext } from '@/utils/indicatorStrategyContext'
+import { renderSafeMarkdown } from '@/utils/safeMarkdown'
 import {
   aiGenerateStrategy,
+  clearStrategyAiWorkspace,
   createScriptSource,
   deleteScriptSource,
   getIndicatorListForStrategy,
+  getStrategyAiWorkspace,
   getScriptSourcePublishReadiness,
   getScriptSourceDetail,
   getScriptSourceList,
@@ -510,6 +635,8 @@ import {
   getScriptSourceVersions,
   publishScriptSource,
   restoreScriptSourceVersion,
+  runStrategyAiTurn,
+  setStrategyAiCandidateStatus,
   updateScriptSource,
   verifyStrategyCode
 } from '@/api/strategy'
@@ -617,9 +744,18 @@ export default {
       showFactorLibrary: false,
       showUniverseLibrary: false,
       showRobotBuilder: false,
-      showAiStrategyGenerator: false,
+      aiPanelExpanded: true,
+      aiWorkspaceLoading: false,
+      aiWorkspaceLoadToken: 0,
+      aiThread: null,
+      aiMessages: [],
+      aiCandidate: null,
+      aiPreviewVisible: false,
       aiStrategyPrompt: '',
       aiStrategyGenerating: false,
+      aiInteractionMode: 'auto',
+      aiRequestBaseCode: '',
+      strategyValidation: null,
       showIndicatorConvertModal: false,
       indicatorConvertLoading: false,
       indicatorConvertIndicatorLoading: false,
@@ -710,6 +846,40 @@ export default {
     },
     currentNewScriptLabel () {
       return this.currentAssetType === 'portfolio_strategy' ? this.text.newPortfolioStrategy : this.text.newCtaStrategy
+    },
+    expectedStrategyManifestType () {
+      return this.currentAssetType === 'portfolio_strategy' ? 'portfolio' : 'cta'
+    },
+    aiCandidateValidationPassed () {
+      return !!(this.aiCandidate && this.aiCandidate.validation && this.aiCandidate.validation.success)
+    },
+    aiStrategyQuickPrompts () {
+      const prefix = 'strategyIde.aiWorkspace.quick.'
+      const keys = this.currentAssetType === 'portfolio_strategy'
+        ? ['portfolioCreate', 'portfolioExplain', 'portfolioRisk', 'portfolioFix', 'portfolioBacktest']
+        : ['ctaCreate', 'ctaExplain', 'ctaRisk', 'ctaFix', 'ctaBacktest']
+      return keys.map((key, index) => ({
+        label: this.$t(`${prefix}${key}`),
+        mode: index === 1 ? 'discussion' : 'modify'
+      }))
+    },
+    aiWorkspaceText () {
+      const keys = [
+        'title', 'resize', 'ctaContract', 'portfolioContract', 'memoryActive', 'temporaryMemory', 'clear',
+        'loading', 'emptyTitle', 'ctaEmptyDesc', 'portfolioEmptyDesc', 'you', 'candidateBadge',
+        'discussionBadge', 'candidateValid', 'candidateNeedsReview', 'preview', 'apply', 'discard',
+        'thinking', 'placeholder', 'shortcut', 'send', 'contractTab', 'checksTab', 'ctaContractDesc',
+        'portfolioContractDesc', 'manifestType', 'instrumentRule', 'singleInstrument', 'multiInstrument',
+        'marketRule', 'marketRuleValue', 'executionRule', 'nextBarRule', 'contractSourceTruth',
+        'checkPassed', 'checkPassedDesc', 'checkPending', 'checkPendingDesc', 'frequencies', 'instruments',
+        'runCheck', 'previewTitle', 'previewHint', 'clearConfirm', 'candidateReady', 'candidateApplied',
+        'candidateDiscarded', 'editorChangedTitle', 'editorChangedDesc', 'sendFailed', 'temporaryHint',
+        'hiddenSourceBadge', 'hiddenSourceTitle', 'hiddenSourceUnavailable'
+      ]
+      return keys.reduce((acc, key) => {
+        acc[key] = this.$t(`strategyIde.aiWorkspace.${key}`)
+        return acc
+      }, {})
     },
     aiStrategyText () {
       const t = key => this.$t(`strategyIde.aiGenerate.${key}`)
@@ -837,6 +1007,20 @@ export default {
   watch: {
     scriptCode () {
       this.scriptVerified = false
+      this.strategyValidation = null
+    },
+    currentSourceId (value) {
+      this.loadStrategyAiWorkspace(value)
+    },
+    scriptCodeHidden (hidden) {
+      if (hidden) this.resetStrategyAiWorkspace()
+    },
+    currentAssetType () {
+      // CTA and portfolio workspaces have different contracts and prompt intent.
+      // Never carry a half-written request across the boundary.
+      this.aiStrategyPrompt = ''
+      this.aiInteractionMode = 'auto'
+      if (this.currentSourceId) this.loadStrategyAiWorkspace(this.currentSourceId)
     }
   },
   mounted () {
@@ -861,46 +1045,246 @@ export default {
     }
   },
   methods: {
-    openAiStrategyGenerator () {
+    renderStrategyAiMessage (messageItem) {
+      const legacyCandidateText = 'Candidate generated and validated against the current Strategy API V2 workspace contract.'
+      const item = messageItem && typeof messageItem === 'object'
+        ? messageItem
+        : { content: messageItem }
+      const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {}
+      const messageKey = item.message_key || metadata.message_key || ''
+      const rawContent = String(item.content || '').trim()
+      const localizedContent = messageKey === 'candidate_generated_validated' || rawContent === legacyCandidateText
+        ? this.aiWorkspaceText.candidateReady
+        : rawContent
+      return renderSafeMarkdown(localizedContent)
+    },
+    toggleStrategyAiPanel () {
+      this.aiPanelExpanded = !this.aiPanelExpanded
+      if (this.aiPanelExpanded) {
+        this.$nextTick(() => {
+          this.scrollStrategyAiConversation()
+          const input = this.$refs.strategyAiPrompt && this.$refs.strategyAiPrompt.$el
+          const textarea = input && input.querySelector('textarea')
+          if (textarea) textarea.focus()
+        })
+      }
+    },
+    resetStrategyAiWorkspace () {
+      this.aiWorkspaceLoadToken += 1
+      this.aiWorkspaceLoading = false
+      this.aiThread = null
+      this.aiMessages = []
+      this.aiCandidate = null
+      this.aiPreviewVisible = false
+      this.aiRequestBaseCode = ''
       this.aiStrategyPrompt = ''
-      this.showAiStrategyGenerator = true
+      this.aiInteractionMode = 'auto'
     },
-    closeAiStrategyGenerator () {
-      if (this.aiStrategyGenerating) return
-      this.showAiStrategyGenerator = false
-    },
-    buildAiStrategyPrompt () {
-      const source = String(this.aiStrategyPrompt || '').trim()
-      return [
-        'Generate one runnable QuantDinger Python Strategy API V2 draft for the Trading Script editor.',
-        'Use only supported Strategy API V2 APIs. Confirm signals on completed bars and rely on next-bar execution.',
-        'Declare tunable settings with # @param, include explicit risk controls, avoid duplicate orders, and keep code comments in English.',
-        'Return the complete Python source code.',
-        '',
-        `User requirement:\n${source}`
-      ].join('\n')
-    },
-    async generateAiStrategyDraft () {
-      if (!String(this.aiStrategyPrompt || '').trim()) return
-      this.aiStrategyGenerating = true
+    async loadStrategyAiWorkspace (sourceId) {
+      const id = Number(sourceId || 0)
+      if (!id || this.scriptCodeHidden) {
+        this.resetStrategyAiWorkspace()
+        return
+      }
+      const token = ++this.aiWorkspaceLoadToken
+      this.aiWorkspaceLoading = true
+      this.aiThread = null
+      this.aiMessages = []
+      this.aiCandidate = null
       try {
-        const res = await aiGenerateStrategy({ prompt: this.buildAiStrategyPrompt() })
-        const code = this.extractAiGeneratedCode(res)
-        if (!code) throw new Error((res && res.msg) || this.aiStrategyText.failed)
-        this.createNewDraft({ openTemplate: false, assetType: 'script' })
-        this.scriptCode = code
-        await this.$nextTick()
-        const editor = this.$refs.scriptEditor
-        if (editor && typeof editor.setCode === 'function') editor.setCode(code)
-        this.lastSavedSnapshot = ''
-        this.scriptVerified = false
-        this.showAiStrategyGenerator = false
-        this.$message.success(this.aiStrategyText.success)
+        const res = await getStrategyAiWorkspace(id, { assetType: this.currentAssetType })
+        if (token !== this.aiWorkspaceLoadToken || Number(this.currentSourceId || 0) !== id) return
+        const data = (res && res.data) || {}
+        this.aiThread = data.thread || null
+        this.aiMessages = Array.isArray(data.messages) ? data.messages : []
+        const candidate = data.candidate
+        if (candidate && candidate.candidate_code) {
+          this.aiCandidate = {
+            id: candidate.id,
+            code: candidate.candidate_code,
+            baseCodeHash: candidate.base_code_hash || '',
+            baseCodeMatchesCurrent: candidate.base_code_matches_current !== false,
+            validation: candidate.validation || {},
+            summary: candidate.summary || {}
+          }
+        }
+        this.$nextTick(this.scrollStrategyAiConversation)
       } catch (e) {
-        this.$message.error((e && (e.backendMessage || e.message)) || this.aiStrategyText.failed)
+        if (token !== this.aiWorkspaceLoadToken) return
+        const status = e && e.response && Number(e.response.status)
+        if (status === 404) {
+          // An older backend may not expose the workspace history route yet.
+          // Keep the editor usable and treat it as an empty conversation instead
+          // of surfacing a raw HTTP error during page entry.
+          this.aiThread = null
+          this.aiMessages = []
+          this.aiCandidate = null
+          return
+        }
+        this.$message.error(e.backendMessage || e.message || this.aiWorkspaceText.sendFailed)
+      } finally {
+        if (token === this.aiWorkspaceLoadToken) this.aiWorkspaceLoading = false
+      }
+    },
+    scrollStrategyAiConversation () {
+      const el = this.$refs.strategyAiConversation
+      if (el) el.scrollTop = el.scrollHeight
+    },
+    useStrategyAiQuickPrompt (item) {
+      this.aiStrategyPrompt = String((item && item.label) || '')
+      this.aiInteractionMode = (item && item.mode) || 'auto'
+      this.$nextTick(() => {
+        const root = this.$refs.strategyAiPrompt && this.$refs.strategyAiPrompt.$el
+        const textarea = root && root.querySelector('textarea')
+        if (textarea) textarea.focus()
+      })
+    },
+    handleStrategyAiEnter (event) {
+      if (!event) return
+      if (event.ctrlKey || event.metaKey) {
+        const target = event.target
+        if (!target) return
+        event.preventDefault()
+        const start = target.selectionStart
+        const end = target.selectionEnd
+        const value = String(this.aiStrategyPrompt || '')
+        this.aiStrategyPrompt = `${value.slice(0, start)}\n${value.slice(end)}`
+        this.$nextTick(() => {
+          target.selectionStart = start + 1
+          target.selectionEnd = start + 1
+        })
+        return
+      }
+      event.preventDefault()
+      if (!this.aiStrategyGenerating && String(this.aiStrategyPrompt || '').trim()) this.sendStrategyAiTurn()
+    },
+    async sendStrategyAiTurn () {
+      const prompt = String(this.aiStrategyPrompt || '').trim()
+      if (!prompt || this.aiStrategyGenerating || this.scriptCodeHidden) return
+      const existingCode = this.getCurrentScriptCode()
+      this.aiStrategyGenerating = true
+      this.aiRequestBaseCode = existingCode
+      this.aiMessages.push({
+        role: 'user',
+        content: prompt,
+        message_type: this.aiInteractionMode === 'discussion' ? 'question' : 'change_request',
+        localId: `strategy-user-${Date.now()}`
+      })
+      const interactionMode = this.aiInteractionMode || 'auto'
+      this.aiStrategyPrompt = ''
+      this.aiInteractionMode = 'auto'
+      this.$nextTick(this.scrollStrategyAiConversation)
+      try {
+        const res = await runStrategyAiTurn({
+          sourceId: Number(this.currentSourceId || 0),
+          assetType: this.currentAssetType,
+          prompt,
+          existingCode,
+          interactionMode,
+          generationMode: 'authoring',
+          context: { source: 'strategy_ide' }
+        })
+        const data = (res && res.data) || {}
+        const assistantMessage = data.assistant_message || {
+          role: 'assistant',
+          content: data.reply_type === 'candidate' ? this.aiWorkspaceText.candidateReady : '',
+          message_type: data.reply_type || 'discussion',
+          localId: `strategy-assistant-${Date.now()}`
+        }
+        if (assistantMessage.content) this.aiMessages.push(assistantMessage)
+        if (data.reply_type === 'candidate' && data.code) {
+          this.aiCandidate = {
+            id: data.change_id || 0,
+            code: data.code,
+            baseCode: existingCode,
+            baseCodeHash: data.base_code_hash || '',
+            baseCodeMatchesCurrent: true,
+            validation: data.validation || { success: false },
+            summary: data.summary || {}
+          }
+          this.$message.success(this.aiWorkspaceText.candidateReady)
+        }
+        this.aiPanelExpanded = true
+        this.$nextTick(this.scrollStrategyAiConversation)
+      } catch (e) {
+        const message = e.backendMessage || e.message || this.aiWorkspaceText.sendFailed
+        this.aiMessages.push({ role: 'assistant', content: message, message_type: 'discussion', localId: `strategy-error-${Date.now()}` })
+        this.$message.error(message)
+        this.$nextTick(this.scrollStrategyAiConversation)
       } finally {
         this.aiStrategyGenerating = false
       }
+    },
+    isActiveStrategyCandidateMessage (messageItem) {
+      if (!this.aiCandidate || !messageItem || messageItem.role === 'user' || messageItem.message_type !== 'candidate') return false
+      const candidateMessages = this.aiMessages.filter(item => item && item.role !== 'user' && item.message_type === 'candidate')
+      const latest = candidateMessages[candidateMessages.length - 1]
+      const messageChangeId = Number(messageItem.change_id || 0)
+      const candidateId = Number(this.aiCandidate.id || 0)
+      if (messageChangeId && candidateId) return messageChangeId === candidateId
+      return latest === messageItem
+    },
+    previewStrategyAiCandidate () {
+      if (this.aiCandidate && this.aiCandidate.code) this.aiPreviewVisible = true
+    },
+    applyStrategyAiCandidate () {
+      if (!this.aiCandidate || !this.aiCandidate.code || !this.aiCandidateValidationPassed) return
+      const current = this.getCurrentScriptCode()
+      const changed = this.aiCandidate.baseCodeMatchesCurrent === false ||
+        (!!this.aiCandidate.baseCode && current !== this.aiCandidate.baseCode) ||
+        (!!this.aiRequestBaseCode && current !== this.aiRequestBaseCode)
+      if (changed) {
+        this.$confirm({
+          title: this.aiWorkspaceText.editorChangedTitle,
+          content: this.aiWorkspaceText.editorChangedDesc,
+          okText: this.aiWorkspaceText.apply,
+          cancelText: this.text.cancel,
+          onOk: () => this.applyStrategyAiCandidateCode()
+        })
+        return
+      }
+      this.applyStrategyAiCandidateCode()
+    },
+    async applyStrategyAiCandidateCode () {
+      const candidate = this.aiCandidate
+      if (!candidate || !candidate.code) return
+      this.scriptCode = candidate.code
+      await this.$nextTick()
+      const editor = this.$refs.scriptEditor
+      if (editor && typeof editor.setCode === 'function') editor.setCode(candidate.code)
+      this.scriptVerified = true
+      this.strategyValidation = { valid: true, manifest: (candidate.validation && candidate.validation.manifest) || {} }
+      this.aiPreviewVisible = false
+      if (candidate.id) setStrategyAiCandidateStatus(candidate.id, 'applied').catch(() => {})
+      this.aiCandidate = null
+      this.$message.success(this.aiWorkspaceText.candidateApplied)
+    },
+    async discardStrategyAiCandidate () {
+      const candidate = this.aiCandidate
+      if (!candidate) return
+      if (candidate.id) {
+        try { await setStrategyAiCandidateStatus(candidate.id, 'discarded') } catch (_) {}
+      }
+      this.aiCandidate = null
+      this.aiPreviewVisible = false
+      this.$message.success(this.aiWorkspaceText.candidateDiscarded)
+    },
+    clearStrategyAiConversation () {
+      if (!this.currentSourceId) return
+      this.$confirm({
+        title: this.aiWorkspaceText.clear,
+        content: this.aiWorkspaceText.clearConfirm,
+        okText: this.aiWorkspaceText.clear,
+        cancelText: this.text.cancel,
+        onOk: async () => {
+          await clearStrategyAiWorkspace(this.currentSourceId, { assetType: this.currentAssetType })
+          this.resetStrategyAiWorkspace()
+        }
+      })
+    },
+    handleStrategyVerified (validation) {
+      this.scriptVerified = true
+      this.strategyValidation = validation || { valid: true }
     },
     async initPage () {
       await this.loadSources()
@@ -1933,8 +2317,17 @@ export default {
       this.indicatorConvertLoading = true
       this.indicatorConvertError = ''
       try {
+        const source = this.resolveIndicatorConversionContext(ctx)
         const res = await aiGenerateStrategy({
-          prompt: this.buildIndicatorConversionPrompt()
+          prompt: this.buildIndicatorConversionPrompt(),
+          assetType: 'script',
+          generationMode: 'indicator_conversion',
+          existingCode: '',
+          context: {
+            source: 'indicator_ide_conversion',
+            instrument: source.instrument,
+            timeframe: source.timeframe
+          }
         })
         const code = this.extractAiGeneratedCode(res)
         if (!code) throw new Error((res && res.msg) || this.text.indicatorConvertFailed)
@@ -2123,16 +2516,30 @@ export default {
   min-height: 0;
 }
 
+.script-panel ::v-deep .editor-layout--split {
+  grid-template-columns: minmax(0, 1fr) minmax(350px, 32%);
+  grid-template-rows: minmax(0, 1fr) 248px;
+}
+
 .script-panel ::v-deep .code-col,
 .script-panel ::v-deep .side-col {
   height: 100%;
   min-height: 0;
 }
 
-.script-panel ::v-deep .code-section,
+.script-panel ::v-deep .editor-layout--split .side-col {
+  height: 248px;
+}
+
 .script-panel ::v-deep .side-tabs {
   height: 100%;
   min-height: 0;
+}
+
+.script-panel ::v-deep .code-section {
+  height: auto;
+  min-height: 180px;
+  flex: 1 1 auto;
 }
 
 .script-panel ::v-deep .code-editor-container {
@@ -2236,24 +2643,302 @@ export default {
 .script-live-button,
 .script-backtest-button,
 .indicator-convert-button,
+.robot-template-button,
 .factor-library-button,
-.universe-library-button,
-.ai-strategy-create-button {
+.universe-library-button {
   height: 36px;
   font-weight: 700;
 }
 
-.ai-strategy-create-button {
-  border-color: color-mix(in srgb, var(--primary-color, #52c41a) 38%, #d9d9d9);
-  color: var(--primary-color, #52c41a);
-  background: color-mix(in srgb, var(--primary-color, #52c41a) 8%, #fff);
+.strategy-ai-workspace {
+  position: relative;
+  height: 100%;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #dfe5ed;
+  border-radius: 8px;
+  background: #fff;
 }
 
-.ai-strategy-create-button:hover,
-.ai-strategy-create-button:focus {
+.strategy-ai-workspace--collapsed {
+  min-height: 42px;
+  height: 42px;
+}
+
+.strategy-ai-header {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #eef1f5;
+  background: #fafcf9;
+  cursor: pointer;
+}
+
+.strategy-ai-header__title,
+.strategy-ai-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.strategy-ai-header__title {
+  flex-wrap: wrap;
+}
+
+.strategy-ai-header__title > .anticon { color: var(--primary-color, #52c41a); }
+.strategy-ai-header__title strong { color: #25324a; font-size: 13px; }
+
+.strategy-ai-contract-badge,
+.strategy-ai-memory-badge,
+.strategy-ai-message__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.strategy-ai-contract-badge { color: #1677ff; background: #e6f4ff; }
+.strategy-ai-memory-badge { color: #389e0d; background: #f0f9eb; }
+
+.strategy-ai-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+  flex: 1 1 auto;
+  padding: 10px;
+}
+
+.strategy-ai-conversation {
+  min-height: 0;
+  padding: 10px;
+  overflow-y: auto;
+  border: 1px solid #e5e9f0;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.strategy-ai-empty {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #8491a5;
+  text-align: center;
+  font-size: 11px;
+}
+
+.strategy-ai-empty > .anticon { color: var(--primary-color, #52c41a); font-size: 22px; }
+.strategy-ai-empty strong { color: #25324a; font-size: 13px; }
+.strategy-ai-empty span { max-width: 560px; }
+
+.strategy-ai-locked {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  color: #8491a5;
+  text-align: center;
+  background: #fafafa;
+}
+
+.strategy-ai-locked > .anticon { color: #d89614; font-size: 24px; }
+.strategy-ai-locked strong { color: #25324a; font-size: 13px; }
+
+.theme-dark .strategy-ai-locked {
+  border-color: #3a414c;
+  color: #8c98aa;
+  background: #17191d;
+}
+
+.theme-dark .strategy-ai-locked strong { color: #e5e9f0; }
+
+.strategy-ai-quick-prompts {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.strategy-ai-quick-prompts button {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #dce3ec;
+  border-radius: 999px;
+  color: #526079;
+  background: #fff;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.strategy-ai-quick-prompts button:hover {
   border-color: var(--primary-color, #52c41a);
   color: var(--primary-color, #52c41a);
-  background: color-mix(in srgb, var(--primary-color, #52c41a) 13%, #fff);
+}
+
+.strategy-ai-message { max-width: 92%; margin-bottom: 10px; }
+.strategy-ai-message--user { margin-left: auto; }
+.strategy-ai-message__role { margin: 0 4px 3px; color: #96a0b2; font-size: 9px; }
+.strategy-ai-message--user .strategy-ai-message__role { text-align: right; }
+.strategy-ai-message__badge { margin-left: 5px; color: #1677ff; background: #e6f4ff; }
+.strategy-ai-message__content {
+  padding: 8px 10px;
+  border-radius: 9px 9px 9px 3px;
+  color: #354056;
+  background: #f1f4f8;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: normal;
+  word-break: break-word;
+}
+.strategy-ai-message__content ::v-deep p { margin: 0 0 7px; }
+.strategy-ai-message__content ::v-deep p:last-child { margin-bottom: 0; }
+.strategy-ai-message__content ::v-deep h3,
+.strategy-ai-message__content ::v-deep h4,
+.strategy-ai-message__content ::v-deep h5 { margin: 10px 0 5px; color: inherit; font-size: 12px; line-height: 1.45; }
+.strategy-ai-message__content ::v-deep ul,
+.strategy-ai-message__content ::v-deep ol { margin: 5px 0 7px; padding-left: 19px; }
+.strategy-ai-message__content ::v-deep li { margin: 2px 0; }
+.strategy-ai-message__content ::v-deep blockquote { margin: 7px 0; padding: 5px 8px; border-left: 3px solid var(--primary-color, #52c41a); color: #68758a; background: rgba(82, 196, 26, 0.06); }
+.strategy-ai-message__content ::v-deep code { padding: 1px 4px; border-radius: 4px; color: #d46b08; background: rgba(250, 140, 22, 0.1); font: 10px/1.45 'Fira Code', Consolas, monospace; }
+.strategy-ai-message__content ::v-deep .qd-markdown-code { margin: 7px 0; padding: 9px; overflow-x: auto; border-radius: 6px; color: #d9e2f1; background: #1f2430; white-space: pre; }
+.strategy-ai-message__content ::v-deep .qd-markdown-code code { padding: 0; color: inherit; background: transparent; }
+.strategy-ai-message__content ::v-deep hr { margin: 8px 0; border: 0; border-top: 1px solid rgba(127, 140, 160, 0.24); }
+.strategy-ai-message__content ::v-deep a { color: #1677ff; text-decoration: underline; }
+.strategy-ai-message__content ::v-deep .qd-markdown-table-wrap { max-width: 100%; margin: 7px 0; overflow-x: auto; }
+.strategy-ai-message__content ::v-deep .qd-markdown-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.strategy-ai-message__content ::v-deep .qd-markdown-table th,
+.strategy-ai-message__content ::v-deep .qd-markdown-table td { padding: 5px 6px; border: 1px solid rgba(127, 140, 160, 0.22); text-align: left; }
+.strategy-ai-message--user .strategy-ai-message__content {
+  border: 1px solid #d9f7be;
+  border-radius: 9px 9px 3px 9px;
+  color: #24570f;
+  background: #f0f9eb;
+}
+.strategy-ai-message--thinking { opacity: 0.74; }
+
+.strategy-ai-candidate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: -1px;
+  padding: 8px 10px;
+  border: 1px solid #b7eb8f;
+  border-radius: 0 0 9px 3px;
+  color: #389e0d;
+  background: #f6ffed;
+  font-size: 10px;
+}
+
+.strategy-ai-candidate--warning { border-color: #ffd591; color: #d46b08; background: #fff7e6; }
+.strategy-ai-candidate__actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+.strategy-ai-composer {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid #e5e9f0;
+  border-radius: 8px;
+  background: #fff;
+}
+.strategy-ai-composer ::v-deep textarea.ant-input {
+  min-height: 78px;
+  max-height: 130px;
+  flex: 1 1 auto;
+  resize: vertical;
+  line-height: 1.55;
+}
+.strategy-ai-composer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+  color: #9aa4b3;
+  font-size: 9px;
+}
+.strategy-ai-send { min-width: 96px; height: 36px; border-radius: 8px; font-weight: 700; }
+
+.strategy-side-panel { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+.strategy-side-panel__hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e5e9f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.strategy-side-panel__hero > .anticon { margin-top: 2px; color: var(--primary-color, #52c41a); font-size: 18px; }
+.strategy-side-panel__hero div { display: flex; flex-direction: column; gap: 4px; }
+.strategy-side-panel__hero strong { color: #25324a; font-size: 13px; }
+.strategy-side-panel__hero span { color: #7b8494; font-size: 11px; line-height: 1.55; }
+.strategy-contract-list { display: grid; gap: 8px; }
+.strategy-contract-list > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid #edf0f4;
+  border-radius: 7px;
+  background: #fff;
+}
+.strategy-contract-list span { color: #8a94a4; font-size: 10px; }
+.strategy-contract-list b { color: #354056; font-size: 11px; word-break: break-word; }
+
+.script-panel ::v-deep .editor-layout--split .side-tabs--split .ant-tabs-content {
+  min-height: 0;
+}
+
+.script-panel ::v-deep .editor-layout--split .side-tabs--split .ant-tabs-tabpane-active {
+  overflow-y: auto;
+}
+
+.script-panel ::v-deep .editor-layout--split .strategy-side-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1.6fr) minmax(260px, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.script-panel ::v-deep .editor-layout--split .strategy-contract-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.strategy-ai-preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #718096; font-size: 12px; }
+.strategy-ai-preview-toolbar > div { display: flex; gap: 8px; }
+.strategy-ai-code-preview {
+  max-height: 64vh;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border-radius: 8px;
+  color: #d4d4d4;
+  background: #1e1e1e;
+  font: 12px/1.55 'Fira Code', Consolas, monospace;
+  white-space: pre;
 }
 
 .script-save-button,
@@ -2322,6 +3007,53 @@ export default {
     border-color: rgba(255, 255, 255, 0.12) !important;
     color: rgba(255, 255, 255, 0.86) !important;
   }
+
+  .strategy-ai-workspace,
+  .strategy-ai-composer,
+  .strategy-contract-list > div {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #181818;
+  }
+
+  .strategy-ai-header {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    background: #1c1c1c;
+  }
+
+  .strategy-ai-header__title strong,
+  .strategy-ai-empty strong,
+  .strategy-side-panel__hero strong,
+  .strategy-contract-list b {
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .strategy-ai-conversation {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #111;
+  }
+
+  .strategy-ai-message__content {
+    color: rgba(255, 255, 255, 0.76);
+    background: #242424;
+  }
+
+  .strategy-ai-message--user .strategy-ai-message__content {
+    border-color: rgba(82, 196, 26, 0.28);
+    color: #d9f7be;
+    background: rgba(82, 196, 26, 0.12);
+  }
+
+  .strategy-ai-quick-prompts button {
+    border-color: rgba(255, 255, 255, 0.13);
+    color: rgba(255, 255, 255, 0.62);
+    background: #1f1f1f;
+  }
+
+  .strategy-side-panel__hero {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #202020;
+  }
+
 }
 
 @media (max-width: 1180px) {
@@ -2340,10 +3072,37 @@ export default {
     flex: 1 1 260px;
     width: auto;
   }
+
+  .script-panel ::v-deep .editor-layout--split {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 36%);
+  }
+
+  .strategy-ai-quick-prompts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .script-panel ::v-deep .editor-layout--split .strategy-side-panel {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.5fr);
+  }
 }
 </style>
 
 <style lang="less">
+.strategy-ai-preview-modal--dark {
+  .ant-modal-content,
+  .ant-modal-header,
+  .ant-modal-body {
+    border-color: #303030;
+    background: #181818;
+  }
+
+  .ant-modal-title,
+  .ant-modal-close,
+  .strategy-ai-preview-toolbar {
+    color: rgba(255, 255, 255, 0.82);
+  }
+}
+
 .robot-builder-drawer {
   .ant-drawer-content-wrapper {
     max-width: 96vw;

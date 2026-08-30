@@ -105,10 +105,13 @@ test('indicator and strategy code generation have dedicated IDE entry points', (
   assert.match(indicatorIde, /class="ide-ai-create-button"/)
   assert.match(indicatorIde, /@click="openAiGenerator"/)
   assert.match(indicatorIde, /ref="aiGeneratorPanel"/)
-  assert.match(strategyIde, /class="ai-strategy-create-button"/)
-  assert.match(strategyIde, /v-model="showAiStrategyGenerator"/)
-  assert.match(strategyIde, /async generateAiStrategyDraft \(\)/)
-  assert.match(strategyIde, /await aiGenerateStrategy\(\{ prompt: this\.buildAiStrategyPrompt\(\) \}\)/)
+  assert.doesNotMatch(strategyIde, /class="ai-strategy-create-button"/)
+  assert.match(strategyIde, /#ai-workspace/)
+  assert.match(strategyIde, /async sendStrategyAiTurn \(\)/)
+  assert.match(strategyIde, /await runStrategyAiTurn\(/)
+  assert.match(strategyIde, /previewStrategyAiCandidate/)
+  assert.match(strategyIde, /applyStrategyAiCandidate/)
+  assert.doesNotMatch(strategyIde, /v-model="showAiStrategyGenerator"/)
 })
 
 test('research modes carry structured response contracts and balanced trading guidance', () => {
