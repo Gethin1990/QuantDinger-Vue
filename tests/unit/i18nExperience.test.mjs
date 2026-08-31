@@ -38,6 +38,11 @@ const financialKeys = [
   'fastAnalysis.signalNeutral'
 ]
 
+const backtestTradeMarkerKeys = [
+  'strategyV2.backtest.entryMarker',
+  'strategyV2.backtest.exitMarker'
+]
+
 const reviewedCopilotCoreKeys = [
   'aiAssetAnalysis.copilot.confidence',
   'aiAssetAnalysis.copilot.currentPrice',
@@ -95,6 +100,19 @@ test('financial labels use reviewed terminology in every non-Simplified-Chinese 
       assert.ok(messages[key].trim(), `${locale}.${key} must not be empty`)
     }
   }
+})
+
+test('backtest trade markers use reviewed trading terminology', () => {
+  for (const locale of translatedLocales) {
+    const messages = reviewedUiOverrides[locale]
+    for (const key of backtestTradeMarkerKeys) {
+      assert.equal(typeof messages[key], 'string', `${locale} is missing ${key}`)
+      assert.ok(messages[key].trim(), `${locale}.${key} must not be empty`)
+    }
+  }
+
+  assert.equal(reviewedUiOverrides['zh-CN']['strategyV2.backtest.entryMarker'], '开仓')
+  assert.equal(reviewedUiOverrides['zh-CN']['strategyV2.backtest.exitMarker'], '平仓')
 })
 
 test('core report and follow-up terminology is reviewed for every secondary language', () => {

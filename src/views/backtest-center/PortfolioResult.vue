@@ -51,6 +51,78 @@
       </div>
     </div>
 
+    <section v-if="hasTradeReview" class="trade-review-card">
+      <div class="trade-review-heading">
+        <div>
+          <h3>{{ $t(isPortfolioStrategy ? 'strategyV2.backtest.portfolioReviewOverview' : 'strategyV2.backtest.tradeReviewOverview') }}</h3>
+          <span>{{ $t(isPortfolioStrategy ? 'strategyV2.backtest.portfolioReviewHint' : 'strategyV2.backtest.tradeReviewHint') }}</span>
+        </div>
+        <a-select
+          v-if="reviewSymbols.length > 1"
+          v-model="activeReviewSymbol"
+          size="small"
+          class="review-symbol-select">
+          <a-select-option v-for="symbol in reviewSymbols" :key="symbol" :value="symbol">
+            {{ symbol }}
+          </a-select-option>
+        </a-select>
+      </div>
+      <div v-if="isPortfolioStrategy && portfolioContributionRows.length" class="portfolio-contribution-panel">
+        <div class="contribution-heading">
+          <strong>{{ $t('strategyV2.backtest.symbolContribution') }}</strong>
+          <span>{{ $t('strategyV2.backtest.symbolContributionHint') }}</span>
+        </div>
+        <div class="contribution-list">
+          <button
+            v-for="item in portfolioContributionRows"
+            :key="item.symbol"
+            type="button"
+            class="contribution-item"
+            :class="{ active: item.symbol === effectiveReviewSymbol }"
+            @click="activeReviewSymbol = item.symbol"
+          >
+            <span class="contribution-symbol">{{ item.symbol }}</span>
+            <span><small>{{ $t('strategyV2.backtest.closedTrades') }}</small><b>{{ item.trades }}</b></span>
+            <span><small>{{ $t('backtest-center.metrics.winRate') }}</small><b>{{ formatPercent(item.winRate, false) }}</b></span>
+            <span><small>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</small><b :class="profitTone(item.profit)">{{ formatSignedNumber(item.profit) }}</b></span>
+            <a-icon :type="item.hasSnapshot ? 'line-chart' : 'info-circle'" />
+          </button>
+        </div>
+      </div>
+      <div class="review-facts">
+        <div><span>{{ $t('backtest-center.symbol') }}</span><strong>{{ effectiveReviewSymbol }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.closedTrades') }}</span><strong>{{ reviewTrades.length }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.tradeReviewTimeframe') }}</span><strong>{{ reviewTimeframe }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</span><strong :class="profitTone(reviewProfit)">{{ formatSignedNumber(reviewProfit) }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.tradeReviewRange') }}</span><strong>{{ reviewDateRange }}</strong></div>
+      </div>
+      <div v-if="reviewRows.length" class="inline-review-chart">
+        <kline-chart
+          :key="reviewChartKey"
+          ref="reviewChart"
+          :symbol="reviewInstrument.symbol"
+          :market="reviewInstrument.market"
+          :exchange-id="reviewInstrument.exchangeId"
+          :market-type="reviewInstrument.marketType"
+          :timeframe="reviewTimeframe"
+          :initial-before-time="reviewWindow.beforeTime"
+          :initial-limit="reviewWindow.limit"
+          :initial-rows="reviewRows"
+          :theme="isDark ? 'dark' : 'light'"
+          :active-indicators="[]"
+          :show-indicator-toolbar="false"
+          :realtime-enabled="false"
+          :full-width="true"
+          @load="renderReviewMarkers"
+          @indicators-updated="renderReviewMarkers"
+        />
+      </div>
+      <a-empty
+        v-else
+        class="review-snapshot-empty"
+        :description="$t('strategyV2.backtest.tradeReviewSnapshotMissing')" />
+    </section>
+
     <section class="chart-card">
       <div class="chart-heading">
         <div>
@@ -139,11 +211,9 @@
             :columns="tradeColumns"
             :data-source="tradeRows"
             :row-key="(row, index) => row.id || index"
-            :custom-row="tradeRowProps"
             size="small"
             :scroll="{ x: hasGridMatchedTrades ? 1850 : 1610 }"
             :pagination="{ pageSize: 8 }"
-            class="clickable-table"
           />
         </template>
       </a-tab-pane>
@@ -185,42 +255,6 @@
       </a-tab-pane>
     </a-tabs>
 
-    <a-modal
-      v-model="reviewVisible"
-      :title="$t('strategyV2.backtest.tradeReviewTitle', { symbol: selectedTrade.symbol || '-' })"
-      :footer="null"
-      width="min(1440px, 94vw)"
-      wrap-class-name="trade-review-modal"
-      :destroy-on-close="true"
-    >
-      <div v-if="selectedTrade.symbol" class="review-summary">
-        <span>{{ formatDate(selectedTrade.entry_time) }}</span>
-        <strong>{{ formatNumber(selectedTrade.entry_price, 4) }}</strong>
-        <a-icon type="arrow-right" />
-        <span>{{ formatDate(selectedTrade.exit_time) }}</span>
-        <strong>{{ formatNumber(selectedTrade.exit_price, 4) }}</strong>
-        <b :class="profitTone(selectedTrade.profit)">{{ formatSignedNumber(selectedTrade.profit) }}</b>
-      </div>
-      <div class="review-chart-shell">
-        <kline-chart
-          v-if="reviewVisible"
-          ref="reviewChart"
-          :symbol="reviewInstrument.symbol"
-          :market="reviewInstrument.market"
-          :exchange-id="reviewInstrument.exchangeId"
-          :market-type="reviewInstrument.marketType"
-          :timeframe="reviewTimeframe"
-          :initial-before-time="reviewWindow.beforeTime"
-          :initial-limit="reviewWindow.limit"
-          :theme="isDark ? 'dark' : 'light'"
-          :active-indicators="[]"
-          :realtime-enabled="false"
-          :full-width="true"
-          @load="renderReviewMarkers"
-          @indicators-updated="renderReviewMarkers"
-        />
-      </div>
-    </a-modal>
   </div>
 </template>
 
@@ -229,10 +263,10 @@ import * as echarts from 'echarts'
 import moment from 'moment'
 import KlineChart from '@/views/indicator-analysis/components/KlineChart.vue'
 import {
+  buildAggregateTradeReview,
   buildTradeReviewWindow,
   calculateTradeValueUsd,
-  findNearestBarIndex,
-  resolveTradeReviewTimeframe
+  findNearestBarIndex
 } from '@/utils/tradeReview'
 import { timestampMillisecondsUtc } from '@/utils/utcInstant'
 import { formatBacktestTime } from '@/utils/userTime'
@@ -248,8 +282,7 @@ export default {
     return {
       chart: null,
       resizeObserver: null,
-      reviewVisible: false,
-      selectedTrade: {},
+      activeReviewSymbol: '',
       reviewMarkerTimer: null,
       orderStatuses: ['filled', 'partial', 'deferred', 'rejected']
     }
@@ -286,6 +319,9 @@ export default {
       }, { filled: 0, partial: 0, deferred: 0, rejected: 0 })
       return { ...source, feeDrag, orderStatus }
     },
+    isPortfolioStrategy () {
+      return Boolean(this.result.manifest && this.result.manifest.strategyType === 'portfolio')
+    },
     trustTone () {
       if (this.result.liquidated || this.result.legacyInsolventContinuation) return 'is-error'
       if (!this.auditPassed) return 'is-error'
@@ -294,20 +330,57 @@ export default {
     statusLabel () { return this.$t(`strategyV2.backtest.status.${this.result.resultStatus || 'unknown'}`) },
     statusHint () { return this.$t(`strategyV2.backtest.status.${this.result.resultStatus || 'unknown'}Hint`) },
     benchmarkCaption () {
-      if (this.result.benchmarkStatus !== 'available') return this.$t('strategyV2.backtest.benchmarkUnavailable')
+      if (this.effectiveBenchmarkStatus === 'partial') {
+        const item = this.result.benchmark || {}
+        return this.$t('strategyV2.backtest.benchmarkPartial', {
+          symbol: item.symbol || '-',
+          end: this.formatDate(this.benchmarkCoverageEnd)
+        })
+      }
+      if (this.effectiveBenchmarkStatus !== 'available') return this.$t('strategyV2.backtest.benchmarkUnavailable')
       const item = this.result.benchmark || {}
       return this.$t('strategyV2.backtest.comparedWith', { symbol: item.symbol || '-' })
+    },
+    benchmarkCoverageEnd () {
+      return this.result.benchmarkCoverageEnd ||
+        (this.result.dataProvenance && this.result.dataProvenance.benchmark && this.result.dataProvenance.benchmark.lastBar) ||
+        null
+    },
+    effectiveBenchmarkStatus () {
+      const status = this.result.benchmarkStatus || 'unavailable'
+      if (status !== 'available') return status
+      const curve = this.result.equityCurve || []
+      const equityEnd = curve.length ? timestampMillisecondsUtc(curve[curve.length - 1].time) : null
+      const coverageEnd = timestampMillisecondsUtc(this.benchmarkCoverageEnd)
+      return Number.isFinite(equityEnd) && Number.isFinite(coverageEnd) && coverageEnd < equityEnd
+        ? 'partial'
+        : status
+    },
+    benchmarkCurveRows () {
+      const rows = this.result.benchmarkCurve || []
+      const coverageEnd = timestampMillisecondsUtc(this.benchmarkCoverageEnd)
+      if (!Number.isFinite(coverageEnd)) return rows
+      return rows.filter(item => {
+        const time = timestampMillisecondsUtc(item && item.time)
+        return Number.isFinite(time) && time <= coverageEnd
+      })
+    },
+    hasBenchmarkMetrics () {
+      if (!['available', 'partial'].includes(this.effectiveBenchmarkStatus)) return false
+      return Number.isFinite(Number(this.result.benchmarkTotalReturn)) &&
+        Number.isFinite(Number(this.result.excessReturn)) &&
+        this.benchmarkCurveRows.length > 0
     },
     metrics () {
       return [
         { key: 'return', label: this.$t('backtest-center.metrics.totalReturn'), value: this.formatPercent(this.result.totalReturn), tone: this.profitTone(this.result.totalReturn) },
-        { key: 'benchmark', label: this.$t('strategyV2.backtest.benchmarkReturn'), value: this.result.benchmarkStatus === 'available' ? this.formatPercent(this.result.benchmarkTotalReturn) : '-', tone: this.profitTone(this.result.benchmarkTotalReturn) },
-        { key: 'excess', label: this.$t('strategyV2.backtest.excessReturn'), value: this.result.benchmarkStatus === 'available' ? this.formatPercent(this.result.excessReturn) : '-', tone: this.profitTone(this.result.excessReturn) },
-        { key: 'drawdown', label: this.$t('backtest-center.metrics.maxDrawdown'), value: this.formatPercent(this.result.maxDrawdown), tone: 'negative', hint: this.$t('strategyV2.backtest.maxDrawdownHint') },
+        { key: 'benchmark', label: this.$t('strategyV2.backtest.benchmarkReturn'), value: this.hasBenchmarkMetrics ? this.formatPercent(this.result.benchmarkTotalReturn) : '-', tone: this.hasBenchmarkMetrics ? this.profitTone(this.result.benchmarkTotalReturn) : '' },
+        { key: 'excess', label: this.$t('strategyV2.backtest.excessReturn'), value: this.hasBenchmarkMetrics ? this.formatPercent(this.result.excessReturn) : '-', tone: this.hasBenchmarkMetrics ? this.profitTone(this.result.excessReturn) : '' },
+        { key: 'drawdown', label: this.$t('backtest-center.metrics.maxDrawdown'), value: this.formatNullablePercent(this.result.maxDrawdown), tone: this.result.maxDrawdown === null || this.result.maxDrawdown === undefined ? '' : 'negative', hint: this.$t('strategyV2.backtest.maxDrawdownHint') },
         { key: 'executions', label: this.$t('strategyV2.backtest.executions'), value: Number(this.result.totalExecutions || 0), tone: '' },
         { key: 'trades', label: this.$t('strategyV2.backtest.closedTrades'), value: Number(this.result.totalTrades || 0), tone: '' },
         { key: 'win', label: this.$t('backtest-center.metrics.winRate'), value: this.formatPercent(this.result.winRate, false), tone: '' },
-        { key: 'sharpe', label: this.$t('backtest-center.metrics.sharpe'), value: this.formatNumber(this.result.sharpeRatio), tone: '' }
+        { key: 'sharpe', label: this.$t('backtest-center.metrics.sharpe'), value: this.formatNullableNumber(this.result.sharpeRatio), tone: '' }
       ]
     },
     latestSnapshot () {
@@ -320,12 +393,80 @@ export default {
       return (this.result.holdingSnapshots || []).flatMap(snapshot => Object.keys(snapshot.positions || {}).map(symbol => ({ time: snapshot.time, symbol, ...snapshot.positions[symbol], cash: snapshot.cash, grossExposure: snapshot.grossExposure, netExposure: snapshot.netExposure }))).reverse()
     },
     tradeRows () { return this.result.closedTrades || this.result.trades || [] },
+    reviewSymbols () {
+      const snapshots = this.result.reviewCandles && typeof this.result.reviewCandles === 'object'
+        ? Object.keys(this.result.reviewCandles)
+        : []
+      const attributed = Array.isArray(this.attribution.symbols)
+        ? this.attribution.symbols.map(row => String((row && row.symbol) || ''))
+        : []
+      return [...new Set([
+        ...this.tradeRows.map(row => String((row && row.symbol) || '')),
+        ...attributed,
+        ...snapshots
+      ].filter(Boolean))]
+    },
+    effectiveReviewSymbol () {
+      return this.reviewSymbols.includes(this.activeReviewSymbol)
+        ? this.activeReviewSymbol
+        : (this.reviewSymbols[0] || '')
+    },
+    reviewTrades () {
+      return this.tradeRows.filter(row => String((row && row.symbol) || '') === this.effectiveReviewSymbol)
+    },
+    hasTradeReview () {
+      return this.isPortfolioStrategy
+        ? this.portfolioContributionRows.length > 0
+        : this.reviewTrades.length > 0
+    },
+    portfolioContributionRows () {
+      if (!this.isPortfolioStrategy) return []
+      const attributed = new Map((this.attribution.symbols || []).map(row => [String(row.symbol || ''), row]))
+      const snapshots = this.result.reviewCandles && typeof this.result.reviewCandles === 'object'
+        ? this.result.reviewCandles
+        : {}
+      return this.reviewSymbols.map(symbol => {
+        const trades = this.tradeRows.filter(row => String((row && row.symbol) || '') === symbol)
+        const attr = attributed.get(symbol) || {}
+        const tradeProfit = trades.reduce((sum, row) => sum + Number((row && row.profit) || 0), 0)
+        const attributedProfit = Number(attr.realizedProfit || 0) + Number(attr.unrealizedProfit || 0)
+        const wins = trades.filter(row => Number((row && row.profit) || 0) > 0).length
+        return {
+          symbol,
+          trades: trades.length,
+          winRate: trades.length ? wins / trades.length * 100 : 0,
+          profit: trades.length ? tradeProfit : attributedProfit,
+          hasSnapshot: Boolean(snapshots[symbol] && Array.isArray(snapshots[symbol].candles) && snapshots[symbol].candles.length)
+        }
+      }).sort((left, right) => right.profit - left.profit || right.trades - left.trades || left.symbol.localeCompare(right.symbol))
+    },
+    reviewAggregate () {
+      return buildAggregateTradeReview(
+        this.reviewTrades,
+        (this.result.manifest && this.result.manifest.primaryFrequency) || '1d'
+      )
+    },
+    reviewProfit () {
+      return this.reviewTrades.reduce((sum, trade) => sum + Number((trade && trade.profit) || 0), 0)
+    },
+    reviewDateRange () {
+      const window = this.reviewWindow
+      if (Number.isFinite(window.entryTime) && Number.isFinite(window.exitTime)) {
+        return `${this.formatDate(window.entryTime)} ~ ${this.formatDate(window.exitTime)}`
+      }
+      if (!this.reviewRows.length) return '-'
+      return `${this.formatDate(this.reviewRows[0].time)} ~ ${this.formatDate(this.reviewRows[this.reviewRows.length - 1].time)}`
+    },
     hasGridMatchedTrades () {
       return this.tradeRows.some(row => row && row.profit_basis === 'grid_cell')
     },
-    executionRows () { return this.result.executions || this.result.rawTrades || [] },
+    executionRows () {
+      return [...(this.result.executions || this.result.rawTrades || [])].sort((left, right) => {
+        return (timestampMillisecondsUtc(right && right.time) || 0) - (timestampMillisecondsUtc(left && left.time) || 0)
+      })
+    },
     reviewInstrument () {
-      const raw = String(this.selectedTrade.symbol || '')
+      const raw = String(this.effectiveReviewSymbol || '')
       const colon = raw.indexOf(':')
       const market = colon > -1 ? raw.slice(0, colon) : ''
       const rest = colon > -1 ? raw.slice(colon + 1) : raw
@@ -336,12 +477,31 @@ export default {
       return { market, symbol, exchangeId: parts.length > 1 ? parts[0] : '', marketType: parts.length > 1 ? parts[1] : (parts[0] || 'spot') }
     },
     reviewTimeframe () {
-      return resolveTradeReviewTimeframe(
-        this.selectedTrade,
-        (this.result.manifest && this.result.manifest.primaryFrequency) || '1d'
-      )
+      return this.reviewSnapshot.timeframe || this.reviewAggregate.timeframe
     },
-    reviewWindow () { return buildTradeReviewWindow(this.selectedTrade, this.reviewTimeframe) },
+    reviewSnapshot () {
+      const snapshots = this.result.reviewCandles && typeof this.result.reviewCandles === 'object'
+        ? this.result.reviewCandles
+        : {}
+      const snapshot = snapshots[this.effectiveReviewSymbol]
+      return snapshot && typeof snapshot === 'object' ? snapshot : {}
+    },
+    reviewRows () {
+      return Array.isArray(this.reviewSnapshot.candles) ? this.reviewSnapshot.candles : []
+    },
+    reviewWindow () {
+      const aggregateWindow = this.reviewAggregate.window || buildTradeReviewWindow({}, this.reviewTimeframe)
+      if (this.reviewRows.length) {
+        return { ...aggregateWindow, beforeTime: null, limit: this.reviewRows.length }
+      }
+      return aggregateWindow
+    },
+    reviewChartKey () {
+      const rows = this.reviewRows
+      const first = rows.length ? rows[0].time : ''
+      const last = rows.length ? rows[rows.length - 1].time : ''
+      return [this.effectiveReviewSymbol, this.reviewTimeframe, this.reviewWindow.beforeTime, this.reviewWindow.limit, first, last, this.isDark].join('|')
+    },
     rebalanceColumns () {
       return [
         { title: this.$t('strategyV2.backtest.time'), dataIndex: 'time', width: 170, customRender: this.formatDate },
@@ -434,10 +594,11 @@ export default {
     }
   },
   watch: {
-    result: { deep: true, handler () { this.$nextTick(this.renderChart) } },
+    result: { deep: true, handler () { this.syncReviewSymbol(); this.$nextTick(this.renderChart) } },
+    effectiveReviewSymbol () { this.$nextTick(this.renderReviewMarkers) },
     isDark () { this.$nextTick(this.renderChart) }
   },
-  mounted () { this.renderChart(); window.addEventListener('resize', this.resizeChart) },
+  mounted () { this.syncReviewSymbol(); this.renderChart(); window.addEventListener('resize', this.resizeChart) },
   beforeDestroy () {
     window.removeEventListener('resize', this.resizeChart)
     if (this.reviewMarkerTimer) clearTimeout(this.reviewMarkerTimer)
@@ -468,7 +629,7 @@ export default {
           : ((value / peak - 1) * 100)
         return [timestampMillisecondsUtc(item.time), pointDrawdown]
       })
-      const benchmarkRaw = this.result.benchmarkCurve || []
+      const benchmarkRaw = this.benchmarkCurveRows
       const benchmarkBase = benchmarkRaw.length ? Number(benchmarkRaw[0].value || 1) : 1
       const benchmark = benchmarkRaw.map(item => [timestampMillisecondsUtc(item.time), Number(item.value) / benchmarkBase * 100])
       const cash = curve.map(item => [timestampMillisecondsUtc(item.time), Number(item.cash || 0)])
@@ -508,39 +669,45 @@ export default {
       }, true)
     },
     resizeChart () { if (this.chart) this.chart.resize() },
-    tradeRowProps (record) { return { on: { click: () => { this.selectedTrade = record; this.reviewVisible = true } } } },
+    syncReviewSymbol () {
+      if (!this.reviewSymbols.includes(this.activeReviewSymbol)) this.activeReviewSymbol = this.reviewSymbols[0] || ''
+    },
     renderReviewMarkers () {
       if (this.reviewMarkerTimer) clearTimeout(this.reviewMarkerTimer)
       this.reviewMarkerTimer = setTimeout(() => {
         const component = this.$refs.reviewChart
         const chart = component && component.getChartInstance ? component.getChartInstance() : null
-        const trade = this.selectedTrade || {}
         const entryTime = this.reviewWindow.entryTime
         const exitTime = this.reviewWindow.exitTime
-        const entryPrice = Number(trade.entry_price)
-        const exitPrice = Number(trade.exit_price)
         if (!component || !chart || !Number.isFinite(entryTime) || !Number.isFinite(exitTime)) return
 
         component.clearBacktestOverlays()
-        const isShort = String(trade.side || '').toLowerCase() === 'short'
-        if (Number.isFinite(entryPrice)) {
-          component.addBacktestOverlay(this.reviewMarkerConfig({
-            timestamp: entryTime,
-            price: entryPrice,
-            text: this.$t('strategyV2.backtest.entryMarker'),
-            side: isShort ? 'sell' : 'buy',
-            color: isShort ? '#f6465d' : '#0ecb81'
-          }))
-        }
-        if (Number.isFinite(exitPrice)) {
-          component.addBacktestOverlay(this.reviewMarkerConfig({
-            timestamp: exitTime,
-            price: exitPrice,
-            text: this.$t('strategyV2.backtest.exitMarker'),
-            side: isShort ? 'buy' : 'sell',
-            color: isShort ? '#0ecb81' : '#f6465d'
-          }))
-        }
+        const stride = Math.max(1, Math.ceil(this.reviewTrades.length / 250))
+        this.reviewTrades.filter((trade, index) => index % stride === 0 || index === this.reviewTrades.length - 1).forEach(trade => {
+          const tradeEntryTime = timestampMillisecondsUtc(trade.entry_time)
+          const tradeExitTime = timestampMillisecondsUtc(trade.exit_time)
+          const entryPrice = Number(trade.entry_price)
+          const exitPrice = Number(trade.exit_price)
+          const isShort = String(trade.side || '').toLowerCase() === 'short'
+          if (Number.isFinite(tradeEntryTime) && Number.isFinite(entryPrice)) {
+            component.addBacktestOverlay(this.reviewMarkerConfig({
+              timestamp: tradeEntryTime,
+              price: entryPrice,
+              text: this.$t('strategyV2.backtest.entryMarker'),
+              side: isShort ? 'sell' : 'buy',
+              color: isShort ? '#f6465d' : '#0ecb81'
+            }))
+          }
+          if (Number.isFinite(tradeExitTime) && Number.isFinite(exitPrice)) {
+            component.addBacktestOverlay(this.reviewMarkerConfig({
+              timestamp: tradeExitTime,
+              price: exitPrice,
+              text: this.$t('strategyV2.backtest.exitMarker'),
+              side: isShort ? 'buy' : 'sell',
+              color: isShort ? '#0ecb81' : '#f6465d'
+            }))
+          }
+        })
         this.focusReviewRange(chart, entryTime, exitTime)
       }, 80)
     },
@@ -594,6 +761,7 @@ export default {
       return translated === key ? String(value) : translated
     },
     formatPercent (value, signed = true) { const number = Number(value || 0); return `${signed && number > 0 ? '+' : ''}${number.toFixed(2)}%` },
+    formatNullablePercent (value, signed = true) { return value === null || value === undefined ? '-' : this.formatPercent(value, signed) },
     formatRate (value) { return `${(Number(value || 0) * 100).toFixed(2)}%` },
     formatNumber (value, digits = 2) { const number = Number(value || 0); return Number.isFinite(number) ? number.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '-' },
     formatNullableNumber (value, digits = 2) { return value === null || value === undefined ? '-' : this.formatNumber(value, digits) },
@@ -625,10 +793,34 @@ export default {
 .positive { color: #16a34a !important; }
 .negative { color: #dc2626 !important; }
 .neutral { color: #94a3b8 !important; }
-.chart-card { margin-top: 12px; padding: 13px; border: 1px solid #edf0f4; border-radius: 8px; }
+.chart-card, .trade-review-card { margin-top: 12px; padding: 13px; border: 1px solid #edf0f4; border-radius: 8px; }
 .chart-heading { display: flex; justify-content: space-between; gap: 16px; }
-.chart-heading h3 { margin: 0; color: #26364c; font-size: 14px; }
+.chart-heading h3, .trade-review-heading h3 { margin: 0; color: #26364c; font-size: 14px; }
 .chart-heading span, .chart-legend-note { color: #7c8ca1; font-size: 11px; }
+.trade-review-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.trade-review-heading span { color: #7c8ca1; font-size: 11px; }
+.review-symbol-select { min-width: 230px; }
+.portfolio-contribution-panel { margin-top: 12px; padding: 10px; border: 1px solid #edf0f4; border-radius: 8px; background: #fbfcfe; }
+.contribution-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.contribution-heading strong { color: #334155; font-size: 12px; }
+.contribution-heading span { color: #7c8ca1; font-size: 10px; }
+.contribution-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; max-height: 250px; overflow: auto; }
+.contribution-item { display: grid; grid-template-columns: minmax(155px, 1.5fr) .62fr .7fr .85fr 18px; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid #e7ebf0; border-radius: 7px; outline: none; background: #fff; color: #334155; text-align: left; cursor: pointer; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
+.contribution-item:hover { border-color: #95de64; }
+.contribution-item.active { border-color: #52c41a; background: #f6ffed; box-shadow: 0 0 0 1px rgba(82,196,26,.08); }
+.contribution-item > span { min-width: 0; }
+.contribution-item small { display: block; color: #8b99aa; font-size: 9px; }
+.contribution-item b { display: block; overflow: hidden; color: #334155; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.contribution-symbol { overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.contribution-item > .anticon { color: #52c41a; }
+.review-facts { display: grid; grid-template-columns: 1.25fr .7fr .7fr .8fr 1.8fr; gap: 8px; margin-top: 10px; }
+.review-facts div { min-width: 0; padding: 8px 10px; border-radius: 7px; background: #f8fafc; }
+.review-facts span { display: block; color: #7c8ca1; font-size: 10px; }
+.review-facts strong { display: block; overflow: hidden; color: #334155; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.inline-review-chart { width: 100%; height: 520px; margin-top: 10px; overflow: hidden; border-radius: 8px; }
+.review-snapshot-empty { margin: 16px 0 4px; padding: 28px 12px; border: 1px dashed #d9e2ec; border-radius: 8px; background: #fafcff; }
+.inline-review-chart /deep/ .chart-left { width: 100% !important; height: 100% !important; }
+.inline-review-chart /deep/ .kline-chart-container { height: auto !important; min-height: 0; }
 .portfolio-chart { width: 100%; height: 590px; }
 .assumption-strip, .overview-grid, .status-grid { display: grid; gap: 8px; margin-top: 12px; }
 .assumption-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -649,17 +841,16 @@ export default {
 .audit-summary.failed { color: #ff4d4f; background: rgba(255, 77, 79, .08); }
 .audit-summary div { display: flex; flex-direction: column; }
 .audit-summary span { color: #7c8ca1; font-size: 11px; }
-.clickable-table /deep/ tbody tr { cursor: pointer; }
-.clickable-table /deep/ tbody tr:hover td { background: rgba(82, 196, 26, .08) !important; }
-.review-summary { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px; border-radius: 8px; background: #f8fafc; }
-.review-summary b { margin-left: auto; }
-.review-chart-shell { width: 100%; height: 68vh; min-height: 520px; max-height: 680px; overflow: hidden; }
-.review-chart-shell /deep/ .chart-left { width: 100% !important; height: 100% !important; }
-.review-chart-shell /deep/ .kline-chart-container { height: auto !important; min-height: 0; }
-.portfolio-result.theme-dark .metric-card, .portfolio-result.theme-dark .overview-card, .portfolio-result.theme-dark .status-card, .portfolio-result.theme-dark .assumption-strip div { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
-.portfolio-result.theme-dark .metric-card strong, .portfolio-result.theme-dark .overview-card strong, .portfolio-result.theme-dark .status-card strong, .portfolio-result.theme-dark .chart-heading h3, .portfolio-result.theme-dark .assumption-strip strong { color: #e5e7eb; }
+.portfolio-result.theme-dark .metric-card, .portfolio-result.theme-dark .overview-card, .portfolio-result.theme-dark .status-card, .portfolio-result.theme-dark .assumption-strip div, .portfolio-result.theme-dark .review-facts div { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
+.portfolio-result.theme-dark .portfolio-contribution-panel { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
+.portfolio-result.theme-dark .contribution-heading strong, .portfolio-result.theme-dark .contribution-item b, .portfolio-result.theme-dark .contribution-symbol { color: #e5e7eb; }
+.portfolio-result.theme-dark .contribution-item { border-color: rgba(255,255,255,.1); background: #151515; color: #e5e7eb; }
+.portfolio-result.theme-dark .contribution-item:hover { border-color: #389e0d; }
+.portfolio-result.theme-dark .contribution-item.active { border-color: #52c41a; background: rgba(82,196,26,.12); }
+.portfolio-result.theme-dark .metric-card strong, .portfolio-result.theme-dark .overview-card strong, .portfolio-result.theme-dark .status-card strong, .portfolio-result.theme-dark .chart-heading h3, .portfolio-result.theme-dark .trade-review-heading h3, .portfolio-result.theme-dark .review-facts strong, .portfolio-result.theme-dark .assumption-strip strong { color: #e5e7eb; }
 .liquidation-alert { margin-top: 12px; }
-.portfolio-result.theme-dark .chart-card { border-color: rgba(255,255,255,.1); }
+.portfolio-result.theme-dark .chart-card, .portfolio-result.theme-dark .trade-review-card { border-color: rgba(255,255,255,.1); }
+.portfolio-result.theme-dark .review-snapshot-empty { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
 .portfolio-result.theme-dark .result-trustbar.is-success { border-color: #315d22; background: #13200f; color: #73d13d; }
 .portfolio-result.theme-dark .result-trustbar.is-warning { border-color: #664d03; background: #211b08; color: #ffc53d; }
 .portfolio-result.theme-dark .result-trustbar.is-error { border-color: #6b2525; background: #251111; color: #ff7875; }
@@ -671,11 +862,7 @@ export default {
 .portfolio-result.theme-dark .result-trustbar /deep/ .trust-tag--warning { border-color: #664d03; background: rgba(250, 173, 20, .18); color: #ffe58f; }
 @media (max-width: 1500px) { .metrics-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 900px) { .metrics-grid, .overview-grid, .status-grid, .assumption-strip { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px) { .review-facts { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1150px) { .contribution-list { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .result-trustbar { align-items: flex-start; flex-direction: column; }.result-trustbar > div { flex-wrap: wrap; } }
-</style>
-
-<style lang="less">
-body.dark .review-summary { color: rgba(255,255,255,.88); background: #111; }
-.trade-review-modal .ant-modal { max-width: calc(100vw - 32px); padding-bottom: 24px; }
-.trade-review-modal .ant-modal-body { padding: 16px; }
 </style>

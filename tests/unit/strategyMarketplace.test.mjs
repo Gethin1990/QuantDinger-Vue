@@ -62,3 +62,14 @@ test('strategy publishing guides users to a successful backtest with localized f
   assert.match(reviewedLocales, /strategyPublishBacktestCopy/)
   assert.doesNotMatch(english, /Please run code validation before publishing\./)
 })
+
+test('strategy republishing reports a marketplace update instead of another listing', () => {
+  const ide = read('src/views/strategy-ide/index.vue')
+  const english = read('src/locales/lang/en-US.js')
+  const reviewedLocales = read('src/locales/reviewed-ui-overrides.js')
+
+  assert.match(ide, /publication_action/)
+  assert.match(ide, /publishUpdateSuccess/)
+  assert.match(english, /strategyIde\.publishUpdateSuccess/)
+  assert.match(reviewedLocales, /strategyPublishUpdateSuccessCopy/)
+})

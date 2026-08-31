@@ -17,7 +17,17 @@ test('strategy AI collaboration is inline, candidate-first and available to both
   assert.match(page, /applyStrategyAiCandidate/)
   assert.match(page, /discardStrategyAiCandidate/)
   assert.match(page, /:disabled="!aiCandidateValidationPassed"/)
+  assert.match(page, /message_type: data\.reply_type === 'candidate'/)
   assert.doesNotMatch(page, /showAiStrategyGenerator/)
+})
+
+test('strategy AI refreshes the visible credit balance from billing metadata', () => {
+  const page = read('src/views/strategy-ide/index.vue')
+  const backendRoute = read('../QuantDinger/backend_api_python/app/routes/strategy.py')
+  assert.match(page, /\$emit\('credits-updated', remainingCredits\)/)
+  assert.match(backendRoute, /_strategy_ai_billing_feature\(intent\)/)
+  assert.match(backendRoute, /"ai_copilot_chat"[\s\S]*"ai_code_gen"/)
+  assert.match(backendRoute, /"remaining_credits"/)
 })
 
 test('strategy AI workspace keeps memory source-bound and uses explicit candidate status APIs', () => {

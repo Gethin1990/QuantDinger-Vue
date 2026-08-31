@@ -7419,6 +7419,7 @@ export default {
   "strategyIde.verifyBlocked": "代码检查未通过",
   "strategyIde.verifyFailed": "代码检查失败",
   "strategyIde.publishSuccess": "已发布到市场",
+  "strategyIde.publishUpdateSuccess": "市场版本已更新",
   "strategyIde.publishFailed": "发布失败",
   "strategyIde.publishBacktestRequired": "发布前请先运行代码检查。",
   "strategyIde.publishModalTitle": "发布脚本源码到市场",

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  buildAggregateTradeReview,
   buildTradeReviewWindow,
   calculateTradeValueUsd,
   findNearestBarIndex,
@@ -37,6 +38,17 @@ test('builds a bounded historical window around the selected trade', () => {
   assert.ok(result.limit <= 1000)
 })
 
+test('reuses the latest candle window for a recent trade range', () => {
+  const now = Date.now()
+  const result = buildTradeReviewWindow({
+    entry_time: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    exit_time: new Date(now - 24 * 60 * 60 * 1000).toISOString()
+  }, '15m')
+
+  assert.equal(result.beforeTime, null)
+  assert.ok(result.limit <= 1000)
+})
+
 test('treats legacy timezone-less backtest times as UTC instants', () => {
   const result = buildTradeReviewWindow({
     entry_time: '2026-07-20 12:00:00',
@@ -63,4 +75,16 @@ test('finds the closest loaded candle for an execution timestamp', () => {
   const rows = [{ timestamp: 1000 }, { timestamp: 2000 }, { timestamp: 3000 }]
   assert.equal(findNearestBarIndex(rows, 2200), 1)
   assert.equal(findNearestBarIndex([], 2200), -1)
+})
+
+test('aggregates a month of minute trades into a bounded overview window', () => {
+  const result = buildAggregateTradeReview([
+    { entry_time: '2026-07-01T00:01:00Z', exit_time: '2026-07-01T00:12:00Z' },
+    { entry_time: '2026-07-29T23:40:00Z', exit_time: '2026-07-29T23:58:00Z' }
+  ], '1m')
+
+  assert.equal(result.timeframe, '4H')
+  assert.equal(result.window.entryTime, Date.parse('2026-07-01T00:01:00Z'))
+  assert.equal(result.window.exitTime, Date.parse('2026-07-29T23:58:00Z'))
+  assert.ok(result.window.limit <= 1000)
 })

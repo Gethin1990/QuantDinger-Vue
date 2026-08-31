@@ -930,6 +930,7 @@ export default {
         'verifyBlocked',
         'verifyFailed',
         'publishSuccess',
+        'publishUpdateSuccess',
         'publishFailed',
         'publishBacktestRequired',
         'publishBacktestChecking',
@@ -1185,12 +1186,20 @@ export default {
           context: { source: 'strategy_ide' }
         })
         const data = (res && res.data) || {}
-        const assistantMessage = data.assistant_message || {
+        const billing = (data.billing && typeof data.billing === 'object') ? data.billing : data
+        const remainingCredits = Number(billing.remaining_credits)
+        if (Number.isFinite(remainingCredits)) this.$root.$emit('credits-updated', remainingCredits)
+        const assistantMessage = Object.assign({}, data.assistant_message || {
           role: 'assistant',
           content: data.reply_type === 'candidate' ? this.aiWorkspaceText.candidateReady : '',
-          message_type: data.reply_type || 'discussion',
           localId: `strategy-assistant-${Date.now()}`
-        }
+        }, {
+          // Older or source-less backend responses may omit message_type even
+          // though reply_type and code clearly identify a generated candidate.
+          message_type: data.reply_type === 'candidate'
+            ? 'candidate'
+            : ((data.assistant_message && data.assistant_message.message_type) || data.reply_type || 'discussion')
+        })
         if (assistantMessage.content) this.aiMessages.push(assistantMessage)
         if (data.reply_type === 'candidate' && data.code) {
           this.aiCandidate = {
@@ -2013,7 +2022,8 @@ export default {
           codeHidden: !!this.publishForm.codeHidden
         })
         if (res && res.code === 1) {
-          this.$message.success(this.text.publishSuccess)
+          const action = res.data && res.data.publication_action
+          this.$message.success(action === 'updated' ? this.text.publishUpdateSuccess : this.text.publishSuccess)
           this.showPublishModal = false
           this.publishBacktestStatus = 'idle'
         } else if (this.isBacktestRequiredPublishResponse(res)) {

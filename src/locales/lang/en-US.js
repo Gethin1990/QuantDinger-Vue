@@ -7115,6 +7115,7 @@ export default {
   "strategyIde.verifyBlocked": "Code validation blocked",
   "strategyIde.verifyFailed": "Code validation failed",
   "strategyIde.publishSuccess": "Published to market",
+  "strategyIde.publishUpdateSuccess": "Marketplace version updated",
   "strategyIde.publishFailed": "Publish failed",
   "strategyIde.publishBacktestRequired": "Run at least one successful backtest before publishing.",
   "strategyIde.publishBacktestChecking": "Checking backtest status...",

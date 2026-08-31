@@ -16,7 +16,7 @@
         <a-button icon="reload" :loading="historyLoading" @click="refreshPage">
           {{ $t('backtest-center.refreshHistory') }}
         </a-button>
-        <a-button icon="history" @click="historyVisible = true">
+        <a-button icon="history" @click="openHistoryDrawer">
           {{ mode === 'factor' ? $t('strategyV2.factorResearch.historyTitle') : $t('strategyV2.backtest.historyTitle') }}
         </a-button>
       </div>
@@ -32,6 +32,25 @@
             </div>
             <a-tag v-if="manifest" color="green">{{ $t('strategyV2.backtest.ready') }}</a-tag>
           </div>
+          <a-radio-group
+            v-if="mode === 'portfolio'"
+            v-model="sourceCategory"
+            class="source-category-switch"
+            button-style="solid"
+            size="small"
+            data-testid="backtest-source-category"
+            @change="handleSourceCategoryChange"
+          >
+            <a-radio-button value="all">
+              {{ $t('strategyV2.backtest.sourceCategoryAll') }} {{ sources.length }}
+            </a-radio-button>
+            <a-radio-button value="script">
+              {{ $t('strategyV2.cta') }} {{ ctaSources.length }}
+            </a-radio-button>
+            <a-radio-button value="portfolio_strategy">
+              {{ $t('strategyV2.portfolio') }} {{ portfolioSources.length }}
+            </a-radio-button>
+          </a-radio-group>
           <a-select
             v-model="form.sourceId"
             class="full-width"
@@ -45,6 +64,14 @@
               {{ item.name }} · {{ sourceTypeLabel(item) }}
             </a-select-option>
           </a-select>
+          <a-alert
+            v-if="mode === 'portfolio' && sourceCategory === 'portfolio_strategy' && !portfolioSources.length"
+            class="source-empty-alert"
+            type="info"
+            show-icon
+            :message="$t('strategyV2.backtest.noPortfolioSourceTitle')"
+            :description="$t('strategyV2.backtest.noPortfolioSourceHint')"
+          />
 
           <div v-if="manifest" class="manifest-card">
             <div class="manifest-title">
@@ -58,6 +85,14 @@
               <div><span>{{ $t('strategyV2.universe') }}</span><strong>{{ universeLabel }}</strong></div>
             </div>
           </div>
+          <a-alert
+            v-if="fundamentalDependencies.length"
+            class="source-dependency-alert"
+            type="warning"
+            show-icon
+            :message="$t('strategyV2.backtest.fundamentalDependencyTitle')"
+            :description="$t('strategyV2.backtest.fundamentalDependencyHint', { fields: fundamentalDependencies.join(', ') })"
+          />
 
           <div class="panel-heading runtime-heading">
             <div>
@@ -247,7 +282,7 @@
     >
       <div class="drawer-history-header" data-testid="backtest-history">
         <p>{{ mode === 'factor' ? $t('strategyV2.factorResearch.historyDesc') : $t('strategyV2.backtest.historyDesc') }}</p>
-        <a-button icon="reload" size="small" :loading="historyLoading" @click="loadHistory">
+        <a-button icon="reload" size="small" :loading="historyLoading" @click="refreshCurrentHistory">
           {{ $t('backtest-center.refreshHistory') }}
         </a-button>
       </div>
@@ -321,12 +356,14 @@ export default {
   name: 'BacktestCenter',
   components: { PortfolioResult, FactorResearchResult },
   data () {
+    const latestCompleteDate = moment().subtract(1, 'day').startOf('day')
     return {
       mode: 'portfolio',
       sources: [],
       portfolioHistory: [],
       factorHistory: [],
       source: null,
+      sourceCategory: 'all',
       manifest: null,
       backtestRangePolicy: null,
       params: {},
@@ -338,14 +375,18 @@ export default {
       runTimer: null,
       historyLoading: false,
       historyVisible: false,
+      historyLoadedByMode: { portfolio: false, factor: false },
+      historyRequestSequence: 0,
       historyDetailLoading: false,
       historyDetailRunId: null,
+      pageReady: false,
+      sourceLoadSequence: 0,
       equityChart: null,
       chartResizeObserver: null,
       form: {
         sourceId: null,
-        startDate: moment().subtract(1, 'year'),
-        endDate: moment(),
+        startDate: latestCompleteDate.clone().subtract(1, 'year'),
+        endDate: latestCompleteDate,
         initialCapital: 10000,
         commission: 0.0005,
         slippage: 0.0005,
@@ -369,7 +410,14 @@ export default {
       return this.mode === 'portfolio' ? this.result : this.factorResult
     },
     availableSources () {
-      if (this.mode !== 'factor') return this.sources
+      if (this.mode === 'factor') return this.portfolioSources
+      if (this.sourceCategory === 'all') return this.sources
+      return this.sources.filter(item => item.asset_type === this.sourceCategory)
+    },
+    ctaSources () {
+      return this.sources.filter(item => item.asset_type !== 'portfolio_strategy')
+    },
+    portfolioSources () {
       return this.sources.filter(item => item.asset_type === 'portfolio_strategy')
     },
     history () {
@@ -405,6 +453,10 @@ export default {
     manifestFrequency () {
       const subscriptions = (this.manifest && this.manifest.subscriptions) || []
       return (this.manifest && this.manifest.primaryFrequency) || (subscriptions[0] && subscriptions[0].frequency) || '-'
+    },
+    fundamentalDependencies () {
+      const dependencies = this.manifest && this.manifest.fundamentalDependencies
+      return Array.isArray(dependencies) ? dependencies : []
     },
     backtestRangeLimitDays () {
       if (!this.backtestRangePolicy) return null
@@ -466,12 +518,18 @@ export default {
       const schema = this.parseObject(this.source && this.source.param_schema)
       return Array.isArray(schema.params) ? schema.params : []
     },
+    hasBenchmarkMetrics () {
+      if (!this.result || !['available', 'partial'].includes(this.result.benchmarkStatus)) return false
+      return Number.isFinite(Number(this.result.benchmarkTotalReturn)) &&
+        Number.isFinite(Number(this.result.excessReturn)) &&
+        Array.isArray(this.result.benchmarkCurve) && this.result.benchmarkCurve.length > 0
+    },
     metrics () {
       if (!this.result) return []
       return [
         { key: 'return', label: this.$t('backtest-center.metrics.totalReturn'), value: this.formatPercent(this.result.totalReturn), tone: Number(this.result.totalReturn) >= 0 ? 'positive' : 'negative' },
-        { key: 'benchmark', label: this.$t('strategyV2.backtest.benchmarkReturn'), value: this.result.benchmarkStatus === 'available' ? this.formatPercent(this.result.benchmarkTotalReturn) : '-', tone: Number(this.result.benchmarkTotalReturn) >= 0 ? 'positive' : 'negative' },
-        { key: 'excess', label: this.$t('strategyV2.backtest.excessReturn'), value: this.result.benchmarkStatus === 'available' ? this.formatPercent(this.result.excessReturn) : '-', tone: Number(this.result.excessReturn) >= 0 ? 'positive' : 'negative' },
+        { key: 'benchmark', label: this.$t('strategyV2.backtest.benchmarkReturn'), value: this.hasBenchmarkMetrics ? this.formatPercent(this.result.benchmarkTotalReturn) : '-', tone: this.hasBenchmarkMetrics ? (Number(this.result.benchmarkTotalReturn) >= 0 ? 'positive' : 'negative') : '' },
+        { key: 'excess', label: this.$t('strategyV2.backtest.excessReturn'), value: this.hasBenchmarkMetrics ? this.formatPercent(this.result.excessReturn) : '-', tone: this.hasBenchmarkMetrics ? (Number(this.result.excessReturn) >= 0 ? 'positive' : 'negative') : '' },
         { key: 'drawdown', label: this.$t('backtest-center.metrics.maxDrawdown'), value: this.formatPercent(this.result.maxDrawdown), tone: 'negative' },
         { key: 'executions', label: this.$t('strategyV2.backtest.executions'), value: Number(this.result.totalExecutions || 0), tone: '' },
         { key: 'trades', label: this.$t('strategyV2.backtest.closedTrades'), value: Number(this.result.totalTrades || 0), tone: '' },
@@ -562,17 +620,20 @@ export default {
     },
     mode (value) {
       this.handleModeChange(value)
+    },
+    '$route.query.sourceId' () {
+      if (this.pageReady) this.syncRouteSource({ fallback: true })
     }
   },
   async mounted () {
-    await this.refreshPage()
-    const routeSourceId = Number(this.$route.query.sourceId)
-    const sourceId = routeSourceId || (this.sources[0] && Number(this.sources[0].id))
-    if (sourceId) {
-      this.form.sourceId = sourceId
-      await this.selectSource(sourceId)
-    }
+    await this.loadSources()
+    this.pageReady = true
+    await this.syncRouteSource({ fallback: true })
+    this.loadHistory({ mode: this.mode }).catch(() => {})
     window.addEventListener('resize', this.resizeEquityChart)
+  },
+  activated () {
+    if (this.pageReady) this.syncRouteSource({ fallback: true })
   },
   beforeDestroy () {
     window.removeEventListener('resize', this.resizeEquityChart)
@@ -674,24 +735,58 @@ export default {
       try { return JSON.parse(value) } catch (error) { return {} }
     },
     async refreshPage () {
-      await Promise.all([this.loadSources(), this.loadHistory()])
+      await Promise.all([
+        this.loadSources(),
+        this.loadHistory({ mode: this.mode, force: true })
+      ])
+      await this.syncRouteSource({ fallback: true })
     },
     async loadSources () {
       const response = await getScriptSourceList()
       this.sources = (response.data && response.data.items) || []
     },
-    async loadHistory () {
-      this.historyLoading = true
+    async loadHistory ({ mode = this.mode, force = false } = {}) {
+      const requestedMode = mode === 'factor' ? 'factor' : 'portfolio'
+      if (!force && this.historyLoadedByMode[requestedMode]) return
+      const requestSequence = ++this.historyRequestSequence
+      if (requestedMode === this.mode) this.historyLoading = true
       try {
-        const [portfolioResponse, factorResponse] = await Promise.all([
-          getStrategyBacktestHistory({ limit: 24 }),
-          getStrategyFactorResearchHistory({ limit: 24 })
-        ])
-        this.portfolioHistory = Array.isArray(portfolioResponse.data) ? portfolioResponse.data : []
-        this.factorHistory = Array.isArray(factorResponse.data) ? factorResponse.data : []
+        const response = requestedMode === 'factor'
+          ? await getStrategyFactorResearchHistory({ limit: 24 })
+          : await getStrategyBacktestHistory({ limit: 24 })
+        const items = Array.isArray(response.data) ? response.data : []
+        if (requestedMode === 'factor') this.factorHistory = items
+        else this.portfolioHistory = items
+        this.historyLoadedByMode = { ...this.historyLoadedByMode, [requestedMode]: true }
       } finally {
-        this.historyLoading = false
+        if (requestSequence === this.historyRequestSequence || requestedMode === this.mode) {
+          this.historyLoading = false
+        }
       }
+    },
+    async refreshCurrentHistory () {
+      return this.loadHistory({ mode: this.mode, force: true })
+    },
+    openHistoryDrawer () {
+      this.historyVisible = true
+      this.loadHistory({ mode: this.mode }).catch(error => {
+        this.$message.error((error && error.backendMessage) || this.$t('strategyV2.backtest.historyLoadFailed'))
+      })
+    },
+    async syncRouteSource ({ fallback = false } = {}) {
+      const routeSourceId = Number(this.$route.query.sourceId)
+      const routeSource = Number.isFinite(routeSourceId) && routeSourceId > 0
+        ? this.sources.find(item => Number(item.id) === routeSourceId)
+        : null
+      if (routeSource && this.mode === 'portfolio') {
+        this.sourceCategory = routeSource.asset_type === 'portfolio_strategy' ? 'portfolio_strategy' : 'script'
+      }
+      const target = routeSource || (fallback ? this.availableSources[0] : null)
+      if (!target) return
+      const sourceId = Number(target.id)
+      if (Number(this.form.sourceId) === sourceId && Number(this.source && this.source.id) === sourceId && this.manifest) return
+      this.form.sourceId = sourceId
+      await this.selectSource(sourceId)
     },
     async handleModeChange () {
       this.selectedRun = null
@@ -708,18 +803,37 @@ export default {
           this.backtestRangePolicy = null
         }
       }
+      this.loadHistory({ mode: this.mode }).catch(() => {})
       this.applyBacktestRangePolicy()
       this.$nextTick(() => this.resizeEquityChart())
     },
+    async handleSourceCategoryChange () {
+      const currentId = Number(this.form.sourceId)
+      if (this.availableSources.some(item => Number(item.id) === currentId)) return
+      const nextSource = this.availableSources[0]
+      this.form.sourceId = nextSource ? Number(nextSource.id) : null
+      if (nextSource) {
+        await this.selectSource(nextSource.id)
+      } else {
+        this.source = null
+        this.manifest = null
+        this.backtestRangePolicy = null
+        this.result = null
+      }
+    },
     async selectSource (sourceId) {
+      const requestSequence = ++this.sourceLoadSequence
       this.result = null
       this.factorResult = null
       this.selectedRun = null
       this.form.leverageEnabled = false
       this.form.leverage = 1
-      const response = await getScriptSourceDetail(sourceId)
+      const [response, compiled] = await Promise.all([
+        getScriptSourceDetail(sourceId),
+        compileScriptSource({ sourceId })
+      ])
+      if (requestSequence !== this.sourceLoadSequence) return
       this.source = response.data
-      const compiled = await compileScriptSource({ sourceId })
       this.manifest = compiled.data && compiled.data.manifest
       this.backtestRangePolicy = compiled.data && compiled.data.backtestRangePolicy
       this.applyBacktestRangePolicy()
@@ -754,7 +868,9 @@ export default {
       return current.isBefore(endDate.clone().subtract(this.backtestRangeLimitDays, 'days'), 'day')
     },
     disabledEndDate (current) {
-      if (!current || !this.form.startDate) return false
+      if (!current) return false
+      if (current.isAfter(moment().subtract(1, 'day'), 'day')) return true
+      if (!this.form.startDate) return false
       const startDate = this.form.startDate.clone().startOf('day')
       if (current.isBefore(startDate, 'day')) return true
       if (this.backtestRangeLimitDays === null) return false
@@ -791,6 +907,11 @@ export default {
         this.$message.warning(this.$t('strategyV2.sourceContractRequired'))
         return
       }
+      if (this.form.endDate.isAfter(moment().subtract(1, 'day'), 'day')) {
+        this.form.endDate = moment().subtract(1, 'day').startOf('day')
+        this.applyBacktestRangePolicy()
+        this.$message.info(this.$t('strategyV2.backtest.endDateAdjusted'))
+      }
       if (!this.ensureBacktestRangeAllowed()) return
       this.running = true
       this.result = null
@@ -814,7 +935,7 @@ export default {
         if (billing && typeof billing.remaining !== 'undefined') {
           this.$root.$emit('credits-updated', billing.remaining)
         }
-        await this.loadHistory()
+        await this.loadHistory({ mode: 'portfolio', force: true })
       } catch (error) {
         this.$message.error((error && error.backendMessage) || this.$t('strategyV2.backtest.runFailed'))
       } finally {
@@ -826,6 +947,11 @@ export default {
       if (!this.form.sourceId) {
         this.$message.warning(this.$t('strategyV2.sourceContractRequired'))
         return
+      }
+      if (this.form.endDate.isAfter(moment().subtract(1, 'day'), 'day')) {
+        this.form.endDate = moment().subtract(1, 'day').startOf('day')
+        this.applyBacktestRangePolicy()
+        this.$message.info(this.$t('strategyV2.backtest.endDateAdjusted'))
       }
       if (!this.ensureBacktestRangeAllowed()) return
       this.running = true
@@ -845,7 +971,7 @@ export default {
         })
         this.factorResult = response.data
         this.selectedRun = { id: response.data && response.data.runId }
-        await this.loadHistory()
+        await this.loadHistory({ mode: 'factor', force: true })
       } catch (error) {
         this.$message.error((error && error.backendMessage) || this.$t('strategyV2.factorResearch.runFailed'))
       } finally {
@@ -889,9 +1015,16 @@ export default {
           this.form.sourceId = Number(run.source_id)
           const detail = await getScriptSourceDetail(run.source_id)
           this.source = detail.data
+          this.sourceCategory = this.source && this.source.asset_type === 'portfolio_strategy'
+            ? 'portfolio_strategy'
+            : 'script'
           const compiled = await compileScriptSource({ sourceId: run.source_id })
           this.manifest = compiled.data && compiled.data.manifest
           this.backtestRangePolicy = compiled.data && compiled.data.backtestRangePolicy
+        } else if (this.source) {
+          this.sourceCategory = this.source.asset_type === 'portfolio_strategy'
+            ? 'portfolio_strategy'
+            : 'script'
         }
         this.historyVisible = false
       } catch (error) {
@@ -996,6 +1129,10 @@ export default {
 .eyebrow { color: #52c41a; font-weight: 800; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
 .hero-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .hero-stat { display: inline-flex; align-items: baseline; gap: 5px; padding: 7px 10px; border-radius: 8px; color: #718096; background: #f7f9fb; font-size: 12px; }
+.source-category-switch { display: flex; width: 100%; margin-bottom: 9px; }
+.source-category-switch /deep/ .ant-radio-button-wrapper { flex: 1; padding: 0 8px; text-align: center; }
+.source-empty-alert { margin-top: 10px; }
+.source-dependency-alert { margin-top: 10px; }
 .hero-stat strong { color: #25364f; font-size: 16px; }
 .workspace-grid { display: grid; grid-template-columns: minmax(340px, 420px) minmax(620px, 1fr); gap: 14px; align-items: start; }
 .panel { padding: 18px; }
