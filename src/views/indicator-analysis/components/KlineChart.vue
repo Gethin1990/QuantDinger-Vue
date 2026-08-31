@@ -168,6 +168,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch, shallowRef, getCurrentInstance } from 'vue'
 import { init, registerIndicator, registerOverlay } from 'klinecharts'
 import request from '@/utils/request'
+import { inferMarketPricePrecision } from '@/utils/marketPricePrecision.mjs'
 import ExchangeKlineWs from '@/utils/exchangeWs'
 import { splitIndicatorPlotsByPane } from '@/utils/indicatorPlotGrouping'
 import { usePyodide } from '@/services/pyodide/usePyodide'
@@ -355,36 +356,7 @@ export default {
       return Math.floor(requestedTime > 100000000000 ? requestedTime / 1000 : requestedTime)
     }
 
-    const calcPricePrecision = (data) => {
-      if (!data || data.length === 0) return 2
-
-      let maxDecimals = 0
-      const sample = data.length > 50 ? data.slice(-50) : data
-      for (let i = 0; i < sample.length; i++) {
-        const vals = [sample[i].close, sample[i].open, sample[i].high, sample[i].low]
-        for (let j = 0; j < vals.length; j++) {
-          const s = String(vals[j])
-          const dot = s.indexOf('.')
-          if (dot >= 0) {
-            const dec = s.length - dot - 1
-            if (dec > maxDecimals) maxDecimals = dec
-          }
-        }
-      }
-
-      let minSpread = Infinity
-      for (let i = 0; i < sample.length; i++) {
-        const spread = sample[i].high - sample[i].low
-        if (spread > 0 && spread < minSpread) minSpread = spread
-      }
-      let spreadDecimals = 2
-      if (minSpread < Infinity && minSpread > 0) {
-        spreadDecimals = Math.ceil(-Math.log10(minSpread)) + 2
-      }
-
-      const result = Math.max(maxDecimals, spreadDecimals, 2)
-      return Math.min(result, 10)
-    }
+    const calcPricePrecision = (data) => inferMarketPricePrecision(data, props.market)
 
     const formatPrice = (v) => {
       return (Number(v) || 0).toFixed(pricePrecision.value)

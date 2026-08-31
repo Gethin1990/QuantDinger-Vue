@@ -1050,6 +1050,8 @@ import 'codemirror/addon/edit/matchbrackets'
 import 'codemirror/addon/selection/active-line'
 import moment from 'moment'
 import storage from 'store'
+import multiTabEvents from '@/components/MultiTab/events'
+import { routeCacheKey } from '@/components/MultiTab/cacheControl.mjs'
 import { ACCESS_TOKEN } from '@/store/mutation-types'
 import { baseMixin } from '@/store/app-mixin'
 import request from '@/utils/request'
@@ -1358,6 +1360,7 @@ export default {
     }
   },
   created: async function () {
+    multiTabEvents.$on('cache-evict', this.handleTabCacheEviction)
     await this.loadMarketModules()
     await this.loadUserId()
     await this.initializeCryptoMarketSource()
@@ -1404,7 +1407,8 @@ export default {
       clearTimeout(this._persistIdeUiTimer)
       this._persistIdeUiTimer = null
     }
-    this.persistIdeUiState()
+    if (!this._skipPersistOnDestroy) this.persistIdeUiState()
+    multiTabEvents.$off('cache-evict', this.handleTabCacheEviction)
     if (this.cmInstance) {
       this.cmInstance.toTextArea()
       this.cmInstance = null
@@ -1426,6 +1430,20 @@ export default {
     } catch (_) {}
   },
   methods: {
+    handleTabCacheEviction (route) {
+      const key = routeCacheKey(route)
+      const path = route && typeof route === 'object' ? route.path : ''
+      if (key !== 'IndicatorIDE' && path !== '/indicator-ide') return
+
+      this._skipPersistOnDestroy = true
+      if (this._persistIdeUiTimer) {
+        clearTimeout(this._persistIdeUiTimer)
+        this._persistIdeUiTimer = null
+      }
+      if (!this.userId) return
+      storage.remove(ideUiCacheStorageKey(this.userId))
+      storage.remove(ideSelectionStorageKey(this.userId))
+    },
     adjustCodeAiSplit (delta) {
       const next = Number(this.codeAiSplitRatio || 58) + Number(delta || 0)
       this.codeAiSplitRatio = Math.max(28, Math.min(76, next))

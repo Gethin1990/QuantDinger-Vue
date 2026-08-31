@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-import { evictKeepAliveEntry, routeCacheKey } from '../../src/components/MultiTab/cacheControl.mjs'
+import { evictKeepAliveEntry, routeCacheKey, versionedRouteCacheKey } from '../../src/components/MultiTab/cacheControl.mjs'
 import { tabKey } from '../../src/components/MultiTab/tabIdentity.mjs'
 
 const read = path => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
@@ -16,7 +16,8 @@ test('route view keeps cache storage mounted across cached and non-cached pages'
   assert.match(routeView, /v-if="shouldKeepAlive"/)
   assert.match(routeView, /v-if="!shouldKeepAlive"/)
   assert.match(routeView, /routeMeta\.keepAlive/)
-  assert.match(routeView, /this\.\$route\.name \|\| this\.\$route\.path/)
+  assert.match(routeView, /cachedRouteBaseKey/)
+  assert.match(routeView, /versionedRouteCacheKey/)
   assert.match(routeView, /this\.\$route\.fullPath \|\| this\.\$route\.path/)
   assert.doesNotMatch(routeView, /return <router-view key=\{routeKey\}/)
 })
@@ -27,21 +28,34 @@ test('closing a multi-tab page destroys only its matching keep-alive entry', () 
   let destroyed = 0
   const keepAlive = {
     cache: {
-      IndicatorIDE: { componentInstance: { _isDestroyed: false, $destroy: () => { destroyed += 1 } } },
+      'IndicatorIDE::0': { componentInstance: { _isDestroyed: false, $destroy: () => { destroyed += 1 } } },
       StrategyCenter: { componentInstance: { _isDestroyed: false, $destroy: () => { destroyed += 10 } } }
     },
-    keys: ['IndicatorIDE', 'StrategyCenter']
+    keys: ['IndicatorIDE::0', 'StrategyCenter']
   }
 
   assert.equal(routeCacheKey({ name: 'IndicatorIDE', path: '/indicator-ide' }), 'IndicatorIDE')
-  assert.equal(evictKeepAliveEntry(keepAlive, 'IndicatorIDE'), true)
+  assert.equal(versionedRouteCacheKey({ name: 'IndicatorIDE' }), 'IndicatorIDE::0')
+  assert.equal(versionedRouteCacheKey('IndicatorIDE', 2), 'IndicatorIDE::2')
+  assert.equal(evictKeepAliveEntry(keepAlive, 'IndicatorIDE::0'), true)
   assert.equal(destroyed, 1)
-  assert.equal(keepAlive.cache.IndicatorIDE, null)
+  assert.equal(keepAlive.cache['IndicatorIDE::0'], null)
   assert.deepEqual(keepAlive.keys, ['StrategyCenter'])
   assert.ok(keepAlive.cache.StrategyCenter)
   assert.match(multiTab, /events\.\$emit\('cache-evict', targetPage\)/)
   assert.match(routeView, /pendingCacheEvictions/)
+  assert.match(routeView, /routeCacheVersions/)
+  assert.match(routeView, /this\.\$set\(this\.routeCacheVersions/)
   assert.match(routeView, /this\.\$nextTick\(this\.flushPendingCacheEvictions\)/)
+})
+
+test('closing indicator workspace clears its persisted page state', () => {
+  const indicatorIde = read('src/views/indicator-ide/index.vue')
+
+  assert.match(indicatorIde, /multiTabEvents\.\$on\('cache-evict', this\.handleTabCacheEviction\)/)
+  assert.match(indicatorIde, /storage\.remove\(ideUiCacheStorageKey\(this\.userId\)\)/)
+  assert.match(indicatorIde, /storage\.remove\(ideSelectionStorageKey\(this\.userId\)\)/)
+  assert.match(indicatorIde, /if \(!this\._skipPersistOnDestroy\) this\.persistIdeUiState\(\)/)
 })
 
 test('multi-tab workspaces are enabled for users without a saved preference', () => {

@@ -4,6 +4,11 @@ export function routeCacheKey (route) {
   return String(route.name || route.path || '')
 }
 
+export function versionedRouteCacheKey (route, version = 0) {
+  const key = routeCacheKey(route)
+  return key ? `${key}::${Number(version) || 0}` : ''
+}
+
 /**
  * Remove one explicit router-view key from Vue 2's keep-alive LRU cache.
  * RouteView always supplies a stable key, so closing one workspace can destroy

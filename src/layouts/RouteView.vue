@@ -22,7 +22,7 @@
 
 <script>
 import multiTabEvents from '@/components/MultiTab/events'
-import { evictKeepAliveEntry, routeCacheKey } from '@/components/MultiTab/cacheControl.mjs'
+import { evictKeepAliveEntry, routeCacheKey, versionedRouteCacheKey } from '@/components/MultiTab/cacheControl.mjs'
 
 export default {
   name: 'RouteView',
@@ -38,7 +38,8 @@ export default {
   },
   data () {
     return {
-      pendingCacheEvictions: []
+      pendingCacheEvictions: [],
+      routeCacheVersions: Object.create(null)
     }
   },
   created () {
@@ -57,7 +58,11 @@ export default {
     // its editor/chat/chart state. Different named pages still get their own
     // cache entries.
     cachedRouteKey () {
-      return this.$route.name || this.$route.path
+      const baseKey = this.cachedRouteBaseKey
+      return versionedRouteCacheKey(baseKey, this.routeCacheVersions[baseKey])
+    },
+    cachedRouteBaseKey () {
+      return routeCacheKey(this.$route)
     },
     // Non-cached routes retain the previous fullPath behaviour and are rebuilt
     // when their params/query change.
@@ -77,20 +82,26 @@ export default {
 
       // Vue must finish navigating away before the active cached instance can
       // be destroyed safely. Inactive tabs can be removed immediately.
-      if (key === this.cachedRouteKey) {
+      if (key === this.cachedRouteBaseKey) {
         if (!this.pendingCacheEvictions.includes(key)) this.pendingCacheEvictions.push(key)
         return
       }
-      this.evictCacheKey(key)
+      this.invalidateCacheKey(key)
     },
-    evictCacheKey (key) {
-      return evictKeepAliveEntry(this.$refs.routeCache, key)
+    invalidateCacheKey (baseKey) {
+      const currentVersion = Number(this.routeCacheVersions[baseKey]) || 0
+      const oldEntryKey = versionedRouteCacheKey(baseKey, currentVersion)
+
+      // The versioned key guarantees a fresh component next time even if
+      // Vue's private keep-alive cache representation changes.
+      this.$set(this.routeCacheVersions, baseKey, currentVersion + 1)
+      return evictKeepAliveEntry(this.$refs.routeCache, oldEntryKey)
     },
     flushPendingCacheEvictions () {
-      const currentKey = this.cachedRouteKey
+      const currentKey = this.cachedRouteBaseKey
       const ready = this.pendingCacheEvictions.filter(key => key !== currentKey)
       this.pendingCacheEvictions = this.pendingCacheEvictions.filter(key => key === currentKey)
-      ready.forEach(this.evictCacheKey)
+      ready.forEach(this.invalidateCacheKey)
     }
   }
 }
