@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "約3日間",
   "fastAnalysis.outlookBear": "弱気",
   "fastAnalysis.outlookBull": "強気",
+  "fastAnalysis.outlookMildBear": "やや弱気・様子見",
+  "fastAnalysis.outlookMildBull": "やや強気・様子見",
   "fastAnalysis.outlookNeutral": "ニュートラル／レンジ",
   "fastAnalysis.overall": "全体",
   "fastAnalysis.pivotStd": "クラシックピボット",

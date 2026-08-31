@@ -4992,6 +4992,8 @@ const locale = {
   "fastAnalysis.outlook1m": "~1 month",
   "fastAnalysis.outlookBull": "Bullish",
   "fastAnalysis.outlookBear": "Bearish",
+  "fastAnalysis.outlookMildBear": "Mildly bearish · wait",
+  "fastAnalysis.outlookMildBull": "Mildly bullish · wait",
   "fastAnalysis.outlookNeutral": "Neutral / range",
   "fastAnalysis.stopLossHintShort": "Short stop-loss: above current price (loss if price rises). Values from backend trading_plan.",
   "fastAnalysis.takeProfitHintShort": "Short take-profit: below current price (profit if price falls). Values from backend trading_plan.",

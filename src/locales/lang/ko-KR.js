@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "약 3일",
   "fastAnalysis.outlookBear": "약세",
   "fastAnalysis.outlookBull": "강세",
+  "fastAnalysis.outlookMildBear": "소폭 약세 · 관망",
+  "fastAnalysis.outlookMildBull": "소폭 강세 · 관망",
   "fastAnalysis.outlookNeutral": "중립/범위",
   "fastAnalysis.overall": "전반적인",
   "fastAnalysis.pivotStd": "클래식 피벗",

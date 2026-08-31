@@ -109,7 +109,7 @@
           <div class="consensus-strip-metrics">
             <span class="cm-item">
               <em>{{ $t('fastAnalysis.consensusDecision') }}</em>
-              {{ formatDecisionLabel(consensusBlock.consensus_decision) }}
+              {{ formatDecisionLabel(consensusBlock.consensus_decision, consensusBlock.directional_bias, consensusBlock.consensus_score) }}
             </span>
             <span class="cm-item">
               <em>{{ $t('fastAnalysis.consensusScore') }}</em>
@@ -218,7 +218,7 @@
             <div v-for="row in trendOutlookBlocks" :key="row.key" class="trend-outlook-item">
               <div class="to-label">{{ row.label }}</div>
               <div class="to-trend" :class="outlookTrendClass(row.trend)">
-                {{ formatOutlookTrend(row.trend) }}
+                {{ formatOutlookTrend(row.trend, row.bias, row.score) }}
               </div>
               <div class="to-meta">
                 <span class="to-score">{{ row.score != null ? row.score : '--' }}</span>
@@ -510,6 +510,7 @@
 <script>
 import { mapState } from 'vuex'
 import { submitFeedback as submitFeedbackApi, getPerformanceStats } from '@/api/fast-analysis'
+import { resolveDecisionLabelKey } from '@/utils/fastAnalysisPresentation'
 
 export default {
   name: 'FastAnalysisReport',
@@ -591,7 +592,11 @@ export default {
       return String(this.result?.market || '').toLowerCase() === 'crypto'
     },
     decisionDisplayText () {
-      return this.formatDecisionLabel(this.result?.decision)
+      return this.formatDecisionLabel(
+        this.result?.decision,
+        this.result?.outlook_bias,
+        this.result?.consensus?.consensus_score
+      )
     },
     displaySummary () {
       return this.neutralizeDecisionText(this.result?.summary || '')
@@ -666,6 +671,7 @@ export default {
           key,
           label: this.$t(labelKey),
           trend: block.trend,
+          bias: block.bias,
           score: block.score,
           strength: block.strength
         }
@@ -893,11 +899,8 @@ export default {
       const num = parseFloat(value) || 0
       return num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)
     },
-    formatDecisionLabel (decision) {
-      const d = String(decision || 'HOLD').toUpperCase()
-      if (d === 'BUY') return this.$t('fastAnalysis.outlookBull')
-      if (d === 'SELL') return this.$t('fastAnalysis.outlookBear')
-      return this.$t('fastAnalysis.outlookNeutral')
+    formatDecisionLabel (decision, bias, score) {
+      return this.$t(resolveDecisionLabelKey({ decision, bias, score }))
     },
     cryptoSignalValueLabel (value) {
       const key = String(value || '').trim().toLowerCase()
@@ -929,8 +932,8 @@ export default {
         .replace(/\bSELL\b/gi, sell)
         .replace(/\bHOLD\b/gi, hold)
     },
-    formatOutlookTrend (trend) {
-      return this.formatDecisionLabel(trend)
+    formatOutlookTrend (trend, bias, score) {
+      return this.formatDecisionLabel(trend, bias, score)
     },
     outlookTrendClass (trend) {
       const t = String(trend || '').toUpperCase()

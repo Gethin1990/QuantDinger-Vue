@@ -696,6 +696,7 @@ import { fastAnalyze } from '@/api/fast-analysis'
 import storage from 'store'
 import { ACCESS_TOKEN } from '@/store/mutation-types'
 import { loadEnabledMarketOptions, firstMarketValue } from '@/utils/marketModules'
+import { resolveDecisionLabelKey } from '@/utils/fastAnalysisPresentation'
 import FastAnalysisReport from './FastAnalysisReport.vue'
 import {
   mergeWatchlistSuggestions,
@@ -3158,10 +3159,12 @@ export default {
       return [report.market || target.market, report.symbol || target.symbol].filter(Boolean).join(':') || '--'
     },
     reportDecision (msg) {
-      const decision = String((msg && msg.report && msg.report.decision) || 'HOLD').toUpperCase()
-      if (decision === 'BUY') return this.$t('fastAnalysis.outlookBull')
-      if (decision === 'SELL') return this.$t('fastAnalysis.outlookBear')
-      return this.$t('fastAnalysis.outlookNeutral')
+      const report = (msg && msg.report) || {}
+      return this.$t(resolveDecisionLabelKey({
+        decision: report.decision,
+        bias: report.outlook_bias,
+        score: report.consensus && report.consensus.consensus_score
+      }))
     },
     reportDecisionClass (msg) {
       const decision = String((msg && msg.report && msg.report.decision) || 'HOLD').toLowerCase()

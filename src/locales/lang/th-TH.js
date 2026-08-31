@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "ประมาณ 3 วัน",
   "fastAnalysis.outlookBear": "ขาลง",
   "fastAnalysis.outlookBull": "ขาขึ้น",
+  "fastAnalysis.outlookMildBear": "เอียงลงเล็กน้อย · รอดู",
+  "fastAnalysis.outlookMildBull": "เอียงขึ้นเล็กน้อย · รอดู",
   "fastAnalysis.outlookNeutral": "เป็นกลาง / แกว่งตัว",
   "fastAnalysis.overall": "โดยรวม",
   "fastAnalysis.pivotStd": "จุดหมุนคลาสสิก",

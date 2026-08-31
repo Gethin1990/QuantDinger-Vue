@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "約 3 天",
   "fastAnalysis.outlookBear": "看空",
   "fastAnalysis.outlookBull": "看多",
+  "fastAnalysis.outlookMildBear": "輕微看空 · 觀望",
+  "fastAnalysis.outlookMildBull": "輕微看多 · 觀望",
   "fastAnalysis.outlookNeutral": "震盪 / 中性",
   "fastAnalysis.overall": "綜合評分",
   "fastAnalysis.pivotStd": "經典樞軸 Pivot",

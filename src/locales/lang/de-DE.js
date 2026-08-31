@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "ca. 3 Tage",
   "fastAnalysis.outlookBear": "Bärisch",
   "fastAnalysis.outlookBull": "Bullisch",
+  "fastAnalysis.outlookMildBear": "Leicht bärisch · abwarten",
+  "fastAnalysis.outlookMildBull": "Leicht bullisch · abwarten",
   "fastAnalysis.outlookNeutral": "Neutral / Bereich",
   "fastAnalysis.overall": "Gesamt",
   "fastAnalysis.pivotStd": "Klassischer Drehpunkt",

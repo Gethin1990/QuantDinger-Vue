@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "~3 ngày",
   "fastAnalysis.outlookBear": "Giảm giá",
   "fastAnalysis.outlookBull": "Tăng giá",
+  "fastAnalysis.outlookMildBear": "Hơi giảm · chờ quan sát",
+  "fastAnalysis.outlookMildBull": "Hơi tăng · chờ quan sát",
   "fastAnalysis.outlookNeutral": "Trung tính / phạm vi",
   "fastAnalysis.overall": "Tổng thể",
   "fastAnalysis.pivotStd": "Điểm xoay cổ điển",

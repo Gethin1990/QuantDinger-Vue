@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "~3 дня",
   "fastAnalysis.outlookBear": "Медвежий",
   "fastAnalysis.outlookBull": "Бычий",
+  "fastAnalysis.outlookMildBear": "Слабо медвежий · ждать",
+  "fastAnalysis.outlookMildBull": "Слабо бычий · ждать",
   "fastAnalysis.outlookNeutral": "Нейтральный / диапазон",
   "fastAnalysis.overall": "Общий",
   "fastAnalysis.pivotStd": "Классический поворот",

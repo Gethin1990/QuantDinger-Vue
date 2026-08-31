@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "~3 jours",
   "fastAnalysis.outlookBear": "Baissier",
   "fastAnalysis.outlookBull": "Haussier",
+  "fastAnalysis.outlookMildBear": "Légèrement baissier · attendre",
+  "fastAnalysis.outlookMildBull": "Légèrement haussier · attendre",
   "fastAnalysis.outlookNeutral": "Neutre / portée",
   "fastAnalysis.overall": "Dans l'ensemble",
   "fastAnalysis.pivotStd": "Pivot classique",

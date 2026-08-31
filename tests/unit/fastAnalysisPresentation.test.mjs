@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { resolveDecisionLabelKey } from '../../src/utils/fastAnalysisPresentation.js'
 
 const read = path => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
 
@@ -48,4 +49,11 @@ test('strategy logs render typed market-data failures with actionable reasons', 
   assert.match(logs, /marketDataReasonLabel/)
   assert.match(logs, /marketDataAction/)
   assert.match(logs, /technical_detail/)
+})
+
+test('hold reports preserve mild directional bias instead of flattening to neutral', () => {
+  assert.equal(resolveDecisionLabelKey({ decision: 'HOLD', score: 17.6 }), 'fastAnalysis.outlookMildBull')
+  assert.equal(resolveDecisionLabelKey({ decision: 'HOLD', bias: 'MILD_BEARISH' }), 'fastAnalysis.outlookMildBear')
+  assert.equal(resolveDecisionLabelKey({ decision: 'HOLD', score: 3 }), 'fastAnalysis.outlookNeutral')
+  assert.equal(resolveDecisionLabelKey({ decision: 'BUY', score: -30 }), 'fastAnalysis.outlookBull')
 })

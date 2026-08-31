@@ -2945,6 +2945,8 @@ const locale = {
   "fastAnalysis.outlook3d": "حوالي 3 أيام",
   "fastAnalysis.outlookBear": "هبوطي",
   "fastAnalysis.outlookBull": "صعودي",
+  "fastAnalysis.outlookMildBear": "هبوطي بشكل طفيف · انتظار",
+  "fastAnalysis.outlookMildBull": "صعودي بشكل طفيف · انتظار",
   "fastAnalysis.outlookNeutral": "محايد / نطاق",
   "fastAnalysis.overall": "إجمالي",
   "fastAnalysis.pivotStd": "المحور الكلاسيكي",
