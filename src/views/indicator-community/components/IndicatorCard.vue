@@ -28,10 +28,6 @@
             <a-icon :type="isStrategyAsset ? 'code-sandbox' : 'line-chart'" />
             <span>{{ isStrategyAsset ? $t('community.tabScriptTemplates') : $t('community.chartIndicator') }}</span>
           </div>
-          <div v-if="isStrategyAsset" class="binding-badge" :class="`binding-badge--${bindingMode}`">
-            <a-icon :type="bindingIcon" />
-            <span>{{ $t(`community.binding.${bindingMode}`) }}</span>
-          </div>
         </div>
         <div class="cover-badges__right">
           <div v-if="indicator.vip_free" class="vip-free-tag">
@@ -198,14 +194,6 @@ export default {
     },
     bindingMode () {
       return this.indicator.binding_mode || this.strategyContract.binding_mode || 'unknown'
-    },
-    bindingIcon () {
-      return {
-        fixed: 'lock',
-        parameterized: 'swap',
-        universe: 'global',
-        portfolio: 'cluster'
-      }[this.bindingMode] || 'question-circle'
     },
     boundInstrumentLabel () {
       if (this.strategyContract.universe_reference) return this.strategyContract.universe_reference
@@ -538,29 +526,6 @@ export default {
       &--low { background: rgba(0, 0, 0, 0.55); }
     }
 
-    .binding-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      max-width: 132px;
-      padding: 3px 7px;
-      border-radius: 12px;
-      background: rgba(0, 0, 0, 0.52);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 600;
-      backdrop-filter: blur(4px);
-
-      &--parameterized { background: rgba(82, 196, 26, 0.88); }
-      &--universe { background: rgba(24, 144, 255, 0.88); }
-      &--portfolio { background: rgba(114, 46, 209, 0.88); }
-
-      span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    }
   }
 
   .vip-free-tag {

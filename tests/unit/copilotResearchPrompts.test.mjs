@@ -98,12 +98,12 @@ test('professional reports render as compact expandable artifacts by default', (
   assert.match(report, /class="report-expand-button"/)
 })
 
-test('indicator and strategy code generation have dedicated IDE entry points', () => {
+test('indicator and strategy IDEs expose their AI workspaces without redundant toolbar entry points', () => {
   const indicatorIde = read('src/views/indicator-ide/index.vue')
   const strategyIde = read('src/views/strategy-ide/index.vue')
 
-  assert.match(indicatorIde, /class="ide-ai-create-button"/)
-  assert.match(indicatorIde, /@click="openAiGenerator"/)
+  assert.doesNotMatch(indicatorIde, /class="ide-ai-create-button"/)
+  assert.doesNotMatch(indicatorIde, /openAiGenerator/)
   assert.match(indicatorIde, /ref="aiGeneratorPanel"/)
   assert.doesNotMatch(strategyIde, /class="ai-strategy-create-button"/)
   assert.match(strategyIde, /#ai-workspace/)

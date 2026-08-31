@@ -60,15 +60,6 @@
                     <a-button size="small" :disabled="!selectedIndicatorId" @click="openCodeVersionDrawer"><a-icon type="history" /></a-button>
                   </a-tooltip>
                 </div>
-                <a-button
-                  class="ide-ai-create-button"
-                  size="small"
-                  :disabled="selectedIndicatorCodeHidden"
-                  :title="selectedIndicatorCodeHidden ? $t('indicatorIde.aiHiddenSourceUnavailable') : $t('indicatorIde.aiCollaborate')"
-                  @click="openAiGenerator"
-                >
-                  <a-icon type="robot" /> {{ $t('indicatorIde.aiCollaborate') }}
-                </a-button>
                 <a-tooltip :title="selectedIndicatorCodeHidden ? $t('indicatorIde.saveBlockedHiddenCode') : $t('indicatorIde.saveShortcutHint')">
                   <a-button
                     class="ide-save-button"
@@ -1474,20 +1465,6 @@ export default {
       this._codeAiResizeEnd = null
       this.codeAiResizing = false
       if (typeof document !== 'undefined') document.body.classList.remove('qd-code-ai-resizing')
-    },
-    openAiGenerator () {
-      if (this.selectedIndicatorCodeHidden) {
-        this.$message.warning(this.$t('indicatorIde.aiHiddenSourceUnavailable'))
-        return
-      }
-      this.codeDrawerVisible = true
-      this.aiPanelExpanded = true
-      this.$nextTick(() => {
-        const panel = this.$refs && this.$refs.aiGeneratorPanel
-        if (panel && typeof panel.scrollIntoView === 'function') {
-          panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-        }
-      })
     },
     toggleCodeDrawer () {
       this.codeDrawerVisible = !this.codeDrawerVisible
@@ -3877,25 +3854,6 @@ export default {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-}
-.ide-ai-create-button {
-  height: 28px !important;
-  display: inline-flex !important;
-  align-items: center;
-  gap: 5px;
-  border-color: color-mix(in srgb, var(--primary-color, @primary-color) 38%, #d9d9d9) !important;
-  border-radius: 8px !important;
-  color: var(--primary-color, @primary-color) !important;
-  background: color-mix(in srgb, var(--primary-color, @primary-color) 8%, #fff) !important;
-  font-size: 12px;
-  font-weight: 700;
-
-  &:hover,
-  &:focus {
-    border-color: var(--primary-color, @primary-color) !important;
-    color: var(--primary-color, @primary-color) !important;
-    background: color-mix(in srgb, var(--primary-color, @primary-color) 13%, #fff) !important;
-  }
 }
 .chart-panel-action-btn {
   height: 28px !important;
