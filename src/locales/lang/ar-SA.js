@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "التحليل الفني",
   "fastAnalysis.technicalIndicatorsTitle": "مصفوفة مؤشرات الأداء الاحترافية",
   "fastAnalysis.totalAnalyses": "التحليلات الكاملة",
+  "fastAnalysis.trend.bearish_alignment": "محاذاة هبوطية",
+  "fastAnalysis.trend.bullish_alignment": "محاذاة صعودية",
   "fastAnalysis.trend.consolidating": "التوحيد",
   "fastAnalysis.trend.death_cross": "صليب الموت",
   "fastAnalysis.trend.downtrend": "اتجاه هبوطي",

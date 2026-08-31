@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "기술적 분석",
   "fastAnalysis.technicalIndicatorsTitle": "프로 지표 매트릭스",
   "fastAnalysis.totalAnalyses": "총 분석",
+  "fastAnalysis.trend.bearish_alignment": "약세 정렬",
+  "fastAnalysis.trend.bullish_alignment": "강세 정렬",
   "fastAnalysis.trend.consolidating": "통합",
   "fastAnalysis.trend.death_cross": "죽음의 십자가",
   "fastAnalysis.trend.downtrend": "하향 추세",

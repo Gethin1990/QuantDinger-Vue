@@ -33,6 +33,32 @@ test('fast analysis crypto cards use locale keys instead of Chinese-or-English b
   assert.match(report, /cryptoSignalValueLabel/)
 })
 
+test('MACD alignment states are localized instead of exposing backend enum values', () => {
+  const report = read('src/views/ai-analysis/components/FastAnalysisReport.vue')
+  const locales = ['ar-SA', 'de-DE', 'en-US', 'fr-FR', 'ja-JP', 'ko-KR', 'ru-RU', 'th-TH', 'vi-VN', 'zh-CN', 'zh-TW']
+
+  for (const locale of locales) {
+    const messages = read(`src/locales/lang/${locale}.js`)
+    assert.match(messages, /"fastAnalysis\.trend\.bearish_alignment":/)
+    assert.match(messages, /"fastAnalysis\.trend\.bullish_alignment":/)
+  }
+  assert.match(report, /String\(trend\)\.replace\(\/_\/g, ' '\)/)
+})
+
+test('credit balance refreshes after billed AI actions and when the page becomes active', () => {
+  const header = read('src/components/GlobalHeader/AvatarDropdown.vue')
+  const workbench = read('src/views/ai-analysis/components/CopilotWorkbench.vue')
+  const analysisPage = read('src/views/ai-analysis/index.vue')
+
+  assert.match(header, /'currentUser\.credits': \{[\s\S]*?immediate: true/)
+  assert.match(header, /window\.addEventListener\('focus', this\.handleWindowFocus\)/)
+  assert.match(header, /document\.addEventListener\('visibilitychange', this\.handleVisibilityChange\)/)
+  assert.match(header, /window\.setInterval\(this\.refreshVisibleCredits, 60 \* 1000\)/)
+  assert.match(workbench, /const credits = Number\(this\.billing\.credits\)[\s\S]*?\$emit\('credits-updated', credits\)/)
+  assert.ok((workbench.match(/await this\.loadBilling\(\)/g) || []).length >= 5)
+  assert.match(analysisPage, /Number\(res\.data\.credits\)[\s\S]*?\$emit\('credits-updated', credits\)/)
+})
+
 test('insufficient credits opens billing while other failures keep retry', () => {
   const report = read('src/views/ai-analysis/components/FastAnalysisReport.vue')
 

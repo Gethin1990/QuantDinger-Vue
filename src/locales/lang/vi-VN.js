@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "Phân tích kỹ thuật",
   "fastAnalysis.technicalIndicatorsTitle": "Ma trận chỉ báo chuyên nghiệp",
   "fastAnalysis.totalAnalyses": "Tổng phân tích",
+  "fastAnalysis.trend.bearish_alignment": "Sắp xếp giảm giá",
+  "fastAnalysis.trend.bullish_alignment": "Sắp xếp tăng giá",
   "fastAnalysis.trend.consolidating": "Hợp nhất",
   "fastAnalysis.trend.death_cross": "Thập tự giá tử thần",
   "fastAnalysis.trend.downtrend": "Xu hướng giảm",

@@ -994,7 +994,7 @@ export default {
       if (!trend) return '--'
       const key = `fastAnalysis.trend.${trend}`
       const translated = this.$t(key)
-      return translated === key ? trend : translated
+      return translated === key ? String(trend).replace(/_/g, ' ') : translated
     },
     translateVolatility (level) {
       if (!level) return '--'

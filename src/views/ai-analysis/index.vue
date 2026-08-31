@@ -1867,6 +1867,8 @@ export default {
           this.localUserInfo = res.data
           this.userId = res.data.id
           this.$store.commit('SET_INFO', res.data)
+          const credits = Number(res.data.credits)
+          if (Number.isFinite(credits)) this.$root.$emit('credits-updated', credits)
         }
       } catch (e) {
       }

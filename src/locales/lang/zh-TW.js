@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "技術面分析",
   "fastAnalysis.technicalIndicatorsTitle": "專業指標矩陣",
   "fastAnalysis.totalAnalyses": "歷史分析",
+  "fastAnalysis.trend.bearish_alignment": "空頭排列",
+  "fastAnalysis.trend.bullish_alignment": "多頭排列",
   "fastAnalysis.trend.consolidating": "磁碟整",
   "fastAnalysis.trend.death_cross": "死叉",
   "fastAnalysis.trend.downtrend": "下降趨勢",

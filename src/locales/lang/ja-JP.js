@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "テクニカル分析",
   "fastAnalysis.technicalIndicatorsTitle": "プロインジケーターマトリックス",
   "fastAnalysis.totalAnalyses": "総合分析",
+  "fastAnalysis.trend.bearish_alignment": "弱気配列",
+  "fastAnalysis.trend.bullish_alignment": "強気配列",
   "fastAnalysis.trend.consolidating": "統合",
   "fastAnalysis.trend.death_cross": "死の十字架",
   "fastAnalysis.trend.downtrend": "下降トレンド",

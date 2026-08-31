@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "การวิเคราะห์ทางเทคนิค",
   "fastAnalysis.technicalIndicatorsTitle": "เมทริกซ์ตัวบ่งชี้โปร",
   "fastAnalysis.totalAnalyses": "การวิเคราะห์ทั้งหมด",
+  "fastAnalysis.trend.bearish_alignment": "การเรียงตัวขาลง",
+  "fastAnalysis.trend.bullish_alignment": "การเรียงตัวขาขึ้น",
   "fastAnalysis.trend.consolidating": "การรวมกลุ่ม",
   "fastAnalysis.trend.death_cross": "ไม้กางเขนมรณะ",
   "fastAnalysis.trend.downtrend": "แนวโน้มขาลง",

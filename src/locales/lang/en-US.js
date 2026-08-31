@@ -4962,6 +4962,8 @@ const locale = {
   "fastAnalysis.trend.uptrend": "Uptrend",
   "fastAnalysis.trend.downtrend": "Downtrend",
   "fastAnalysis.trend.sideways": "Sideways",
+  "fastAnalysis.trend.bearish_alignment": "Bearish Alignment",
+  "fastAnalysis.trend.bullish_alignment": "Bullish Alignment",
   "fastAnalysis.trend.consolidating": "Consolidating",
   "fastAnalysis.trend.golden_cross": "Golden Cross",
   "fastAnalysis.trend.death_cross": "Death Cross",

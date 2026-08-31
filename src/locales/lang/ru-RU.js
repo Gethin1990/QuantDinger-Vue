@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "Технический анализ",
   "fastAnalysis.technicalIndicatorsTitle": "Матрица индикаторов Pro",
   "fastAnalysis.totalAnalyses": "Полный анализ",
+  "fastAnalysis.trend.bearish_alignment": "Медвежье расположение",
+  "fastAnalysis.trend.bullish_alignment": "Бычье расположение",
   "fastAnalysis.trend.consolidating": "Консолидация",
   "fastAnalysis.trend.death_cross": "Крест Смерти",
   "fastAnalysis.trend.downtrend": "Снижение тренда",

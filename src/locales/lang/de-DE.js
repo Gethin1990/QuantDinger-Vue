@@ -2997,6 +2997,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "Technische Analyse",
   "fastAnalysis.technicalIndicatorsTitle": "Pro-Indikatormatrix",
   "fastAnalysis.totalAnalyses": "Gesamtanalysen",
+  "fastAnalysis.trend.bearish_alignment": "Bärische Ausrichtung",
+  "fastAnalysis.trend.bullish_alignment": "Bullische Ausrichtung",
   "fastAnalysis.trend.consolidating": "Konsolidierung",
   "fastAnalysis.trend.death_cross": "Todeskreuz",
   "fastAnalysis.trend.downtrend": "Abwärtstrend",

@@ -3246,6 +3246,8 @@ const locale = {
   "fastAnalysis.technicalAnalysis": "技术面分析",
   "fastAnalysis.technicalIndicatorsTitle": "专业指标矩阵",
   "fastAnalysis.totalAnalyses": "历史分析",
+  "fastAnalysis.trend.bearish_alignment": "空头排列",
+  "fastAnalysis.trend.bullish_alignment": "多头排列",
   "fastAnalysis.trend.consolidating": "盘整",
   "fastAnalysis.trend.death_cross": "死叉",
   "fastAnalysis.trend.downtrend": "下降趋势",

@@ -1544,6 +1544,8 @@ export default {
         const res = await getMembershipPlans()
         const data = res.data || {}
         this.billing = data.billing || data.billing_config || {}
+        const credits = Number(this.billing.credits)
+        if (Number.isFinite(credits)) this.$root.$emit('credits-updated', credits)
       } catch (_) {}
     },
     async loadCalendar (force = false) {
@@ -3115,6 +3117,7 @@ export default {
         if (this.pendingAgentTask && this.pendingAgentTask.type === 'market_diagnosis') {
           this.clearPendingAgentTask()
         }
+        await this.loadBilling()
         this.sending = false
         this.scrollToBottom()
       }
@@ -3237,6 +3240,7 @@ export default {
         msg.reportError = (e && e.response && e.response.data && e.response.data.msg) || (e && e.message) || this.i18nText('aiAssetAnalysis.copilot.analysisFailed', 'Analysis failed')
         msg.reportErrorTone = this.isInProgressError(e) ? 'warning' : 'error'
       } finally {
+        await this.loadBilling()
         this.sending = false
       }
     },
@@ -3711,6 +3715,7 @@ export default {
           'Indicator generation service is temporarily unavailable. Please check the backend AI configuration and try again.'
         )
       } finally {
+        await this.loadBilling()
         this.generatingStrategy = false
         this.scrollToBottom()
       }
@@ -3772,6 +3777,7 @@ export default {
           'Strategy generation service is temporarily unavailable. Please check the backend AI configuration and try again.'
         )
       } finally {
+        await this.loadBilling()
         this.generatingStrategy = false
         this.scrollToBottom()
       }
@@ -4027,6 +4033,7 @@ export default {
         })
         await this.persistCopilotMessage(setupMsg, 'setup_guide')
       } finally {
+        await this.loadBilling()
         this.sending = false
         this.scrollToBottom()
       }
@@ -4240,6 +4247,8 @@ export default {
           error.streamHasContent = Boolean(String(assistantMsg.content || '').trim()) && !assistantMsg.isThinking
         }
         throw error
+      } finally {
+        await this.loadBilling()
       }
     },
     handleStreamEvent (rawEvent, assistantMsg) {
