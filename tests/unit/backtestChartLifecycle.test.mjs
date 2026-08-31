@@ -22,6 +22,16 @@ test('backtest center compiles a source manifest before accepting runtime contro
   assert.match(source, /return Boolean\(this\.manifest && this\.manifest\.leverageAllowed\)/)
 })
 
+test('backtest center visual accents follow the configured system theme color', () => {
+  assert.match(source, /class="theme-ready-tag"/)
+  assert.doesNotMatch(source, /<a-tag v-if="manifest" color="green"/)
+  assert.match(source, /primaryColor: state => state\.app\.color/)
+  assert.match(source, /color: \[this\.primaryColor, '#94a3b8'\]/)
+  for (const selector of ['\\.eyebrow', '\\.step-badge', '\\.empty-orbit', '\\.empty-preview-card > \\.anticon']) {
+    assert.match(source, new RegExp(`${selector} \\{[^}]*var\\(--primary-color`))
+  }
+})
+
 test('backtest center follows routed source ids after keep-alive activation', () => {
   assert.match(source, /'\$route\.query\.sourceId' \(\)/)
   assert.match(source, /activated \(\)[\s\S]*?this\.syncRouteSource/)
