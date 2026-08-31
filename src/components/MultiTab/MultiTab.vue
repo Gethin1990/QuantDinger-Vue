@@ -57,12 +57,14 @@ export default {
     },
     remove (targetKey) {
       const normalizedKey = this.resolveTabKey(targetKey)
+      const targetPage = this.pages.find(page => tabKey(page) === normalizedKey)
       this.pages = this.pages.filter(page => tabKey(page) !== normalizedKey)
       this.fullPathList = this.fullPathList.filter(path => path !== normalizedKey)
       // If the active tab was closed, switch to the latest remaining tab.
       if (!this.fullPathList.includes(this.activeKey)) {
         this.selectedLastPath()
       }
+      if (targetPage) events.$emit('cache-evict', targetPage)
     },
     selectedLastPath () {
       this.activeKey = this.fullPathList[this.fullPathList.length - 1]

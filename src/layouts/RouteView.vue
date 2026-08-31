@@ -6,7 +6,7 @@
       stored inside it and returning from Settings/Marketplace looks like a
       full refresh.
     -->
-    <keep-alive :max="maxCachedPages">
+    <keep-alive ref="routeCache" :max="maxCachedPages">
       <router-view
         v-if="shouldKeepAlive"
         :key="cachedRouteKey"
@@ -21,6 +21,9 @@
 </template>
 
 <script>
+import multiTabEvents from '@/components/MultiTab/events'
+import { evictKeepAliveEntry, routeCacheKey } from '@/components/MultiTab/cacheControl.mjs'
+
 export default {
   name: 'RouteView',
   props: {
@@ -32,6 +35,17 @@ export default {
       type: Number,
       default: 12
     }
+  },
+  data () {
+    return {
+      pendingCacheEvictions: []
+    }
+  },
+  created () {
+    multiTabEvents.$on('cache-evict', this.handleCacheEviction)
+  },
+  beforeDestroy () {
+    multiTabEvents.$off('cache-evict', this.handleCacheEviction)
   },
   computed: {
     shouldKeepAlive () {
@@ -49,6 +63,34 @@ export default {
     // when their params/query change.
     liveRouteKey () {
       return this.$route.fullPath || this.$route.path
+    }
+  },
+  watch: {
+    $route () {
+      this.$nextTick(this.flushPendingCacheEvictions)
+    }
+  },
+  methods: {
+    handleCacheEviction (route) {
+      const key = routeCacheKey(route)
+      if (!key) return
+
+      // Vue must finish navigating away before the active cached instance can
+      // be destroyed safely. Inactive tabs can be removed immediately.
+      if (key === this.cachedRouteKey) {
+        if (!this.pendingCacheEvictions.includes(key)) this.pendingCacheEvictions.push(key)
+        return
+      }
+      this.evictCacheKey(key)
+    },
+    evictCacheKey (key) {
+      return evictKeepAliveEntry(this.$refs.routeCache, key)
+    },
+    flushPendingCacheEvictions () {
+      const currentKey = this.cachedRouteKey
+      const ready = this.pendingCacheEvictions.filter(key => key !== currentKey)
+      this.pendingCacheEvictions = this.pendingCacheEvictions.filter(key => key === currentKey)
+      ready.forEach(this.evictCacheKey)
     }
   }
 }

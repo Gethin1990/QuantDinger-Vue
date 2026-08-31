@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
+import { evictKeepAliveEntry, routeCacheKey } from '../../src/components/MultiTab/cacheControl.mjs'
 import { tabKey } from '../../src/components/MultiTab/tabIdentity.mjs'
 
 const read = path => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
@@ -11,13 +12,36 @@ test('route view keeps cache storage mounted across cached and non-cached pages'
   const layout = read('src/layouts/BasicLayout.vue')
 
   assert.match(layout, /<route-view[^>]+:keep-alive="multiTab"/)
-  assert.match(routeView, /<keep-alive :max="maxCachedPages">/)
+  assert.match(routeView, /<keep-alive[^>]*:max="maxCachedPages">/)
   assert.match(routeView, /v-if="shouldKeepAlive"/)
   assert.match(routeView, /v-if="!shouldKeepAlive"/)
   assert.match(routeView, /routeMeta\.keepAlive/)
   assert.match(routeView, /this\.\$route\.name \|\| this\.\$route\.path/)
   assert.match(routeView, /this\.\$route\.fullPath \|\| this\.\$route\.path/)
   assert.doesNotMatch(routeView, /return <router-view key=\{routeKey\}/)
+})
+
+test('closing a multi-tab page destroys only its matching keep-alive entry', () => {
+  const routeView = read('src/layouts/RouteView.vue')
+  const multiTab = read('src/components/MultiTab/MultiTab.vue')
+  let destroyed = 0
+  const keepAlive = {
+    cache: {
+      IndicatorIDE: { componentInstance: { _isDestroyed: false, $destroy: () => { destroyed += 1 } } },
+      StrategyCenter: { componentInstance: { _isDestroyed: false, $destroy: () => { destroyed += 10 } } }
+    },
+    keys: ['IndicatorIDE', 'StrategyCenter']
+  }
+
+  assert.equal(routeCacheKey({ name: 'IndicatorIDE', path: '/indicator-ide' }), 'IndicatorIDE')
+  assert.equal(evictKeepAliveEntry(keepAlive, 'IndicatorIDE'), true)
+  assert.equal(destroyed, 1)
+  assert.equal(keepAlive.cache.IndicatorIDE, null)
+  assert.deepEqual(keepAlive.keys, ['StrategyCenter'])
+  assert.ok(keepAlive.cache.StrategyCenter)
+  assert.match(multiTab, /events\.\$emit\('cache-evict', targetPage\)/)
+  assert.match(routeView, /pendingCacheEvictions/)
+  assert.match(routeView, /this\.\$nextTick\(this\.flushPendingCacheEvictions\)/)
 })
 
 test('multi-tab workspaces are enabled for users without a saved preference', () => {
