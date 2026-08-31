@@ -105,6 +105,11 @@ test('portfolio drawdown chart uses initial capital and backend drawdown points'
   assert.match(portfolioResultSource, /strategyV2\.backtest\.maxDrawdownHint/)
 })
 
+test('portfolio chart reserves separate vertical space for the legend and first plot', () => {
+  assert.match(portfolioResultSource, /legend: \{ top: 6,[\s\S]*?itemGap: 16/)
+  assert.match(portfolioResultSource, /\{ left: 58, right: 56, top: 64, height: 222 \}/)
+})
+
 test('trade review centers the full entry-to-exit range and draws after data is ready', () => {
   assert.match(portfolioResultSource, /@load="renderReviewMarkers"/)
   assert.match(portfolioResultSource, /Math\.ceil\(tradeBars \* 1\.2\)/)
@@ -117,6 +122,12 @@ test('trade review prefers persisted bounded candles and skips a duplicate marke
   assert.match(klineChartSource, /initialRows: \{/)
   assert.match(klineChartSource, /let formattedData = seededRows\.length \? formatKlineData\(seededRows\) : \[\]/)
   assert.match(klineChartSource, /if \(formattedData\.length\)[\s\S]*?hasMoreHistory\.value = false[\s\S]*?else \{[\s\S]*?\/api\/indicator\/kline/)
+})
+
+test('trade review falls back to the historical K-line endpoint when a saved snapshot is absent', () => {
+  assert.match(portfolioResultSource, /v-if="canRenderTradeReview"/)
+  assert.match(portfolioResultSource, /this\.reviewRows\.length > 0 \|\|/)
+  assert.match(portfolioResultSource, /normalizeTradeReviewSymbol\(row && row\.symbol\)/)
 })
 
 test('persisted trade review candles retain aggregate entry and exit times for markers', () => {

@@ -7,6 +7,7 @@ import {
   calculateTradeValueUsd,
   findNearestBarIndex,
   normalizeReviewTimeframe,
+  normalizeTradeReviewSymbol,
   resolveTradeReviewTimeframe
 } from '../../src/utils/tradeReview.js'
 
@@ -22,6 +23,12 @@ test('calculates opening USD value from quantity and entry price', () => {
   assert.ok(Math.abs(value - 9496.86606) < 0.000001)
   assert.equal(calculateTradeValueUsd({ quantity: -2, entry_price: 100 }), 200)
   assert.equal(calculateTradeValueUsd({ value_usd: 350, quantity: 2, entry_price: 100 }), 350)
+})
+
+test('maps hedged position legs back to the market-data instrument', () => {
+  assert.equal(normalizeTradeReviewSymbol('Crypto:SOL/USDT@swap::long'), 'Crypto:SOL/USDT@swap')
+  assert.equal(normalizeTradeReviewSymbol('Crypto:BTC/USDT@okx:swap::short'), 'Crypto:BTC/USDT@okx:swap')
+  assert.equal(normalizeTradeReviewSymbol('Crypto:SOL/USDT@swap'), 'Crypto:SOL/USDT@swap')
 })
 
 test('builds a bounded historical window around the selected trade', () => {

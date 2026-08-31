@@ -96,7 +96,7 @@
         <div><span>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</span><strong :class="profitTone(reviewProfit)">{{ formatSignedNumber(reviewProfit) }}</strong></div>
         <div><span>{{ $t('strategyV2.backtest.tradeReviewRange') }}</span><strong>{{ reviewDateRange }}</strong></div>
       </div>
-      <div v-if="reviewRows.length" class="inline-review-chart">
+      <div v-if="canRenderTradeReview" class="inline-review-chart">
         <kline-chart
           :key="reviewChartKey"
           ref="reviewChart"
@@ -266,7 +266,8 @@ import {
   buildAggregateTradeReview,
   buildTradeReviewWindow,
   calculateTradeValueUsd,
-  findNearestBarIndex
+  findNearestBarIndex,
+  normalizeTradeReviewSymbol
 } from '@/utils/tradeReview'
 import { timestampMillisecondsUtc } from '@/utils/utcInstant'
 import { formatBacktestTime } from '@/utils/userTime'
@@ -401,9 +402,9 @@ export default {
         ? this.attribution.symbols.map(row => String((row && row.symbol) || ''))
         : []
       return [...new Set([
-        ...this.tradeRows.map(row => String((row && row.symbol) || '')),
-        ...attributed,
-        ...snapshots
+        ...this.tradeRows.map(row => normalizeTradeReviewSymbol(row && row.symbol)),
+        ...attributed.map(normalizeTradeReviewSymbol),
+        ...snapshots.map(normalizeTradeReviewSymbol)
       ].filter(Boolean))]
     },
     effectiveReviewSymbol () {
@@ -412,7 +413,7 @@ export default {
         : (this.reviewSymbols[0] || '')
     },
     reviewTrades () {
-      return this.tradeRows.filter(row => String((row && row.symbol) || '') === this.effectiveReviewSymbol)
+      return this.tradeRows.filter(row => normalizeTradeReviewSymbol(row && row.symbol) === this.effectiveReviewSymbol)
     },
     hasTradeReview () {
       return this.isPortfolioStrategy
@@ -421,7 +422,21 @@ export default {
     },
     portfolioContributionRows () {
       if (!this.isPortfolioStrategy) return []
-      const attributed = new Map((this.attribution.symbols || []).map(row => [String(row.symbol || ''), row]))
+      const attributed = new Map()
+      ;(this.attribution.symbols || []).forEach(row => {
+        const symbol = normalizeTradeReviewSymbol(row && row.symbol)
+        if (!symbol) return
+        const saved = attributed.get(symbol) || {}
+        attributed.set(symbol, {
+          ...saved,
+          ...row,
+          symbol,
+          realizedProfit: Number(saved.realizedProfit || 0) + Number(row.realizedProfit || 0),
+          unrealizedProfit: Number(saved.unrealizedProfit || 0) + Number(row.unrealizedProfit || 0),
+          commission: Number(saved.commission || 0) + Number(row.commission || 0),
+          netContribution: Number(saved.netContribution || 0) + Number(row.netContribution || 0)
+        })
+      })
       const snapshots = this.result.reviewCandles && typeof this.result.reviewCandles === 'object'
         ? this.result.reviewCandles
         : {}
@@ -431,12 +446,14 @@ export default {
         const tradeProfit = trades.reduce((sum, row) => sum + Number((row && row.profit) || 0), 0)
         const attributedProfit = Number(attr.realizedProfit || 0) + Number(attr.unrealizedProfit || 0)
         const wins = trades.filter(row => Number((row && row.profit) || 0) > 0).length
+        const snapshotKey = Object.keys(snapshots).find(key => normalizeTradeReviewSymbol(key) === symbol)
+        const snapshot = snapshots[symbol] || (snapshotKey ? snapshots[snapshotKey] : null)
         return {
           symbol,
           trades: trades.length,
           winRate: trades.length ? wins / trades.length * 100 : 0,
           profit: trades.length ? tradeProfit : attributedProfit,
-          hasSnapshot: Boolean(snapshots[symbol] && Array.isArray(snapshots[symbol].candles) && snapshots[symbol].candles.length)
+          hasSnapshot: Boolean(snapshot && Array.isArray(snapshot.candles) && snapshot.candles.length)
         }
       }).sort((left, right) => right.profit - left.profit || right.trades - left.trades || left.symbol.localeCompare(right.symbol))
     },
@@ -466,7 +483,7 @@ export default {
       })
     },
     reviewInstrument () {
-      const raw = String(this.effectiveReviewSymbol || '')
+      const raw = normalizeTradeReviewSymbol(this.effectiveReviewSymbol)
       const colon = raw.indexOf(':')
       const market = colon > -1 ? raw.slice(0, colon) : ''
       const rest = colon > -1 ? raw.slice(colon + 1) : raw
@@ -483,11 +500,18 @@ export default {
       const snapshots = this.result.reviewCandles && typeof this.result.reviewCandles === 'object'
         ? this.result.reviewCandles
         : {}
-      const snapshot = snapshots[this.effectiveReviewSymbol]
+      const snapshotKey = Object.keys(snapshots).find(key => normalizeTradeReviewSymbol(key) === this.effectiveReviewSymbol)
+      const snapshot = snapshots[this.effectiveReviewSymbol] || (snapshotKey ? snapshots[snapshotKey] : null)
       return snapshot && typeof snapshot === 'object' ? snapshot : {}
     },
     reviewRows () {
       return Array.isArray(this.reviewSnapshot.candles) ? this.reviewSnapshot.candles : []
+    },
+    canRenderTradeReview () {
+      return this.reviewRows.length > 0 || (
+        Number.isFinite(this.reviewWindow.entryTime) &&
+        Number.isFinite(this.reviewWindow.exitTime)
+      )
     },
     reviewWindow () {
       const aggregateWindow = this.reviewAggregate.window || buildTradeReviewWindow({}, this.reviewTimeframe)
@@ -642,13 +666,13 @@ export default {
       this.chart.setOption({
         animationDuration: 260,
         color: ['#52c41a', '#f5a623', '#ff4d4f', '#69c0ff', '#9254de', '#13c2c2'],
-        legend: { top: 2, left: 8, textStyle: { color: text } },
+        legend: { top: 6, left: 8, right: 8, itemGap: 16, textStyle: { color: text } },
         tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'cross', snap: true }, backgroundColor: this.isDark ? 'rgba(14,14,14,.98)' : '#fff', borderColor: grid, textStyle: { color: this.isDark ? '#f5f5f5' : '#1f2937' } },
         axisPointer: { link: [{ xAxisIndex: [0, 1, 2] }] },
         grid: [
-          { left: 58, right: 56, top: 42, height: 245 },
-          { left: 58, right: 56, top: 325, height: 92 },
-          { left: 58, right: 56, top: 455, height: 92 }
+          { left: 58, right: 56, top: 64, height: 222 },
+          { left: 58, right: 56, top: 326, height: 92 },
+          { left: 58, right: 56, top: 454, height: 92 }
         ],
         xAxis: [0, 1, 2].map((value, index) => ({ type: 'time', gridIndex: index, axisLabel: { show: index === 2, color: text }, axisLine: { lineStyle: { color: grid } }, splitLine: { show: false } })),
         yAxis: [

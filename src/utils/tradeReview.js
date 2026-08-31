@@ -43,6 +43,10 @@ export const calculateTradeValueUsd = (trade = {}) => {
   return Math.abs(quantity * entryPrice)
 }
 
+export const normalizeTradeReviewSymbol = (value) => {
+  return String(value || '').trim().replace(/::(?:long|short)$/i, '')
+}
+
 export const resolveTradeReviewTimeframe = (trade = {}, timeframeValue = '1D', maxBars = 1000) => {
   const requested = normalizeReviewTimeframe(timeframeValue)
   const startIndex = REVIEW_TIMEFRAMES.indexOf(requested)
