@@ -387,8 +387,16 @@
               <strong class="negative">{{ formatReviewPercent(reviewPerformance.max_drawdown) }}</strong>
             </div>
             <div class="perf-cell">
-              <span>{{ $t('community.profitFactor') }}</span>
-              <strong>{{ formatReviewNumber(reviewPerformance.profit_factor, 2) }}</strong>
+              <span>
+                {{ $t('strategyCenter.backtest.payoffRatio') }}
+                <a-tooltip :title="payoffRatioTooltip(reviewPerformance)">
+                  <a-icon
+                    type="info-circle"
+                    :class="{ 'payoff-warning': isPayoffRatioUnstable(reviewPerformance) }"
+                  />
+                </a-tooltip>
+              </span>
+              <strong>{{ formatReviewPayoffRatio(reviewPerformance) }}</strong>
             </div>
             <div class="perf-cell">
               <span>{{ $t('community.winRate') }}</span>
@@ -1089,6 +1097,25 @@ export default {
       const v = parseFloat(val)
       if (isNaN(v)) return '-'
       return v.toFixed(digits)
+    },
+
+    formatReviewPayoffRatio (performance) {
+      if (!performance || Number(performance.losing_trades || 0) <= 0) return '—'
+      return this.formatReviewNumber(performance.profit_loss_ratio, 2)
+    },
+
+    isPayoffRatioUnstable (performance) {
+      const losses = Number(performance && performance.losing_trades) || 0
+      return losses > 0 && losses < 3
+    },
+
+    payoffRatioTooltip (performance) {
+      const wins = Number(performance && performance.winning_trades) || 0
+      const losses = Number(performance && performance.losing_trades) || 0
+      const sampleWarning = this.isPayoffRatioUnstable(performance)
+        ? `${this.$t('backtest-center.audit.lowSample')} · `
+        : ''
+      return `${sampleWarning}${this.$t('strategyCenter.backtest.winningTrades')}: ${wins} · ${this.$t('strategyCenter.backtest.losingTrades')}: ${losses}`
     },
 
     formatReviewPercent (val) {
@@ -1920,6 +1947,10 @@ export default {
 -->
 <style lang="less">
 .qd-review-performance-modal {
+  .payoff-warning {
+    color: #faad14;
+  }
+
   .review-performance {
     &__grid {
       display: grid;

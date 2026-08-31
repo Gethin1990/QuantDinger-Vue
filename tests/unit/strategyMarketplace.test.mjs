@@ -29,6 +29,19 @@ test('desktop strategy cards separate execution and confirmation cadence', () =>
   assert.match(card + detail, /marketplace_contract/)
 })
 
+test('marketplace labels payoff ratio separately from profit factor', () => {
+  const detail = read('src/views/indicator-community/components/IndicatorDetail.vue')
+  const review = read('src/views/indicator-community/index.vue')
+
+  for (const source of [detail, review]) {
+    assert.match(source, /strategyCenter\.backtest\.payoffRatio/)
+    assert.match(source, /profit_loss_ratio/)
+    assert.match(source, /losing_trades/)
+  }
+  assert.doesNotMatch(detail, /formatNumber\(performance\.profit_factor/)
+  assert.doesNotMatch(review, /formatReviewNumber\(reviewPerformance\.profit_factor/)
+})
+
 test('desktop marketplace adaptation requires compatibility and a fresh backtest', () => {
   const detail = read('src/views/indicator-community/components/IndicatorDetail.vue')
   const ide = read('src/views/strategy-ide/index.vue')

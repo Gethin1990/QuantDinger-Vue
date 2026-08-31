@@ -213,9 +213,17 @@
                   </div>
                 </div>
                 <div class="perf-item">
-                  <div class="perf-label">{{ $t('community.profitFactor') }}</div>
-                  <div class="perf-value" :class="toneClass((performance.profit_factor || 0) - 1)">
-                    {{ formatNumber(performance.profit_factor, 2) }}
+                  <div class="perf-label">
+                    {{ $t('strategyCenter.backtest.payoffRatio') }}
+                    <a-tooltip :title="payoffRatioTooltip(performance)">
+                      <a-icon
+                        type="info-circle"
+                        :class="{ 'payoff-warning': isPayoffRatioUnstable(performance) }"
+                      />
+                    </a-tooltip>
+                  </div>
+                  <div class="perf-value" :class="toneClass((performance.profit_loss_ratio || 0) - 1)">
+                    {{ formatPayoffRatio(performance) }}
                   </div>
                 </div>
                 <div class="perf-item">
@@ -1170,6 +1178,22 @@ export default {
       if (isNaN(v)) return '—'
       return v.toFixed(digits == null ? 2 : digits)
     },
+    formatPayoffRatio (performance) {
+      if (!performance || Number(performance.losing_trades || 0) <= 0) return '—'
+      return this.formatNumber(performance.profit_loss_ratio, 2)
+    },
+    isPayoffRatioUnstable (performance) {
+      const losses = Number(performance && performance.losing_trades) || 0
+      return losses > 0 && losses < 3
+    },
+    payoffRatioTooltip (performance) {
+      const wins = Number(performance && performance.winning_trades) || 0
+      const losses = Number(performance && performance.losing_trades) || 0
+      const sampleWarning = this.isPayoffRatioUnstable(performance)
+        ? `${this.$t('backtest-center.audit.lowSample')} · `
+        : ''
+      return `${sampleWarning}${this.$t('strategyCenter.backtest.winningTrades')}: ${wins} · ${this.$t('strategyCenter.backtest.losingTrades')}: ${losses}`
+    },
     formatPercent (val) {
       const v = parseFloat(val)
       if (isNaN(v)) return '—'
@@ -1891,6 +1915,10 @@ export default {
           .anticon {
             font-size: 12px;
             color: rgba(0, 0, 0, 0.35);
+          }
+
+          .payoff-warning {
+            color: #faad14;
           }
         }
 
