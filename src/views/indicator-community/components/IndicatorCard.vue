@@ -83,7 +83,6 @@
           <div class="kpi-value kpi-dd">{{ formatPercent(indicator.max_drawdown) }}</div>
         </div>
       </div>
-      <overfit-risk-gauge v-if="isStrategyAsset && hasKpi" :indicator="indicator" />
       <div v-if="isStrategyAsset" class="strategy-applicability">
         <div class="strategy-applicability__row">
           <span>{{ $t('community.boundTo') }}</span>
@@ -137,8 +136,6 @@
 </template>
 
 <script>
-import OverfitRiskGauge from './OverfitRiskGauge.vue'
-
 const GRADIENT_PRESETS = [
   'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
   'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -156,7 +153,6 @@ const GRADIENT_PRESETS = [
 
 export default {
   name: 'IndicatorCard',
-  components: { OverfitRiskGauge },
   props: {
     indicator: {
       type: Object,

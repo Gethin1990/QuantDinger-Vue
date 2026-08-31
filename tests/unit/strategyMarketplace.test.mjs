@@ -29,6 +29,11 @@ test('desktop strategy cards separate execution and confirmation cadence', () =>
   assert.match(card + detail, /marketplace_contract/)
 })
 
+test('desktop strategy cards omit the overfitting risk prompt', () => {
+  const card = read('src/views/indicator-community/components/IndicatorCard.vue')
+  assert.doesNotMatch(card, /overfit-risk-gauge|OverfitRiskGauge/)
+})
+
 test('marketplace labels payoff ratio separately from profit factor', () => {
   const detail = read('src/views/indicator-community/components/IndicatorDetail.vue')
   const review = read('src/views/indicator-community/index.vue')
