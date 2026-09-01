@@ -56,6 +56,7 @@
                   :loading="loadingScripts"
                   :placeholder="text.selectScriptPlaceholder"
                   @change="handleScriptSelect"
+                  @dropdownVisibleChange="onScriptDropdownVisibleChange"
                 >
                   <a-select-option
                     v-for="item in scriptOptions"
@@ -641,61 +642,7 @@ import {
   verifyStrategyCode
 } from '@/api/strategy'
 
-const DEFAULT_SCRIPT_CODE = `"""
-My Custom Strategy
-
-Describe the strategy logic, supported markets, entry/exit rules, and risk controls here.
-"""
-
-def initialize(context):
-    g.symbol = "USStock:SPY"
-    context.set_universe([g.symbol])
-    context.subscribe(frequency="1d")
-    context.set_metadata(direction_mode="long_only")
-    context.set_warmup(55)
-    g.period = 50
-
-def handle_data(context, data):
-    bars = get_history(g.period + 2, "1d", "close", g.symbol)
-    if len(bars) < g.period:
-        return
-    average = float(bars["close"].tail(g.period).mean())
-    target = 1.0 if float(bars["close"].iloc[-1]) > average else 0.0
-    order_target_percent(g.symbol, target, reason="single_ma_regime")
-`
-
-const DEFAULT_PORTFOLIO_CODE = `"""
-My Portfolio Strategy
-
-Rank the eligible point-in-time universe by momentum and hold an equal-weight Top-N portfolio.
-"""
-
-def initialize(context):
-    context.set_universe(pool="nasdaq100")
-    context.subscribe(frequency="1d")
-    context.set_warmup(130)
-    g.top_n = 10
-    g.lookback = 126
-    run_weekly(rebalance, weekday=1, time="09:35")
-
-def rebalance(context, data):
-    scores = {}
-    for symbol in get_universe_stocks():
-        frame = get_history(g.lookback + 1, "1d", "close", symbol)
-        if len(frame) <= g.lookback:
-            continue
-        start = float(frame["close"].iloc[-g.lookback - 1])
-        end = float(frame["close"].iloc[-1])
-        if start > 0:
-            scores[symbol] = end / start - 1.0
-    selected = sorted(scores, key=scores.get, reverse=True)[:g.top_n]
-    for symbol in get_positions().keys():
-        if symbol not in selected:
-            order_target_percent(symbol, 0.0, reason="left_top_n")
-    weight = 1.0 / len(selected) if selected else 0.0
-    for symbol in selected:
-        order_target_percent(symbol, weight, reason="momentum_top_n")
-`
+const EMPTY_DRAFT_CODE = ''
 
 export default {
   name: 'StrategyIde',
@@ -713,7 +660,7 @@ export default {
       currentSourceId: null,
       currentSource: null,
       currentAssetType: 'script',
-      scriptCode: DEFAULT_SCRIPT_CODE,
+      scriptCode: EMPTY_DRAFT_CODE,
       scriptCodeHidden: false,
       scriptTemplateKey: '',
       scriptTemplateParams: {},
@@ -1022,17 +969,21 @@ export default {
       this.aiStrategyPrompt = ''
       this.aiInteractionMode = 'auto'
       if (this.currentSourceId) this.loadStrategyAiWorkspace(this.currentSourceId)
+    },
+    '$route.query.sourceId' () {
+      this.applyStrategyRouteSource()
     }
   },
   mounted () {
     this._saveShortcut = (event) => this.handleSaveShortcut(event)
     window.addEventListener('keydown', this._saveShortcut, true)
-    this.initPage()
+    this._initialPagePromise = this.initPage()
   },
   activated () {
     if (this._saveShortcut) {
       window.addEventListener('keydown', this._saveShortcut, true)
     }
+    this.applyStrategyRouteSource()
   },
   deactivated () {
     if (this._saveShortcut) {
@@ -1348,6 +1299,9 @@ export default {
         await this.openSource(this.currentSourceId, { updateRoute: false })
       }
     },
+    onScriptDropdownVisibleChange (visible) {
+      if (visible && !this.loadingScripts) this.loadSources()
+    },
     extractSources (res) {
       const data = res && res.data
       if (Array.isArray(data)) return data
@@ -1358,6 +1312,12 @@ export default {
       const query = this.$route.query || {}
       const value = query.sourceId
       return value ? String(value).trim() : ''
+    },
+    async applyStrategyRouteSource () {
+      if (this._initialPagePromise) await this._initialPagePromise
+      const sourceId = this.getInitialRouteSourceId()
+      if (!sourceId || String(this.currentSourceId || '') === sourceId) return
+      await this.openSource(sourceId, { updateRoute: false })
     },
     getRouteAssetType () {
       const query = this.$route.query || {}
@@ -1464,7 +1424,7 @@ export default {
       this.scriptCodeHidden = !!(source.code_hidden || metadata.code_hidden)
       this.scriptCode = this.scriptCodeHidden
         ? ''
-        : String(source.code || (this.currentAssetType === 'portfolio_strategy' ? DEFAULT_PORTFOLIO_CODE : DEFAULT_SCRIPT_CODE))
+        : String(source.code || '')
       this.scriptTemplateKey = source.template_key || runConfig.script_template_key || ''
       this.scriptTemplateParams = {
         ...this.parseObject(metadata.script_template_params),
@@ -1493,7 +1453,7 @@ export default {
       this.currentSourceId = null
       this.selectedScriptId = undefined
       this.currentAssetType = assetType === 'portfolio_strategy' ? 'portfolio_strategy' : 'script'
-      this.scriptCode = this.currentAssetType === 'portfolio_strategy' ? DEFAULT_PORTFOLIO_CODE : DEFAULT_SCRIPT_CODE
+      this.scriptCode = EMPTY_DRAFT_CODE
       this.scriptCodeHidden = false
       this.scriptTemplateKey = ''
       this.scriptTemplateParams = {}
@@ -1527,10 +1487,9 @@ export default {
         if (first) await this.openSource(first.id, { updateRoute: true })
         else this.createNewDraft({ openTemplate: false, updateRoute: true, assetType: target })
       }
-      const defaultCode = this.currentAssetType === 'portfolio_strategy' ? DEFAULT_PORTFOLIO_CODE : DEFAULT_SCRIPT_CODE
       const shouldConfirm = this.currentSourceId
         ? this.hasUnsavedScriptChanges
-        : String(this.scriptCode || '').trim() !== String(defaultCode).trim()
+        : String(this.scriptCode || '').trim() !== EMPTY_DRAFT_CODE
       if (shouldConfirm) {
         this.$confirm({
           title: this.text.switchWorkspaceTitle,

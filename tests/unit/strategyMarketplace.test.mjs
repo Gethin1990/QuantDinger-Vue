@@ -47,18 +47,30 @@ test('marketplace labels payoff ratio separately from profit factor', () => {
   assert.doesNotMatch(review, /formatReviewNumber\(reviewPerformance\.profit_factor/)
 })
 
-test('desktop marketplace adaptation requires compatibility and a fresh backtest', () => {
+test('purchased marketplace strategies expose direct live and code workflows', () => {
   const detail = read('src/views/indicator-community/components/IndicatorDetail.vue')
+  const live = read('src/views/strategy-center/index.vue')
   const ide = read('src/views/strategy-ide/index.vue')
 
-  assert.match(detail, /\/compatibility`/)
-  assert.match(detail, /\/adapt`/)
-  assert.match(detail, /compatibilityResult\.compatible/)
-  assert.match(ide, /adaptedBacktestRequired/)
-  assert.match(ide, /hasSuccessfulBacktest/)
-  assert.match(ide, /getScriptSourcePublishReadiness/)
-  assert.doesNotMatch(ide, /assetId: id/)
-  assert.match(ide, /backtestBeforeDeployment/)
+  assert.match(detail, /@click="deployPurchasedStrategy"/)
+  assert.match(detail, /v-if="!codeHidden"[\s\S]*@click="viewPurchasedStrategyCode"/)
+  assert.match(detail, /path: '\/strategy-center'[\s\S]*mode: 'create'[\s\S]*sourceId:/)
+  assert.match(detail, /path: '\/strategy-ide'[\s\S]*sourceId:/)
+  assert.doesNotMatch(detail, /compatibilityVisible|checkCompatibility|createAdaptedDraft/)
+  assert.match(live, /'\$route\.fullPath'[\s\S]*openEditorFromRoute/)
+  assert.match(live, /editorRouteSignature/)
+  assert.match(ide, /'\$route\.query\.sourceId'[\s\S]*applyStrategyRouteSource/)
+})
+
+test('marketplace indicator use selects the purchased local copy even after cached navigation', () => {
+  const detail = read('src/views/indicator-community/components/IndicatorDetail.vue')
+  const ide = read('src/views/indicator-ide/index.vue')
+
+  assert.match(detail, /detail\.local_copy_id[\s\S]*detail\.purchased_indicator_id[\s\S]*detail\.indicator_id/)
+  assert.doesNotMatch(detail, /detail\.indicator_id \|\|\s*this\.detail\.id/)
+  assert.match(ide, /activated \(\)[\s\S]*refreshIndicatorRouteSelection\(\)/)
+  assert.match(ide, /refreshIndicatorRouteSelection \(\)[\s\S]*await this\.loadIndicators\(\)/)
+  assert.match(ide, /this\.selectedIndicatorId = targetId[\s\S]*this\.chartVisibleIndicatorIds = \[targetId\][\s\S]*this\.onIndicatorChange\(targetId\)/)
 })
 
 test('strategy publishing guides users to a successful backtest with localized fallback handling', () => {

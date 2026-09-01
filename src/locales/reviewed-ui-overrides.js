@@ -2835,6 +2835,28 @@ Object.entries(marketplaceCadenceCopy).forEach(([locale, values]) => Object.assi
   'community.executionModeValue.hybrid': values[7]
 }))
 
+const marketplaceDirectActionCopy = {
+  'ar-SA': ['النشر للتداول الحي', 'عرض الكود'],
+  'de-DE': ['Live bereitstellen', 'Code anzeigen'],
+  'en-US': ['Deploy live', 'View code'],
+  'fr-FR': ['Déployer en réel', 'Afficher le code'],
+  'ja-JP': ['実運用にデプロイ', 'コードを表示'],
+  'ko-KR': ['실거래 배포', '코드 보기'],
+  'ru-RU': ['Запустить в реальном режиме', 'Просмотреть код'],
+  'th-TH': ['ปรับใช้เทรดจริง', 'ดูโค้ด'],
+  'vi-VN': ['Triển khai giao dịch thật', 'Xem mã'],
+  'zh-CN': ['实盘部署', '查看代码'],
+  'zh-TW': ['實盤部署', '檢視程式碼']
+}
+
+Object.entries(marketplaceDirectActionCopy).forEach(([locale, values]) => Object.assign(
+  messages[locale] || (messages[locale] = {}),
+  {
+    'community.deployLive': values[0],
+    'community.viewCode': values[1]
+  }
+))
+
 export const verifiedSameUiMessages = [
   'brokerAccounts.alpaca.name',
   'brokerAccounts.ibkr.name'

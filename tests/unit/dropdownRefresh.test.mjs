@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import test from 'node:test'
+
+const read = path => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
+
+test('indicator and symbol pickers refresh when opened', () => {
+  const source = read('src/views/indicator-ide/index.vue')
+
+  assert.match(source, /@dropdownVisibleChange="onWatchlistDropdownVisibleChange"/)
+  assert.match(source, /onWatchlistDropdownVisibleChange \(visible\)[\s\S]*visible && !this\.loadingWatchlist[\s\S]*this\.loadWatchlist\(\)/)
+  assert.match(source, /@visibleChange="onIndicatorDropdownVisibleChange"/)
+  assert.match(source, /onIndicatorDropdownVisibleChange \(visible\)[\s\S]*visible && !this\.loadingIndicators[\s\S]*this\.loadIndicators\(\)/)
+})
+
+test('backtest strategy picker refreshes source options when opened', () => {
+  const source = read('src/views/backtest-center/index.vue')
+
+  assert.match(source, /data-testid="backtest-source-select"[\s\S]*@dropdownVisibleChange="onSourceDropdownVisibleChange"/)
+  assert.match(source, /onSourceDropdownVisibleChange \(visible\)[\s\S]*!visible \|\| this\.sourcesLoading[\s\S]*this\.loadSources\(\)/)
+})
+
+test('strategy workspace picker refreshes scripts when opened', () => {
+  const source = read('src/views/strategy-ide/index.vue')
+
+  assert.match(source, /class="script-select"[\s\S]*@dropdownVisibleChange="onScriptDropdownVisibleChange"/)
+  assert.match(source, /onScriptDropdownVisibleChange \(visible\)[\s\S]*visible && !this\.loadingScripts[\s\S]*this\.loadSources\(\)/)
+})
+
+test('live strategy creation picker refreshes sources when opened', () => {
+  const source = read('src/views/strategy-center/components/LiveStrategyEditor.vue')
+
+  assert.match(source, /v-model="model\.scriptSourceId"[\s\S]*@dropdownVisibleChange="onSourceDropdownVisibleChange"/)
+  assert.match(source, /onSourceDropdownVisibleChange \(visible\)[\s\S]*visible && !this\.loadingSources[\s\S]*this\.loadSources\(\)/)
+})

@@ -367,10 +367,12 @@
                         size="small"
                         show-search
                         allow-clear
+                        :loading="loadingWatchlist"
                         :filter-option="filterWatchlistOption"
                         :dropdown-class-name="isDarkTheme ? 'ide-watchlist-dropdown ide-watchlist-dropdown--dark' : 'ide-watchlist-dropdown'"
                         :get-popup-container="chartToolbarGetPopupContainer"
                         @change="handleWatchlistChange"
+                        @dropdownVisibleChange="onWatchlistDropdownVisibleChange"
                       >
                         <a-select-option
                           v-for="w in watchlist"
@@ -1129,6 +1131,7 @@ export default {
       currentInstrumentId: '',
       cryptoExchangeIds: CRYPTO_EXCHANGE_IDS,
       watchlist: [],
+      loadingWatchlist: false,
       selectedWatchlistKey: 'Crypto:BTC/USDT',
 
       activeIndicators: [],
@@ -1297,7 +1300,9 @@ export default {
       return !!(this.symbol && String(this.symbol).trim())
     },
     selectedIndicatorObj () {
-      return this.selectedIndicatorId ? this.indicators.find(i => i.id === this.selectedIndicatorId) : null
+      return this.selectedIndicatorId
+        ? this.indicators.find(i => Number(i.id) === Number(this.selectedIndicatorId))
+        : null
     },
     selectedIndicatorIsPurchased () {
       const o = this.selectedIndicatorObj
@@ -1391,6 +1396,7 @@ export default {
     if (this._saveShortcutListener) {
       window.addEventListener('keydown', this._saveShortcutListener)
     }
+    this.refreshIndicatorRouteSelection()
     this.$nextTick(() => {
       this.ensureChartReady()
       this.applyIdeOverlayContainers()
@@ -1714,12 +1720,16 @@ export default {
       if (!raw) return
       const targetId = Number(raw)
       if (!targetId || !this.indicators.some(item => Number(item.id) === targetId)) return
-      if (Number(this.selectedIndicatorId) === targetId) return
       this.selectedIndicatorId = targetId
-      if (!this.chartVisibleIndicatorIds.some(id => Number(id) === targetId)) {
-        this.chartVisibleIndicatorIds = [targetId]
-      }
+      this.chartVisibleIndicatorIds = [targetId]
       this.onIndicatorChange(targetId)
+    },
+    async refreshIndicatorRouteSelection () {
+      const query = this.$route && this.$route.query ? this.$route.query : {}
+      const raw = query.indicator_id || query.indicatorId
+      if (!raw) return
+      if (this.loadingIndicators) return
+      await this.loadIndicators()
     },
     pruneChartVisibleIndicatorIds () {
       const set = new Set(this.indicators.map(i => Number(i.id)))
@@ -1727,11 +1737,14 @@ export default {
     },
     async loadWatchlist () {
       if (!this.userId) return
+      this.loadingWatchlist = true
       try {
         const res = await getWatchlist({ userid: this.userId })
         if (res && res.code === 1 && res.data) this.watchlist = res.data
         this.reconcileIdeMarketFromWatchlist()
-      } catch (_) { /* silent */ }
+      } catch (_) { /* silent */ } finally {
+        this.loadingWatchlist = false
+      }
     },
 
     reconcileIdeMarketFromWatchlist () {
@@ -2385,8 +2398,12 @@ export default {
       this.chartIndicatorRunning = !this.chartIndicatorRunning
       this.syncSelectedIndicatorToChart()
     },
+    onWatchlistDropdownVisibleChange (visible) {
+      if (visible && !this.loadingWatchlist) this.loadWatchlist()
+    },
     onIndicatorDropdownVisibleChange (visible) {
       this.indicatorDropdownVisible = visible
+      if (visible && !this.loadingIndicators) this.loadIndicators()
     },
     onChartIndicatorCheckChange (rawId, checked) {
       const id = Number(rawId)
@@ -3784,10 +3801,10 @@ export default {
       this.schedulePersistIdeUiState()
     },
     '$route.query.indicator_id' () {
-      this.applyIndicatorRouteSelection()
+      this.refreshIndicatorRouteSelection()
     },
     '$route.query.indicatorId' () {
-      this.applyIndicatorRouteSelection()
+      this.refreshIndicatorRouteSelection()
     },
     chartVisibleIndicatorIds: {
       deep: true,

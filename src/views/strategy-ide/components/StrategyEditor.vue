@@ -657,7 +657,7 @@ export default {
       if (this.hiddenSource) return
       if (!this.$refs.editorContainer) return
       this.editor = CodeMirror(this.$refs.editorContainer, {
-        value: this.value || this._getDefaultCode(),
+        value: String(this.value || ''),
         mode: 'python',
         theme: this.isDark ? 'monokai' : 'eclipse',
         lineNumbers: true,
@@ -716,31 +716,6 @@ export default {
         const timerId = setTimeout(() => this.refreshEditorLayout(), delay)
         this.refreshTimers.push(timerId)
       })
-    },
-
-    _getDefaultCode () {
-      return `"""
-My Custom Strategy
-
-Describe the strategy logic, supported markets, entry/exit rules, and risk controls here.
-"""
-
-def initialize(context):
-    g.symbol = "USStock:SPY"
-    context.set_universe([g.symbol])
-    context.subscribe(frequency="1d")
-    context.set_metadata(direction_mode="long_only")
-    context.set_warmup(55)
-    g.period = 50
-
-def handle_data(context, data):
-    bars = get_history(g.period + 2, "1d", "close", g.symbol)
-    if len(bars) < g.period:
-        return
-    average = float(bars["close"].tail(g.period).mean())
-    target = 1.0 if float(bars["close"].iloc[-1]) > average else 0.0
-    order_target_percent(g.symbol, target, reason="single_ma_regime")
-`
     },
 
     applyInitialTemplateKey (key, { preserveExistingCode = true } = {}) {
@@ -821,7 +796,7 @@ def handle_data(context, data):
       this.inferredParamTemplate = null
       this.templateParamValues = {}
       this.templateDirty = false
-      this.setCode(this._getDefaultCode())
+      this.setCode('')
       this.$emit('template-change', { key: '', params: {} })
       this.activeTab = this.isSplitSideMode ? 'params' : 'templates'
       this.showTemplatePicker = false

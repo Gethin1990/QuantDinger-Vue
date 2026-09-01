@@ -29,7 +29,8 @@
               option-filter-prop="children"
               :loading="loadingSources"
               :placeholder="$t('trading-assistant.form.scriptSourcePlaceholder')"
-              @change="loadSourceDetail">
+              @change="loadSourceDetail"
+              @dropdownVisibleChange="onSourceDropdownVisibleChange">
               <a-select-option v-for="source in sources" :key="String(source.id)" :value="String(source.id)">
                 {{ source.name || source.title || source.strategy_name || `#${source.id}` }}
               </a-select-option>
@@ -502,6 +503,9 @@ export default {
       } finally {
         this.loadingSources = false
       }
+    },
+    onSourceDropdownVisibleChange (visible) {
+      if (visible && !this.loadingSources) this.loadSources()
     },
     async loadCredentials () {
       this.loadingCredentials = true

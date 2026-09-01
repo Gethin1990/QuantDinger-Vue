@@ -358,27 +358,43 @@
               {{ isStrategyAsset ? $t('community.myStrategy') : $t('community.myIndicator') }}
             </a-button>
             <template v-else-if="detail.is_purchased">
-              <a-tooltip :title="syncActionTooltip" placement="top">
-                <a-badge :dot="!!detail.has_update && !localCopyMissing" :offset="[-4, 4]">
-                  <a-button
-                    :type="localCopyMissing ? 'primary' : 'default'"
-                    :loading="syncing"
-                    @click="handleSyncCode"
-                  >
-                    <a-icon :type="localCopyMissing ? 'cloud-download' : 'sync'" />
-                    {{ syncing ? syncActionLoadingLabel : syncActionLabel }}
-                    <a-tag
-                      v-if="detail.has_update && !syncing && !localCopyMissing"
-                      color="orange"
-                      class="update-tag"
-                    >{{ $t('community.hasUpdate') }}</a-tag>
-                  </a-button>
-                </a-badge>
-              </a-tooltip>
-              <a-button v-if="!localCopyMissing" type="primary" @click="goToUse">
-                <a-icon :type="isScriptTemplate ? 'code-sandbox' : 'code'" />
-                {{ useNowLabel }}
-              </a-button>
+              <template v-if="isStrategyAsset && !localCopyMissing">
+                <a-button type="primary" :disabled="!purchasedStrategySourceId" @click="deployPurchasedStrategy">
+                  <a-icon type="rocket" />
+                  {{ $t('community.deployLive') }}
+                </a-button>
+                <a-button
+                  v-if="!codeHidden"
+                  :disabled="!purchasedStrategySourceId"
+                  @click="viewPurchasedStrategyCode"
+                >
+                  <a-icon type="code" />
+                  {{ $t('community.viewCode') }}
+                </a-button>
+              </template>
+              <template v-else>
+                <a-tooltip :title="syncActionTooltip" placement="top">
+                  <a-badge :dot="!!detail.has_update && !localCopyMissing" :offset="[-4, 4]">
+                    <a-button
+                      :type="localCopyMissing ? 'primary' : 'default'"
+                      :loading="syncing"
+                      @click="handleSyncCode"
+                    >
+                      <a-icon :type="localCopyMissing ? 'cloud-download' : 'sync'" />
+                      {{ syncing ? syncActionLoadingLabel : syncActionLabel }}
+                      <a-tag
+                        v-if="detail.has_update && !syncing && !localCopyMissing"
+                        color="orange"
+                        class="update-tag"
+                      >{{ $t('community.hasUpdate') }}</a-tag>
+                    </a-button>
+                  </a-badge>
+                </a-tooltip>
+                <a-button v-if="!localCopyMissing" type="primary" @click="goToUse">
+                  <a-icon type="code" />
+                  {{ $t('community.useNow') }}
+                </a-button>
+              </template>
             </template>
             <a-button
               v-else
@@ -393,37 +409,6 @@
         </div>
       </div>
     </a-spin>
-    <a-modal
-      :visible="compatibilityVisible"
-      :title="$t('community.compatibilityTitle')"
-      :confirm-loading="adaptingStrategy"
-      :ok-text="$t('community.createAdaptedDraft')"
-      :ok-button-props="{ props: { disabled: !compatibilityResult || !compatibilityResult.compatible } }"
-      :cancel-text="$t('community.cancelEdit')"
-      :wrap-class-name="modalWrapClass"
-      @ok="createAdaptedDraft"
-      @cancel="compatibilityVisible = false"
-    >
-      <a-alert type="warning" show-icon :message="$t('community.compatibilityHint')" class="compatibility-alert" />
-      <a-form layout="vertical">
-        <a-form-item :label="$t('community.targetInstrument')">
-          <a-input v-model="compatibilityTarget" :placeholder="$t('community.targetInstrumentPlaceholder')" @pressEnter="checkCompatibility">
-            <a-icon slot="prefix" type="stock" />
-          </a-input>
-        </a-form-item>
-        <a-button block :loading="checkingCompatibility" @click="checkCompatibility">
-          <a-icon type="safety-certificate" /> {{ $t('community.checkCompatibility') }}
-        </a-button>
-      </a-form>
-      <a-alert
-        v-if="compatibilityResult"
-        class="compatibility-result"
-        :type="compatibilityResult.compatible ? 'success' : 'error'"
-        show-icon
-        :message="$t(compatibilityResult.compatible ? 'community.compatible' : 'community.incompatible')"
-        :description="compatibilityDescription"
-      />
-    </a-modal>
   </a-modal>
 </template>
 
@@ -469,12 +454,7 @@ export default {
       equityChartInst: null,
       equityResizeHandler: null,
       showAllParameters: false,
-      parameterPreviewLimit: 4,
-      compatibilityVisible: false,
-      compatibilityTarget: '',
-      compatibilityResult: null,
-      checkingCompatibility: false,
-      adaptingStrategy: false
+      parameterPreviewLimit: 4
     }
   },
   computed: {
@@ -500,10 +480,6 @@ export default {
       return !!(this.detail && this.detail.is_purchased &&
         Number(this.detail.your_purchase_price || 0) > 0)
     },
-    isScriptTemplate () {
-      const assetType = this.detail && this.detail.asset_type
-      return assetType === 'script_template'
-    },
     isStrategyAsset () {
       const assetType = String((this.detail && this.detail.asset_type) || '').toLowerCase()
       return assetType === 'script_template' || assetType === 'script' || assetType === 'strategy'
@@ -521,15 +497,6 @@ export default {
     },
     bindingMode () {
       return (this.detail && this.detail.binding_mode) || (this.strategyContract && this.strategyContract.binding_mode) || 'unknown'
-    },
-    compatibilityDescription () {
-      if (!this.compatibilityResult) return ''
-      if (this.compatibilityResult.compatible) return this.$t('community.rebacktestRequired')
-      return (this.compatibilityResult.reason_codes || []).map(code => {
-        const key = `community.compatibilityReason.${code}`
-        const translated = this.$t(key)
-        return translated === key ? code : translated
-      }).join(' · ')
     },
     strategyParameters () {
       return this.strategyContract && Array.isArray(this.strategyContract.parameters)
@@ -686,6 +653,10 @@ export default {
     localCopyMissing () {
       return !!(this.detail && this.detail.is_purchased && this.detail.local_copy_missing)
     },
+    purchasedStrategySourceId () {
+      const d = this.detail || {}
+      return d.script_source_id || d.purchased_script_source_id || ''
+    },
     syncActionLabel () {
       return this.localCopyMissing ? this.$t('community.restoreCopy') : this.$t('community.syncCode')
     },
@@ -694,12 +665,6 @@ export default {
     },
     syncActionTooltip () {
       return this.localCopyMissing ? this.$t('community.restoreCopyTooltip') : this.$t('community.syncCodeTooltip')
-    },
-    useNowLabel () {
-      if (this.isScriptTemplate) {
-        return this.$t('community.useStrategyV2')
-      }
-      return this.$t('community.useNow')
     },
     hasEquityCurve () {
       return this.performance && Array.isArray(this.performance.equity_curve) &&
@@ -1031,83 +996,41 @@ export default {
     },
 
     goToUse () {
-      if (this.isScriptTemplate && this.bindingMode === 'parameterized') {
-        this.compatibilityTarget = ''
-        this.compatibilityResult = null
-        this.compatibilityVisible = true
-        return
-      }
-      this.$emit('close')
-      const assetType = (this.detail && this.detail.asset_type) || 'indicator'
-      if (assetType === 'script_template') {
-        const sid = this.detail && (this.detail.script_source_id || this.detail.purchased_script_source_id)
-        if (sid) {
-          this.$router.push({
-            path: '/strategy-ide',
-            query: { sourceId: String(sid) }
-          })
-        } else {
-          this.$router.push({ path: '/strategy-ide' })
-        }
-        return
-      }
       const localId = this.detail && (
         this.detail.local_copy_id ||
         this.detail.purchased_indicator_id ||
-        this.detail.indicator_id ||
-        this.detail.id
+        this.detail.indicator_id
       )
+      if (!localId) {
+        this.$message.error(this.$t('community.restoreCopyFailed'))
+        return
+      }
+      this.$emit('close')
       this.$router.push({
         path: '/indicator-ide',
-        query: localId ? { indicator_id: String(localId) } : {}
-      })
+        query: { indicator_id: String(localId) }
+      }).catch(() => {})
     },
 
-    async checkCompatibility () {
-      if (!String(this.compatibilityTarget || '').trim()) return
-      this.checkingCompatibility = true
-      try {
-        const res = await request({
-          url: `/api/community/indicators/${this.indicatorId}/compatibility`,
-          method: 'get',
-          params: {
-            target_instrument: String(this.compatibilityTarget || '').trim()
-          }
-        })
-        this.compatibilityResult = res && res.code === 1 ? res.data : { compatible: false, reason_codes: [res && res.msg] }
-      } catch (e) {
-        this.compatibilityResult = { compatible: false, reason_codes: [e.backendMessage || e.message || 'request_failed'] }
-      } finally {
-        this.checkingCompatibility = false
-      }
-    },
-
-    async createAdaptedDraft () {
-      if (!this.compatibilityResult || !this.compatibilityResult.compatible) return
-      this.adaptingStrategy = true
-      try {
-        const res = await request({
-          url: `/api/community/indicators/${this.indicatorId}/adapt`,
-          method: 'post',
-          data: {
-            target_instrument: String(this.compatibilityTarget || '').trim()
-          }
-        })
-        if (!(res && res.code === 1 && res.data && res.data.script_source_id)) {
-          throw new Error((res && res.msg) || 'strategy_adaptation_failed')
+    deployPurchasedStrategy () {
+      if (!this.purchasedStrategySourceId) return
+      this.$emit('close')
+      this.$router.push({
+        path: '/strategy-center',
+        query: {
+          mode: 'create',
+          sourceId: String(this.purchasedStrategySourceId)
         }
-        this.$message.success(this.$t('community.adaptedDraftCreated'))
-        this.compatibilityVisible = false
-        this.$emit('close')
-        this.$router.push({
-          path: '/strategy-ide',
-          query: { sourceId: String(res.data.script_source_id), requiresBacktest: '1' }
-        })
-      } catch (e) {
-        this.$message.error(e.backendMessage || e.message || this.$t('community.incompatible'))
-      } finally {
-        this.adaptingStrategy = false
-      }
+      }).catch(() => {})
+    },
+
+    viewPurchasedStrategyCode () {
+      if (this.codeHidden || !this.purchasedStrategySourceId) return
+      this.$emit('close')
+      this.$router.push({
+        path: '/strategy-ide',
+        query: { sourceId: String(this.purchasedStrategySourceId) }
+      }).catch(() => {})
     },
 
     handleSyncCode () {
@@ -1266,14 +1189,6 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.compatibility-alert {
-  margin-bottom: 18px;
-}
-
-.compatibility-result {
-  margin-top: 16px;
-}
-
 .indicator-detail-modal {
   .detail-container {
     display: flex;

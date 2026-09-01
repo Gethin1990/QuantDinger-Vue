@@ -57,8 +57,10 @@
             show-search
             option-filter-prop="children"
             data-testid="backtest-source-select"
+            :loading="sourcesLoading"
             :placeholder="$t('backtest-center.strategyPlaceholder')"
             @change="selectSource"
+            @dropdownVisibleChange="onSourceDropdownVisibleChange"
           >
             <a-select-option v-for="item in availableSources" :key="item.id" :value="item.id">
               {{ item.name }} · {{ sourceTypeLabel(item) }}
@@ -360,6 +362,7 @@ export default {
     return {
       mode: 'portfolio',
       sources: [],
+      sourcesLoading: false,
       portfolioHistory: [],
       factorHistory: [],
       source: null,
@@ -755,8 +758,19 @@ export default {
       await this.syncRouteSource({ fallback: true })
     },
     async loadSources () {
-      const response = await getScriptSourceList()
-      this.sources = (response.data && response.data.items) || []
+      this.sourcesLoading = true
+      try {
+        const response = await getScriptSourceList()
+        this.sources = (response.data && response.data.items) || []
+      } finally {
+        this.sourcesLoading = false
+      }
+    },
+    onSourceDropdownVisibleChange (visible) {
+      if (!visible || this.sourcesLoading) return
+      this.loadSources().catch(error => {
+        console.warn('Refresh backtest sources failed:', error)
+      })
     },
     async loadHistory ({ mode = this.mode, force = false } = {}) {
       const requestedMode = mode === 'factor' ? 'factor' : 'portfolio'
