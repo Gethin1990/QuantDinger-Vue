@@ -44,6 +44,13 @@ test('all robot types open advanced settings by default and use neutral risk sur
   assert.doesNotMatch(builderSource, /\.theme-dark \.equity-risk-card \{[\s\S]*?background: #102a43/)
 })
 
+test('robot builder accents follow the active system theme', () => {
+  assert.match(builderSource, /\.panel-step \{[\s\S]*?background: var\(--primary-color/)
+  assert.match(builderSource, /\.catalog-item\.active \{[\s\S]*?border-color: var\(--primary-color/)
+  assert.match(builderSource, /class="theme-accent-tag"/)
+  assert.doesNotMatch(builderSource, /#52c41a|#389e0d|#73d13d|#b7eb8f|#f6ffed/)
+})
+
 test('generated robot metadata is preserved for save, backtest and live deployment', () => {
   assert.match(strategyIdeSource, /this\.scriptTemplateKey = generated\.template_key \|\| ''/)
   assert.match(strategyIdeSource, /robot_compatibility: generated\.compatibility \|\| \{\}/)

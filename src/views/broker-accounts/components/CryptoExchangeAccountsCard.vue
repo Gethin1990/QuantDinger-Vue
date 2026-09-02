@@ -150,19 +150,38 @@
             />
           </a-tab-pane>
           <a-tab-pane key="orders" :tab="ordersTabLabel">
-            <a-table
-              v-if="orderRows.length"
-              :columns="orderColumns"
-              :data-source="orderRows"
-              :pagination="false"
-              size="small"
-              row-key="rowKey"
-              :scroll="{ x: 720 }"
-            />
-            <a-empty
-              v-else
-              :description="snapshotErrors.length ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noOpenOrders')"
-            />
+            <a-tabs v-model="snapshotOrderActiveTab" class="snapshot-order-tabs" type="card" size="small">
+              <a-tab-pane key="spot" :tab="spotOrdersTabLabel">
+                <a-table
+                  v-if="spotOrderRows.length"
+                  :columns="orderColumns"
+                  :data-source="spotOrderRows"
+                  :pagination="spotOrderPagination"
+                  size="small"
+                  row-key="rowKey"
+                  :scroll="{ x: 720, y: 420 }"
+                />
+                <a-empty
+                  v-else
+                  :description="snapshotErrors.length ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noOpenOrders')"
+                />
+              </a-tab-pane>
+              <a-tab-pane key="swap" :tab="swapOrdersTabLabel">
+                <a-table
+                  v-if="swapOrderRows.length"
+                  :columns="orderColumns"
+                  :data-source="swapOrderRows"
+                  :pagination="swapOrderPagination"
+                  size="small"
+                  row-key="rowKey"
+                  :scroll="{ x: 720, y: 420 }"
+                />
+                <a-empty
+                  v-else
+                  :description="snapshotErrors.length ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noOpenOrders')"
+                />
+              </a-tab-pane>
+            </a-tabs>
           </a-tab-pane>
         </a-tabs>
       </a-spin>
@@ -214,6 +233,7 @@ export default {
       snapshotLoading: false,
       snapshotTarget: null,
       snapshotActiveTab: 'swap',
+      snapshotOrderActiveTab: 'spot',
       swapRows: [],
       spotRows: [],
       orderRows: [],
@@ -250,6 +270,24 @@ export default {
       return n > 0
         ? `${this.$t('trading-assistant.positions.tabOpenOrders')} (${n})`
         : this.$t('trading-assistant.positions.tabOpenOrders')
+    },
+    spotOrderRows () {
+      return this.orderRows.filter(row => row.marketType === 'spot')
+    },
+    swapOrderRows () {
+      return this.orderRows.filter(row => row.marketType !== 'spot')
+    },
+    spotOrdersTabLabel () {
+      return this.orderTypeTabLabel('executorStrategies.spot', this.spotOrderRows.length)
+    },
+    swapOrdersTabLabel () {
+      return this.orderTypeTabLabel('executorStrategies.swap', this.swapOrderRows.length)
+    },
+    spotOrderPagination () {
+      return this.orderPagination(this.spotOrderRows.length)
+    },
+    swapOrderPagination () {
+      return this.orderPagination(this.swapOrderRows.length)
     },
     snapshotModalWrapClass () {
       const base = 'exchange-account-snapshot-modal'
@@ -337,11 +375,14 @@ export default {
     mapOrderRows (rows) {
       return (rows || []).map((r, idx) => {
         const side = String(r.side || '').toLowerCase()
+        const rawMarketType = String(r.market_type || r.marketType || '').trim().toLowerCase()
+        const marketType = rawMarketType === 'spot' || rawMarketType === 'cash' ? 'spot' : 'swap'
         const px = parseFloat(r.price || 0)
         const amt = parseFloat(r.amount || 0)
         const filled = parseFloat(r.filled || 0)
         return {
-          rowKey: r.exchange_order_id || `${r.symbol}-${side}-${idx}`,
+          rowKey: `${marketType}:${r.exchange_order_id || `${r.symbol}-${side}-${idx}`}`,
+          marketType,
           symbol: r.symbol || '',
           sideLabel: side === 'buy' || side === 'long'
             ? this.$t('trading-assistant.table.buy')
@@ -355,6 +396,19 @@ export default {
           statusLabel: String(r.status || '--')
         }
       })
+    },
+    orderTypeTabLabel (translationKey, count) {
+      const label = this.$t(translationKey)
+      return count > 0 ? `${label} (${count})` : label
+    },
+    orderPagination (total) {
+      return {
+        pageSize: 20,
+        total,
+        showSizeChanger: true,
+        pageSizeOptions: ['10', '20', '50', '100'],
+        hideOnSinglePage: total <= 20
+      }
     },
     async loadCredentials () {
       this.loading = true
@@ -389,6 +443,7 @@ export default {
       this.snapshotTarget = item
       this.snapshotModalVisible = true
       this.snapshotActiveTab = 'swap'
+      this.snapshotOrderActiveTab = 'spot'
       this.snapshotLoading = true
       this.swapRows = []
       this.spotRows = []
@@ -402,6 +457,7 @@ export default {
         this.swapRows = this.mapPositionRows(data.swap_positions || [])
         this.spotRows = this.mapPositionRows(data.spot_positions || [])
         this.orderRows = this.mapOrderRows(data.open_orders || [])
+        this.snapshotOrderActiveTab = this.spotOrderRows.length ? 'spot' : 'swap'
         this.snapshotFetchedAt = data.fetched_at || null
         this.snapshotPartial = !!data.partial
         const warnings = Array.isArray(data.warnings) ? data.warnings.filter(Boolean) : []
@@ -638,9 +694,33 @@ export default {
 .snapshot-tabs {
   margin-top: 4px;
 }
+.snapshot-order-tabs {
+  margin-top: 2px;
+
+  ::v-deep .ant-tabs-content {
+    min-height: 250px;
+  }
+
+  ::v-deep .ant-pagination {
+    margin-bottom: 0;
+  }
+}
 </style>
 
 <style lang="less">
+.exchange-account-snapshot-modal {
+  .ant-modal {
+    top: 24px;
+    padding-bottom: 24px;
+  }
+
+  .ant-modal-body {
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 .exchange-account-snapshot-modal--dark {
   .ant-modal-content,
   .ant-modal-header,
@@ -743,6 +823,26 @@ export default {
 
   .ant-empty-description {
     color: rgba(255, 255, 255, 0.56);
+  }
+
+  .ant-pagination,
+  .ant-pagination-item a,
+  .ant-pagination-jump-prev,
+  .ant-pagination-jump-next {
+    color: rgba(255, 255, 255, 0.68);
+  }
+
+  .ant-pagination-item,
+  .ant-pagination-prev .ant-pagination-item-link,
+  .ant-pagination-next .ant-pagination-item-link,
+  .ant-pagination-options .ant-select-selection {
+    border-color: #3a3a3a;
+    background: #1f1f1f;
+    color: rgba(255, 255, 255, 0.78);
+  }
+
+  .ant-pagination-item-active {
+    border-color: var(--primary-color, #1890ff);
   }
 }
 </style>

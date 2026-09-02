@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "Position de plage de 20 barres",
   "fastAnalysis.rangePct20Hint": "Plage de 0 à 100 %",
   "fastAnalysis.reasonsAndRisks": "Principales raisons et risques",
+  "fastAnalysis.rechargeNow": "Recharger maintenant",
   "fastAnalysis.refClose": "Réf. proche (calc.)",
   "fastAnalysis.regimePerformanceTitle": " Régime de marché × décision × résultat réalisé (30 jours)",
   "fastAnalysis.resistance": "Résistance",

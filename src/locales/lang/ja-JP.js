@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "20バール範囲位置",
   "fastAnalysis.rangePct20Hint": "範囲の0～100％",
   "fastAnalysis.reasonsAndRisks": "主な理由とリスク",
+  "fastAnalysis.rechargeNow": "今すぐチャージ",
   "fastAnalysis.refClose": "参照クローズ（計算）",
   "fastAnalysis.regimePerformanceTitle": "市場政権×決定×実現成果(30日間)",
   "fastAnalysis.resistance": "抵抗",

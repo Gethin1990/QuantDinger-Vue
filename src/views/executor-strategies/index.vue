@@ -36,14 +36,16 @@
             <strong>{{ t(item.titleKey) }}</strong>
             <small>{{ t(item.descKey) }}</small>
           </span>
-          <a-tag :color="item.disabled ? 'default' : 'green'">{{ t(item.badgeKey) }}</a-tag>
+          <a-tag :color="item.disabled ? 'default' : undefined" :class="{ 'theme-accent-tag': !item.disabled }">
+            {{ t(item.badgeKey) }}
+          </a-tag>
         </button>
       </aside>
 
       <section class="executor-config-panel">
         <div class="panel-title panel-title--between">
           <span><b class="panel-step">2</b><a-icon type="setting" />{{ t('executorStrategies.config') }}</span>
-          <a-tag color="green">{{ executorTypeText(form.executor_type) }}</a-tag>
+          <a-tag class="theme-accent-tag">{{ executorTypeText(form.executor_type) }}</a-tag>
         </div>
 
         <div class="executor-config-scroll">
@@ -104,7 +106,7 @@
               <p>{{ triggerModeDescription }}</p>
               <div class="trigger-contract-card__tags">
                 <a-tag color="blue">{{ t('executorStrategies.trigger.riskRealtime') }}</a-tag>
-                <a-tag color="green">{{ t('executorStrategies.trigger.fillReconciled') }}</a-tag>
+                <a-tag class="theme-accent-tag">{{ t('executorStrategies.trigger.fillReconciled') }}</a-tag>
               </div>
             </div>
           </div>
@@ -679,7 +681,7 @@
       <section class="executor-preview-panel">
         <div class="panel-title panel-title--between">
           <span><b class="panel-step">3</b><a-icon type="profile" />{{ t(isDca ? 'executorStrategies.dcaPreviewTitle' : 'executorStrategies.previewTitle') }}</span>
-          <a-tag v-if="preview.executor_type" color="green">{{ executorTypeText(preview.executor_type) }}</a-tag>
+          <a-tag v-if="preview.executor_type" class="theme-accent-tag">{{ executorTypeText(preview.executor_type) }}</a-tag>
         </div>
 
         <div class="summary-grid">
@@ -1383,9 +1385,9 @@ export default {
 }
 
 .panel-step {
-  border-color: #52c41a;
+  border-color: var(--primary-color, #1890ff);
   color: #fff;
-  background: #52c41a;
+  background: var(--primary-color, #1890ff);
 }
 
 .executor-header {
@@ -1397,7 +1399,7 @@ export default {
 }
 
 .executor-kicker {
-  color: #52c41a;
+  color: var(--primary-color, #1890ff);
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1489,10 +1491,10 @@ export default {
 
 .safe-mode-pill {
   padding: 4px 8px;
-  border: 1px solid #d9f7be;
+  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 34%, transparent);
   border-radius: 999px;
-  color: #3f7f1f;
-  background: #f6ffed;
+  color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, #fff);
   font-size: 10px;
   font-weight: 700;
 }
@@ -1515,8 +1517,8 @@ export default {
 }
 
 .catalog-item.active {
-  border-color: #52c41a;
-  background: #f6ffed;
+  border-color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, #fff);
 }
 
 .catalog-item.disabled {
@@ -1532,7 +1534,13 @@ export default {
   justify-content: center;
   border-radius: 8px;
   background: #fff;
-  color: #52c41a;
+  color: var(--primary-color, #1890ff);
+}
+
+.theme-accent-tag {
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, transparent);
+  color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, #fff);
 }
 
 .catalog-copy {
@@ -1576,7 +1584,7 @@ export default {
 
 .section-title {
   margin: 10px 0 6px;
-  color: #52c41a;
+  color: var(--primary-color, #1890ff);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -1625,7 +1633,7 @@ export default {
   border: 1px solid #d8dee6;
   border-radius: 10px;
   background: #f8fafc;
-  box-shadow: inset 3px 0 0 rgba(82, 196, 26, 0.72);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary-color, #1890ff) 72%, transparent);
 }
 
 .trigger-contract-card__icon {
@@ -1636,9 +1644,9 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  border: 1px solid #d9edcf;
-  color: #389e0d;
-  background: #f0f8ec;
+  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 30%, transparent);
+  color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, #fff);
 }
 
 .trigger-contract-card strong { color: #1f2937; font-size: 13px; }
@@ -1648,9 +1656,9 @@ export default {
 .trailing-profit-card {
   margin: 4px 0 10px;
   padding: 10px;
-  border: 1px solid #b7eb8f;
+  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 32%, transparent);
   border-radius: 8px;
-  background: #f6ffed;
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 7%, #fff);
 }
 
 .trailing-profit-card__header {
@@ -1679,7 +1687,7 @@ export default {
 .equity-risk-card {
   border-color: #d8dee6;
   background: #f8fafc;
-  box-shadow: inset 3px 0 0 rgba(82, 196, 26, 0.72);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary-color, #1890ff) 72%, transparent);
 }
 
 .equity-trailing-toggle {
@@ -1720,6 +1728,16 @@ export default {
 .layered-explainer,
 .dca-explainer {
   margin-bottom: 10px;
+}
+
+.dca-market-notice {
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 32%, transparent);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 7%, #fff);
+
+  /deep/ .ant-alert-icon,
+  /deep/ .ant-alert-message {
+    color: var(--primary-color, #1890ff);
+  }
 }
 
 .dca-filter-setting {
@@ -1870,7 +1888,7 @@ export default {
   gap: 6px;
   align-items: center;
   min-width: 0;
-  color: #389e0d;
+  color: var(--primary-color, #1890ff);
   font-size: 11px;
   font-weight: 700;
 }
@@ -1968,8 +1986,8 @@ export default {
 }
 
 .theme-dark .catalog-item.active {
-  background: #15230f;
-  border-color: #52c41a;
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, #111315);
+  border-color: var(--primary-color, #1890ff);
 }
 
 .theme-dark .catalog-icon {
@@ -1982,8 +2000,8 @@ export default {
 }
 
 .theme-dark .trailing-profit-card {
-  border-color: #274916;
-  background: #15230f;
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, #262a2f);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, #111315);
 }
 
 .theme-dark .equity-risk-card {
@@ -1996,10 +2014,15 @@ export default {
   background: #111315;
 }
 
+.theme-dark .dca-market-notice {
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, #262a2f);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, #111315);
+}
+
 .theme-dark .trigger-contract-card__icon {
-  border-color: #2f4b26;
-  color: #73d13d;
-  background: #1b2b18;
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, #262a2f);
+  color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, #111315);
 }
 
 .theme-dark .trigger-contract-card strong { color: #f3f4f6; }
@@ -2038,9 +2061,15 @@ export default {
 }
 
 .theme-dark .safe-mode-pill {
-  border-color: #274916;
-  color: #b7eb8f;
-  background: #15230f;
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, #262a2f);
+  color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, #111315);
+}
+
+.theme-dark .theme-accent-tag {
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, #262a2f);
+  color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, #111315);
 }
 
 @media (max-width: 1500px) {

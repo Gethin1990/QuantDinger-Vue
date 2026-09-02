@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "положение диапазона 20 бар",
   "fastAnalysis.rangePct20Hint": "0–100% диапазона",
   "fastAnalysis.reasonsAndRisks": "Основные причины и риски",
+  "fastAnalysis.rechargeNow": "Пополнить сейчас",
   "fastAnalysis.refClose": "Ссылка на закрытие (расчет)",
   "fastAnalysis.regimePerformanceTitle": "Режим рынка × решение × реализованный результат (30 дней)",
   "fastAnalysis.resistance": "Сопротивление",

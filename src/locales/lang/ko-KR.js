@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "20바 범위 위치",
   "fastAnalysis.rangePct20Hint": "범위의 0~100%",
   "fastAnalysis.reasonsAndRisks": "주요 이유 및 위험 요소",
+  "fastAnalysis.rechargeNow": "지금 충전",
   "fastAnalysis.refClose": "참조 닫기(계산됨)",
   "fastAnalysis.regimePerformanceTitle": "시장 정권 × 결정 × 실현 아웃컴 (30 일)",
   "fastAnalysis.resistance": "저항",

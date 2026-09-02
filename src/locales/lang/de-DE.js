@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "20-bar-Bereichsposition",
   "fastAnalysis.rangePct20Hint": "0–100 % des Bereichs",
   "fastAnalysis.reasonsAndRisks": "Wichtigste Gründe und Risiken",
+  "fastAnalysis.rechargeNow": "Jetzt aufladen",
   "fastAnalysis.refClose": "Ref. schließen (berechnet)",
   "fastAnalysis.regimePerformanceTitle": "Marktordnung × Entscheidung × realisiertes Ergebnis (30 Tage)",
   "fastAnalysis.resistance": "Widerstand",

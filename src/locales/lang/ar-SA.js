@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "وضع نطاق 20 بار",
   "fastAnalysis.rangePct20Hint": "0-100% من النطاق",
   "fastAnalysis.reasonsAndRisks": "الأسباب والمخاطر الرئيسية",
+  "fastAnalysis.rechargeNow": "اشحن الآن",
   "fastAnalysis.refClose": "إغلاق المرجع (محسوب)",
   "fastAnalysis.regimePerformanceTitle": "نظام السوق × المقرر × النتيجة المحققة )٣٠ يوما(",
   "fastAnalysis.resistance": "مقاومة",

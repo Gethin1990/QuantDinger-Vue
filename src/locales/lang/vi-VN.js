@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "Vị trí phạm vi 20 bar",
   "fastAnalysis.rangePct20Hint": "0–100% của phạm vi",
   "fastAnalysis.reasonsAndRisks": "Nguyên nhân và rủi ro chính",
+  "fastAnalysis.rechargeNow": "Nạp tiền ngay",
   "fastAnalysis.refClose": "Tham chiếu đóng (tính toán)",
   "fastAnalysis.regimePerformanceTitle": " Chế độ thị trường × quyết định × nhận ra kết quả (30 ngày)",
   "fastAnalysis.resistance": "Sức chống cự",

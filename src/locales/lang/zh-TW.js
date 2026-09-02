@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "20 日區間位置",
   "fastAnalysis.rangePct20Hint": "0–100% 區間",
   "fastAnalysis.reasonsAndRisks": "關鍵理由與風險",
+  "fastAnalysis.rechargeNow": "立即充值",
   "fastAnalysis.refClose": "計算用收盤價",
   "fastAnalysis.regimePerformanceTitle": "(30天)",
   "fastAnalysis.resistance": "阻力位",

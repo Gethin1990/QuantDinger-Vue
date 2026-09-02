@@ -2955,6 +2955,7 @@ const locale = {
   "fastAnalysis.rangePct20": "ตำแหน่งช่วง 20 บาร์",
   "fastAnalysis.rangePct20Hint": "ช่วง 0–100%",
   "fastAnalysis.reasonsAndRisks": "เหตุผลสำคัญและความเสี่ยง",
+  "fastAnalysis.rechargeNow": "เติมเงินเลย",
   "fastAnalysis.refClose": "อ้างอิง ปิด (คำนวณ)",
   "fastAnalysis.regimePerformanceTitle": " การตลาดการปกครอง × การตัดสินใจ × ตระหนักถึงผลลัพธ์ (30 วัน)",
   "fastAnalysis.resistance": "ความต้านทาน",

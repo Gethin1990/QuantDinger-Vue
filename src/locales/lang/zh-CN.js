@@ -3204,6 +3204,7 @@ const locale = {
   "fastAnalysis.rangePct20": "20 日区间位置",
   "fastAnalysis.rangePct20Hint": "0–100% 区间",
   "fastAnalysis.reasonsAndRisks": "关键理由与风险",
+  "fastAnalysis.rechargeNow": "立即充值",
   "fastAnalysis.refClose": "计算用收盘价",
   "fastAnalysis.regimePerformanceTitle": "市场状态 × 决策分布 × 后续收益（30 天）",
   "fastAnalysis.resistance": "阻力位",
