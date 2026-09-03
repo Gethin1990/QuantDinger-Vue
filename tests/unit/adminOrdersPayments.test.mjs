@@ -32,3 +32,8 @@ test('admin order additions are translated for every desktop locale', () => {
     }
   }
 })
+
+test('admin order loading failures use the localized message', () => {
+  assert.match(source, /\$t\('adminOrders\.loadFailed'\)/)
+  assert.doesNotMatch(source, /\$message\.error\('Failed to load orders'\)/)
+})

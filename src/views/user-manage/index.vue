@@ -2880,11 +2880,11 @@ export default {
           this.orderFilterOptions = res.data.filter_options || this.orderFilterOptions
           this.ordersLoaded = true
         } else {
-          this.$message.error(res.msg || 'Failed to load orders')
+          this.$message.error(res.msg || this.$t('adminOrders.loadFailed'))
         }
       } catch (error) {
         console.error('Failed to load orders:', error)
-        this.$message.error('Failed to load orders')
+        this.$message.error(this.$t('adminOrders.loadFailed'))
       } finally {
         this.orderLoading = false
       }
