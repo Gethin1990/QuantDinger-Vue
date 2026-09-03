@@ -33,3 +33,11 @@ test('live strategy creation picker refreshes sources when opened', () => {
   assert.match(source, /v-model="model\.scriptSourceId"[\s\S]*@dropdownVisibleChange="onSourceDropdownVisibleChange"/)
   assert.match(source, /onSourceDropdownVisibleChange \(visible\)[\s\S]*visible && !this\.loadingSources[\s\S]*this\.loadSources\(\)/)
 })
+
+test('robot symbol picker refreshes the full watchlist when opened', () => {
+  const source = read('src/views/executor-strategies/index.vue')
+
+  assert.match(source, /data-testid="robot-symbol-select"[\s\S]*@dropdownVisibleChange="onSymbolDropdownVisibleChange"/)
+  assert.match(source, /onSymbolDropdownVisibleChange \(visible\)[\s\S]*!visible \|\| this\.loadingWatchlist[\s\S]*this\.loadWatchlist\(\)/)
+  assert.match(source, /:dropdown-style="\{ maxHeight: '360px', overflowY: 'auto' \}"/)
+})

@@ -1549,7 +1549,7 @@ registerOverlay({
           const shortText = normalizeCompactBacktestMarkerText(overlay.extendData?.shortText || textStr, side)
           const compactFontSize = Number(overlay.extendData?.fontSize) || (isDashed ? 9 : 10)
           const compactHeight = isDashed ? 13 : 15
-          const compactWidth = Math.max(18, Math.min(38, shortText.length * 7 + 10))
+          const compactWidth = Math.max(18, Math.min(isBacktest ? 72 : 38, shortText.length * 7 + 10))
           const laneShift = lane * 16
           const compactY = isBuy ? signalY + laneShift : signalY - compactHeight - laneShift
           const dotY = anchorY

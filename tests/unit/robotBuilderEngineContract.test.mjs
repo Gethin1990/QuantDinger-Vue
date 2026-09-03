@@ -66,3 +66,7 @@ test('template configuration excludes run capital and leverage', () => {
   assert.match(builderSource, /delete templateConfig\.leverage/)
   assert.match(builderSource, /fmtWeight \(value\)/)
 })
+
+test('grid open-order input supports the complete 200-cell safety limit', () => {
+  assert.match(builderSource, /v-model="form\.max_open_orders" :min="1" :max="200"/)
+})

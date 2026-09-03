@@ -6208,9 +6208,6 @@ body.dark .ide-signal-alert-modal-wrap {
   .param-section { border-bottom-color: #303030; }
   .param-label { color: rgba(255,255,255,0.78); }
   .field-label { color: rgba(255,255,255,0.58); }
-  .optimizer-workflow-step--method {
-    border-top-color: #303030;
-  }
   .params-card {
     background: #1f1f1f;
     border-color: #303030;

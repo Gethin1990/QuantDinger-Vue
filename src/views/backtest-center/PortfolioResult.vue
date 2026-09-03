@@ -208,6 +208,7 @@
             :message="$t('strategyV2.backtest.gridAccountingTitle')"
             :description="$t('strategyV2.backtest.gridAccountingHint')" />
           <a-table
+            class="completed-trades-table"
             :columns="tradeColumns"
             :data-source="tradeRows"
             :row-key="(row, index) => row.id || index"
@@ -264,6 +265,7 @@ import moment from 'moment'
 import KlineChart from '@/views/indicator-analysis/components/KlineChart.vue'
 import {
   buildAggregateTradeReview,
+  buildTradeReviewMarkers,
   buildTradeReviewWindow,
   calculateTradeValueUsd,
   findNearestBarIndex,
@@ -414,6 +416,11 @@ export default {
     },
     reviewTrades () {
       return this.tradeRows.filter(row => normalizeTradeReviewSymbol(row && row.symbol) === this.effectiveReviewSymbol)
+    },
+    reviewExecutions () {
+      return (this.result.executions || this.result.rawTrades || []).filter(row => {
+        return normalizeTradeReviewSymbol(row && row.symbol) === this.effectiveReviewSymbol
+      })
     },
     hasTradeReview () {
       return this.isPortfolioStrategy
@@ -706,40 +713,30 @@ export default {
         if (!component || !chart || !Number.isFinite(entryTime) || !Number.isFinite(exitTime)) return
 
         component.clearBacktestOverlays()
-        const stride = Math.max(1, Math.ceil(this.reviewTrades.length / 250))
-        this.reviewTrades.filter((trade, index) => index % stride === 0 || index === this.reviewTrades.length - 1).forEach(trade => {
-          const tradeEntryTime = timestampMillisecondsUtc(trade.entry_time)
-          const tradeExitTime = timestampMillisecondsUtc(trade.exit_time)
-          const entryPrice = Number(trade.entry_price)
-          const exitPrice = Number(trade.exit_price)
-          const isShort = String(trade.side || '').toLowerCase() === 'short'
-          if (Number.isFinite(tradeEntryTime) && Number.isFinite(entryPrice)) {
-            component.addBacktestOverlay(this.reviewMarkerConfig({
-              timestamp: tradeEntryTime,
-              price: entryPrice,
-              text: this.$t('strategyV2.backtest.entryMarker'),
-              side: isShort ? 'sell' : 'buy',
-              color: isShort ? '#f6465d' : '#0ecb81'
-            }))
-          }
-          if (Number.isFinite(tradeExitTime) && Number.isFinite(exitPrice)) {
-            component.addBacktestOverlay(this.reviewMarkerConfig({
-              timestamp: tradeExitTime,
-              price: exitPrice,
-              text: this.$t('strategyV2.backtest.exitMarker'),
-              side: isShort ? 'buy' : 'sell',
-              color: isShort ? '#0ecb81' : '#f6465d'
-            }))
-          }
+        const candleRows = typeof chart.getDataList === 'function' ? chart.getDataList() : this.reviewRows
+        buildTradeReviewMarkers({
+          executions: this.reviewExecutions,
+          trades: this.reviewTrades,
+          symbol: this.effectiveReviewSymbol,
+          candleRows
+        }).forEach(marker => {
+          const label = this.$t(marker.kind === 'entry'
+            ? 'strategyV2.backtest.entryMarker'
+            : 'strategyV2.backtest.exitMarker')
+          component.addBacktestOverlay(this.reviewMarkerConfig({
+            ...marker,
+            text: marker.count > 1 ? `${label}×${marker.count}` : label,
+            color: marker.kind === 'entry' ? '#0ecb81' : '#f6465d'
+          }))
         })
         this.focusReviewRange(chart, entryTime, exitTime)
       }, 80)
     },
-    reviewMarkerConfig ({ timestamp, price, text, side, color }) {
+    reviewMarkerConfig ({ timestamp, price, text, side, color, lane = 0 }) {
       return {
         name: 'signalTag',
         points: [{ timestamp, value: price }, { timestamp, value: price }],
-        extendData: { text, side, color, source: 'backtest', labelMode: 'full' },
+        extendData: { text, shortText: text, side, color, lane, source: 'backtest', labelMode: 'compact' },
         lock: true
       }
     },
@@ -860,6 +857,25 @@ export default {
 .status-card.status-rejected { border-color: rgba(255, 77, 79, .45); }
 .result-tabs { margin-top: 12px; }
 .grid-accounting-alert { margin-bottom: 12px; }
+.completed-trades-table /deep/ .ant-table-body {
+  scrollbar-width: auto;
+  scrollbar-color: var(--primary-color, #52c41a) #e2e8f0;
+}
+.completed-trades-table /deep/ .ant-table-body::-webkit-scrollbar { width: 14px; height: 14px; }
+.completed-trades-table /deep/ .ant-table-body::-webkit-scrollbar-track {
+  border-radius: 7px;
+  background: #e2e8f0;
+}
+.completed-trades-table /deep/ .ant-table-body::-webkit-scrollbar-thumb {
+  min-width: 72px;
+  border: 3px solid #e2e8f0;
+  border-radius: 7px;
+  background: var(--primary-color, #52c41a);
+  background-clip: padding-box;
+}
+.completed-trades-table /deep/ .ant-table-body::-webkit-scrollbar-thumb:hover {
+  filter: brightness(.9);
+}
 .audit-summary { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 12px; border-radius: 8px; }
 .audit-summary.passed { color: #52c41a; background: rgba(82, 196, 26, .08); }
 .audit-summary.failed { color: #ff4d4f; background: rgba(255, 77, 79, .08); }
@@ -875,6 +891,15 @@ export default {
 .liquidation-alert { margin-top: 12px; }
 .portfolio-result.theme-dark .chart-card, .portfolio-result.theme-dark .trade-review-card { border-color: rgba(255,255,255,.1); }
 .portfolio-result.theme-dark .review-snapshot-empty { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
+.portfolio-result.theme-dark .completed-trades-table /deep/ .ant-table-body {
+  scrollbar-color: var(--primary-color, #52c41a) rgba(255,255,255,.14);
+}
+.portfolio-result.theme-dark .completed-trades-table /deep/ .ant-table-body::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.14);
+}
+.portfolio-result.theme-dark .completed-trades-table /deep/ .ant-table-body::-webkit-scrollbar-thumb {
+  border-color: #171717;
+}
 .portfolio-result.theme-dark .result-trustbar.is-success { border-color: #315d22; background: #13200f; color: #73d13d; }
 .portfolio-result.theme-dark .result-trustbar.is-warning { border-color: #664d03; background: #211b08; color: #ffc53d; }
 .portfolio-result.theme-dark .result-trustbar.is-error { border-color: #6b2525; background: #251111; color: #ff7875; }

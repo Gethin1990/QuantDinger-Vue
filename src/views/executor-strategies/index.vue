@@ -58,7 +58,10 @@
                 show-search
                 option-filter-prop="children"
                 :loading="loadingWatchlist"
-                :not-found-content="t('executorStrategies.watchlistEmpty')">
+                :not-found-content="t('executorStrategies.watchlistEmpty')"
+                :dropdown-style="{ maxHeight: '360px', overflowY: 'auto' }"
+                data-testid="robot-symbol-select"
+                @dropdownVisibleChange="onSymbolDropdownVisibleChange">
                 <a-select-option
                   v-for="item in watchlistOptions"
                   :key="`${item.market}:${item.symbol}`"
@@ -372,7 +375,7 @@
             <div class="field-grid field-grid--three">
               <div class="field-block">
                 <label>{{ t('executorStrategies.maxOpenOrders') }}</label>
-                <a-input-number v-model="form.max_open_orders" :min="1" :max="50" style="width: 100%" />
+                <a-input-number v-model="form.max_open_orders" :min="1" :max="200" style="width: 100%" />
               </div>
               <div class="field-block">
                 <label>{{ t('executorStrategies.minSpread') }}</label>
@@ -1149,6 +1152,12 @@ export default {
       } finally {
         this.loadingWatchlist = false
       }
+    },
+    onSymbolDropdownVisibleChange (visible) {
+      if (!visible || this.loadingWatchlist) return
+      this.loadWatchlist().catch(error => {
+        console.warn('Refresh robot watchlist failed:', error)
+      })
     },
     credentialLabel (credential) {
       const exchange = getExchangeDisplayName(credential && credential.exchange_id)

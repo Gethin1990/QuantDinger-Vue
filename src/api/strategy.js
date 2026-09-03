@@ -30,7 +30,6 @@ const api = {
   strategyFactorResearch: '/api/backtest/factor-research',
   strategyFactorResearchHistory: '/api/backtest/factor-research/history',
   strategyFactorResearchGet: '/api/backtest/factor-research/get',
-  strategyBacktestTune: '/api/backtest/tune',
   strategyBacktestHistory: '/api/backtest/history',
   strategyBacktestGet: '/api/backtest/get',
   scriptSources: '/api/strategies/script-sources',
@@ -359,18 +358,6 @@ export function getStrategyFactorResearchRun (runId) {
     url: api.strategyFactorResearchGet,
     method: 'get',
     params: { runId }
-  })
-}
-
-export function tuneStrategyBacktest (data) {
-  const payload = { ...(data || {}) }
-  const timeout = Number(payload.timeout) > 0 ? Number(payload.timeout) : BACKTEST_TIMEOUT
-  delete payload.timeout
-  return request({
-    url: api.strategyBacktestTune,
-    method: 'post',
-    data: payload,
-    timeout
   })
 }
 

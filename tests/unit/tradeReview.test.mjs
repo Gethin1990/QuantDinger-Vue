@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildAggregateTradeReview,
+  buildTradeReviewMarkers,
   buildTradeReviewWindow,
   calculateTradeValueUsd,
   findNearestBarIndex,
@@ -10,6 +11,43 @@ import {
   normalizeTradeReviewSymbol,
   resolveTradeReviewTimeframe
 } from '../../src/utils/tradeReview.js'
+
+test('uses actual executions and aggregates review markers by candle', () => {
+  const symbol = 'Crypto:DOGE/USDT@swap'
+  const markers = buildTradeReviewMarkers({
+    symbol,
+    candleRows: [
+      { time: '2026-08-03T08:00:00Z' },
+      { time: '2026-08-03T09:00:00Z' }
+    ],
+    executions: [
+      { symbol, time: '2026-08-03T08:02:00Z', price: 0.07, quantity: 10, type: 'open_long' },
+      { symbol, time: '2026-08-03T08:20:00Z', price: 0.069, quantity: 20, type: 'add_long' },
+      { symbol, time: '2026-08-03T09:05:00Z', price: 0.072, quantity: 15, type: 'reduce_long' }
+    ],
+    trades: [
+      { symbol, entry_time: '2026-08-03T08:02:00Z', exit_time: '2026-08-03T09:05:00Z', entry_price: 0.07, exit_price: 0.072 }
+    ]
+  })
+
+  assert.equal(markers.length, 2)
+  assert.deepEqual(markers.map(marker => [marker.kind, marker.count]), [['entry', 2], ['exit', 1]])
+  assert.ok(Math.abs(markers[0].price - ((0.07 * 10 + 0.069 * 20) / 30)) < 1e-12)
+})
+
+test('collapses duplicated seeded-grid entries when legacy executions are unavailable', () => {
+  const symbol = 'Crypto:DOGE/USDT@swap'
+  const markers = buildTradeReviewMarkers({
+    symbol,
+    candleRows: [{ time: '2026-08-03T08:00:00Z' }, { time: '2026-08-03T09:00:00Z' }],
+    trades: [
+      { symbol, side: 'long', entry_time: '2026-08-03T08:01:00Z', exit_time: '2026-08-03T09:01:00Z', entry_price: 0.07, exit_price: 0.071 },
+      { symbol, side: 'long', entry_time: '2026-08-03T08:01:00Z', exit_time: '2026-08-03T09:20:00Z', entry_price: 0.07, exit_price: 0.072 }
+    ]
+  })
+
+  assert.deepEqual(markers.map(marker => [marker.kind, marker.count]), [['entry', 2], ['exit', 2]])
+})
 
 test('normalizes minute periods without turning them into month periods', () => {
   assert.equal(normalizeReviewTimeframe('1m'), '1m')
