@@ -375,7 +375,12 @@
             <div class="field-grid field-grid--three">
               <div class="field-block">
                 <label>{{ t('executorStrategies.maxOpenOrders') }}</label>
-                <a-input-number v-model="form.max_open_orders" :min="1" :max="200" style="width: 100%" />
+                <a-input-number
+                  v-model="form.max_open_orders"
+                  :min="1"
+                  :max="200"
+                  style="width: 100%"
+                  @change="normalizeMaxOpenOrders" />
               </div>
               <div class="field-block">
                 <label>{{ t('executorStrategies.minSpread') }}</label>
@@ -699,7 +704,7 @@
           class="warning-strip"
           type="warning"
           show-icon
-          :message="previewWarnings.join(' / ')"
+          :message="previewWarnings.join(' · ')"
         />
 
         <a-alert
@@ -1215,6 +1220,14 @@ export default {
         if (count % 2) this.form.grid_count = count + 1
       } else if (this.form.executor_type === 'grid' && Number(this.form.initial_position_pct || 0) === 0) {
         this.form.initial_position_pct = 0.6
+      }
+    },
+    normalizeMaxOpenOrders (value) {
+      const parsed = Number(value)
+      if (!Number.isFinite(parsed)) return
+      const normalized = Math.min(200, Math.max(1, Math.trunc(parsed)))
+      if (normalized !== this.form.max_open_orders) {
+        this.form.max_open_orders = normalized
       }
     },
     setRatio (field, value) {

@@ -60,6 +60,7 @@
                 {{ searchResultsTitle }}
               </h3>
             </div>
+
             <a-empty
               v-if="searchResults.length === 0"
               :description="emptySearchLabel"
@@ -223,6 +224,64 @@
                 {{ getGroupTitle(activeGroupKey, currentGroup.title) }}
               </h3>
             </div>
+
+            <a-card
+              v-if="activeGroupKey === 'billing'"
+              class="billing-plan-manager"
+              :title="tOr('settings.billingPlans.title', 'Membership plans')"
+              :bordered="false"
+            >
+              <template #extra>
+                <a-button size="small" @click="addBillingPlan"><a-icon type="plus" /> {{ tOr('settings.billingPlans.add', 'Add plan') }}</a-button>
+              </template>
+              <a-alert
+                type="info"
+                show-icon
+                :message="tOr('settings.billingPlans.hint', 'Plans are rendered dynamically on PC and mobile. Stripe Price ID is optional; leave it blank to use the plan USD price.')"
+              />
+              <div class="billing-plan-table-wrap">
+                <table class="billing-plan-table">
+                  <thead>
+                    <tr>
+                      <th>{{ tOr('settings.billingPlans.code', 'Code') }}</th>
+                      <th>{{ tOr('settings.billingPlans.name', 'Name / Description') }}</th>
+                      <th>{{ tOr('settings.billingPlans.price', 'USD price') }}</th>
+                      <th>{{ tOr('settings.billingPlans.days', 'Days') }}</th>
+                      <th>{{ tOr('settings.billingPlans.onceCredits', 'One-time credits') }}</th>
+                      <th>{{ tOr('settings.billingPlans.monthlyCredits', 'Monthly credits') }}</th>
+                      <th>{{ tOr('settings.billingPlans.stripePrice', 'Stripe Price ID') }}</th>
+                      <th>{{ tOr('settings.billingPlans.flags', 'Flags') }}</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(plan, index) in billingPlans" :key="plan._key">
+                      <td><a-input :ref="`billingPlanCode-${plan._key}`" v-model="plan.code" size="small" :disabled="!!plan.persisted" placeholder="plan_code" /></td>
+                      <td class="plan-copy-cell">
+                        <a-input v-model="plan.name" size="small" :placeholder="tOr('settings.billingPlans.name', 'Name')" />
+                        <a-input v-model="plan.description" size="small" :placeholder="tOr('settings.billingPlans.description', 'Description')" />
+                      </td>
+                      <td><a-input-number v-model="plan.price_usd" size="small" :min="0" :precision="2" /></td>
+                      <td><a-input-number v-model="plan.duration_days" size="small" :min="0" :disabled="plan.is_lifetime" /></td>
+                      <td><a-input-number v-model="plan.credits_once" size="small" :min="0" /></td>
+                      <td><a-input-number v-model="plan.credits_monthly" size="small" :min="0" /></td>
+                      <td><a-input v-model="plan.stripe_price_id" size="small" placeholder="price_..." /></td>
+                      <td class="plan-flags">
+                        <a-checkbox v-model="plan.is_active">{{ tOr('settings.billingPlans.active', 'Active') }}</a-checkbox>
+                        <a-checkbox v-model="plan.is_lifetime">{{ tOr('settings.billingPlans.lifetime', 'Lifetime') }}</a-checkbox>
+                        <a-checkbox v-model="plan.is_popular">{{ tOr('settings.billingPlans.popular', 'Popular') }}</a-checkbox>
+                      </td>
+                      <td><a-button type="link" class="plan-remove" @click="removeBillingPlan(index)"><a-icon type="delete" /></a-button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="billing-plan-actions">
+                <a-button type="primary" :loading="billingPlansSaving" @click="saveBillingPlanCatalog">
+                  <a-icon type="save" /> {{ tOr('settings.billingPlans.save', 'Save plans') }}
+                </a-button>
+              </div>
+            </a-card>
 
             <div v-if="activeGroupKey === 'market_catalog'" class="market-catalog-panel">
               <div class="catalog-action-row">
@@ -720,6 +779,7 @@
 import { getSettingsSchema, getSettingsValues, saveSettings, getOpenRouterBalance, getMarketCatalogOverview, syncMarketCatalog } from '@/api/settings'
 import { getMarketModules } from '@/api/marketModules'
 import { getSystemUniverseOverview, syncSystemUniverses } from '@/api/universe'
+import { getAdminMembershipPlans, saveAdminMembershipPlans } from '@/api/billing'
 import { baseMixin } from '@/store/app-mixin'
 
 export default {
@@ -751,6 +811,8 @@ export default {
       universeOverview: null,
       selectedUniverseCodes: [],
       selectedLlmProvider: '',
+      billingPlans: [],
+      billingPlansSaving: false,
       settingsInputNonce: Math.random().toString(36).slice(2, 10)
     }
   },
@@ -957,6 +1019,7 @@ export default {
   },
   mounted () {
     this.loadSettings()
+    this.loadBillingPlanCatalog()
     this.refreshCatalogOverview()
     this.refreshUniverseOverview()
   },
@@ -972,6 +1035,88 @@ export default {
     }
   },
   methods: {
+    normalizeBillingPlan (plan = {}) {
+      return {
+        _key: `${plan.code || 'new'}-${Date.now()}-${Math.random()}`,
+        persisted: !!plan.code,
+        code: plan.code || '',
+        name: plan.name || '',
+        description: plan.description || '',
+        price_usd: Number(plan.price_usd || 0),
+        duration_days: Number(plan.duration_days || 0),
+        credits_once: Number(plan.credits_once || 0),
+        credits_monthly: Number(plan.credits_monthly || 0),
+        is_lifetime: !!plan.is_lifetime,
+        is_active: plan.is_active !== false,
+        is_popular: !!plan.is_popular,
+        sort_order: Number(plan.sort_order || 0),
+        stripe_price_id: plan.stripe_price_id || ''
+      }
+    },
+    async loadBillingPlanCatalog () {
+      try {
+        const res = await getAdminMembershipPlans()
+        if (res && res.code === 1) {
+          this.billingPlans = Object.values(res.data || {})
+            .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
+            .map(plan => this.normalizeBillingPlan(plan))
+        }
+      } catch (error) {
+        // Settings remain usable even when an older backend has no plan API.
+      }
+    },
+    addBillingPlan () {
+      const usedCodes = new Set(this.billingPlans.map(plan => String(plan.code || '').trim().toLowerCase()))
+      let suffix = this.billingPlans.length + 1
+      while (usedCodes.has(`plan_${suffix}`)) suffix += 1
+      const draft = this.normalizeBillingPlan({
+        code: `plan_${suffix}`,
+        duration_days: 30,
+        sort_order: 0,
+        is_active: true
+      })
+      draft.persisted = false
+      // Put the new row where the user can see it immediately. Previously it
+      // was appended below a wide table and looked as if the button did nothing.
+      this.billingPlans.unshift(draft)
+      this.$nextTick(() => {
+        const input = this.$refs[`billingPlanCode-${draft._key}`]
+        const target = Array.isArray(input) ? input[0] : input
+        if (target && typeof target.focus === 'function') target.focus()
+      })
+    },
+    removeBillingPlan (index) {
+      const plan = this.billingPlans[index]
+      if (plan && plan.persisted) {
+        plan.is_active = false
+        this.$message.info(this.tOr('settings.billingPlans.deactivated', 'Existing plans are retained for order history and have been disabled.'))
+        return
+      }
+      this.billingPlans.splice(index, 1)
+    },
+    async saveBillingPlanCatalog () {
+      this.billingPlansSaving = true
+      try {
+        const payload = this.billingPlans.map((plan, index) => ({
+          ...plan,
+          code: String(plan.code || '').trim().toLowerCase(),
+          name: String(plan.name || '').trim(),
+          sort_order: index * 10
+        }))
+        const res = await saveAdminMembershipPlans(payload)
+        if (res && res.code === 1) {
+          this.$message.success(this.tOr('settings.billingPlans.saved', 'Membership plans saved'))
+          await this.loadBillingPlanCatalog()
+        } else {
+          this.$message.error((res && res.msg) || this.tOr('settings.saveFailed', 'Save failed'))
+        }
+      } catch (error) {
+        const message = error && error.response && error.response.data && error.response.data.msg
+        this.$message.error(message || this.tOr('settings.saveFailed', 'Save failed'))
+      } finally {
+        this.billingPlansSaving = false
+      }
+    },
     universeAdminLabel (item) {
       const key = item && item.name_i18n_key
       const translated = key ? this.$t(key) : ''
@@ -2494,6 +2639,79 @@ export default {
     .catalog-stats ::v-deep .ant-statistic { margin-bottom: 12px; }
     .universe-sync-row { grid-template-columns: 24px minmax(0, 1fr) auto; }
     .universe-sync-row > div:not(.universe-sync-name) { display: none; }
+  }
+}
+
+.billing-plan-manager {
+  margin-bottom: 20px;
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 3%, #fff);
+
+  .billing-plan-table-wrap {
+    overflow-x: auto;
+    margin-top: 14px;
+  }
+  .billing-plan-table {
+    width: 100%;
+    min-width: 1120px;
+    border-collapse: collapse;
+    th, td { padding: 8px 6px; border-bottom: 1px solid #edf0f4; vertical-align: top; }
+    th { color: #697386; font-size: 12px; font-weight: 600; text-align: left; }
+    .ant-input-number { width: 112px; }
+  }
+  .plan-flags {
+    min-width: 100px;
+    .ant-checkbox-wrapper { display: block; margin: 0 0 4px; }
+  }
+  .plan-copy-cell {
+    min-width: 180px;
+    .ant-input + .ant-input { margin-top: 6px; }
+  }
+  .plan-remove { color: #ff4d4f; }
+  .billing-plan-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+}
+
+.theme-dark .billing-plan-manager {
+  background: #171a1f;
+  color: #e6edf3;
+
+  ::v-deep .ant-card-head {
+    color: #e6edf3;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  ::v-deep .ant-card-head-title,
+  ::v-deep .ant-checkbox-wrapper,
+  ::v-deep .ant-checkbox-wrapper span:last-child {
+    color: #e6edf3;
+  }
+  ::v-deep .ant-input,
+  ::v-deep .ant-input-number {
+    color: #e6edf3;
+    background: #101318;
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+  ::v-deep .ant-input-number-input {
+    color: #e6edf3;
+    background: transparent;
+  }
+  ::v-deep .ant-input::placeholder,
+  ::v-deep .ant-input-number-input::placeholder {
+    color: #6f7a86;
+  }
+  ::v-deep .ant-input[disabled],
+  ::v-deep .ant-input-number-disabled {
+    color: #8b949e;
+    background: #20242a;
+  }
+  ::v-deep .ant-alert-info {
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, #11151a);
+    border-color: color-mix(in srgb, var(--primary-color, #1890ff) 32%, transparent);
+  }
+  ::v-deep .ant-alert-info .ant-alert-message {
+    color: #c9d1d9;
+  }
+  .billing-plan-table {
+    th { color: #9da7b3; }
+    td { border-color: rgba(255, 255, 255, 0.1); }
   }
 }
 </style>

@@ -36,6 +36,8 @@ const locale = {
   'executorStrategies.warning.neutral_grid_count_adjusted_even': 'Neutral grid count was adjusted to an even number',
   'executorStrategies.warning.neutral_grid_anchor_outside_bounds': 'The neutral-grid anchor must be inside the configured range',
   'executorStrategies.warning.hard_stop_blocks_level': 'The configured stop loss can close the basket before a later add-on level',
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': 'Maximum entry orders cannot exceed the grid count and were adjusted automatically',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': 'This dense grid may take longer to backtest, especially on short timeframes',
   'executorStrategies.martingaleFullBudgetTitle': 'The final level uses the remaining strategy budget',
   'executorStrategies.martingaleFullBudgetDesc': 'Earlier levels follow their configured weights. The final level invests the remaining capital from this run, including a final fee-aware balance sweep. This refers to the strategy run capital, not the entire exchange wallet.',
   'executorStrategies.restartAfterStop': 'Continue opening after stop loss',
@@ -143,6 +145,8 @@ const zhCN = {
   'executorStrategies.warning.neutral_grid_count_adjusted_even': '中性网格数已自动调整为偶数',
   'executorStrategies.warning.neutral_grid_anchor_outside_bounds': '中性网格锚点必须位于价格区间内',
   'executorStrategies.warning.hard_stop_blocks_level': '当前止损可能在后续补仓层触发前先将整篮子仓位平掉',
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': '最大入场挂单数不能超过网格数量，已自动调整',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': '当前网格较密，短周期回测的计算量较大，可能需要更长时间',
   'executorStrategies.martingaleFullBudgetTitle': '最后一层使用策略剩余全部预算',
   'executorStrategies.martingaleFullBudgetDesc': '前几层按设定权重投入，最后一层会投入本次运行资金的全部剩余余额，并按手续费后的实际差额做最终补单。这里指本次策略运行资金，不是交易所账户的全部钱包余额。',
   'executorStrategies.restartAfterStop': '止损后是否继续开仓',
@@ -248,6 +252,8 @@ const zhTW = {
   'executorStrategies.warning.neutral_grid_count_adjusted_even': '中性網格數已自動調整為偶數',
   'executorStrategies.warning.neutral_grid_anchor_outside_bounds': '中性網格錨點必須位於價格區間內',
   'executorStrategies.warning.hard_stop_blocks_level': '目前止損可能在後續補倉層觸發前先將整籃子倉位平掉',
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': '最大進場掛單數不能超過網格數量，已自動調整',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': '目前網格較密，短週期回測的計算量較大，可能需要更長時間',
   'executorStrategies.martingaleFullBudgetTitle': '最後一層使用策略剩餘全部預算',
   'executorStrategies.martingaleFullBudgetDesc': '前幾層按設定權重投入，最後一層會投入本次運行資金的全部剩餘餘額，並按手續費後的實際差額做最終補單。這裡指本次策略運行資金，不是交易所帳戶的全部錢包餘額。',
   'executorStrategies.restartAfterStop': '止損後是否繼續開倉',
@@ -316,6 +322,8 @@ const zhTW = {
 
 const arSA = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': 'لا يمكن أن يتجاوز الحد الأقصى لأوامر الدخول عدد الشبكات، وقد تم تعديله تلقائيًا.',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': 'قد يستغرق اختبار هذه الشبكة الكثيفة وقتًا أطول، خاصة مع الأطر الزمنية القصيرة.',
   'executorStrategies.initialCapitalHint': 'الميزانية الإجمالية للروبوت؛ تستخدم أوضاع الإشارة والاختبار والتداول الفعلي المبلغ نفسه.',
   'executorStrategies.cycleRiskTitle': 'إدارة مركز الدورة',
   'executorStrategies.cycleRiskHint': 'يتحكم في سلة DCA أو مارتينجال الحالية، ويمكن بدء دورة جديدة بعد الخروج.',
@@ -333,6 +341,8 @@ const arSA = {
 
 const deDE = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': 'Die maximale Zahl der Einstiegsorders darf die Gitteranzahl nicht überschreiten und wurde automatisch angepasst.',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': 'Dieses dichte Gitter kann besonders bei kurzen Zeitrahmen längere Backtests verursachen.',
   'executorStrategies.initialCapitalHint': 'Gesamtbudget des Roboters; Signal-, Backtest- und Live-Modus verwenden denselben Betrag.',
   'executorStrategies.cycleRiskTitle': 'Positionsmanagement je Zyklus',
   'executorStrategies.cycleRiskHint': 'Steuert den aktuellen DCA- oder Martingale-Korb; nach dem Ausstieg kann ein neuer Zyklus beginnen.',
@@ -350,6 +360,8 @@ const deDE = {
 
 const frFR = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': "Le nombre maximal d’ordres d’entrée ne peut pas dépasser le nombre de grilles et a été ajusté automatiquement.",
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': 'Cette grille dense peut allonger le backtest, surtout sur les unités de temps courtes.',
   'executorStrategies.initialCapitalHint': 'Budget total du robot ; les modes signal, backtest et réel utilisent le même montant.',
   'executorStrategies.cycleRiskTitle': 'Gestion de position par cycle',
   'executorStrategies.cycleRiskHint': 'Contrôle le panier DCA ou martingale actuel ; un nouveau cycle peut commencer après la sortie.',
@@ -367,6 +379,8 @@ const frFR = {
 
 const jaJP = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': '最大エントリー注文数はグリッド数を超えられないため、自動調整されました。',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': '高密度グリッドのため、特に短い時間足ではバックテストに時間がかかる場合があります。',
   'executorStrategies.initialCapitalHint': 'ロボットの総予算です。シグナル、バックテスト、実運用で同じ金額を使用します。',
   'executorStrategies.trigger.grid.title': '取引所の指値注文で即時約定',
   'executorStrategies.trigger.dca.title': 'カレンダー時間による定期実行',
@@ -390,6 +404,8 @@ const jaJP = {
 
 const koKR = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': '최대 진입 주문 수는 그리드 수를 초과할 수 없어 자동 조정되었습니다.',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': '촘촘한 그리드는 특히 짧은 시간 주기에서 백테스트 시간이 길어질 수 있습니다.',
   'executorStrategies.initialCapitalHint': '로봇의 총예산이며 신호, 백테스트, 실거래 모드에 동일한 금액을 사용합니다.',
   'executorStrategies.trigger.grid.title': '거래소 지정가 주문 실시간 체결',
   'executorStrategies.trigger.dca.title': '달력 시간 기준 정기 실행',
@@ -413,6 +429,8 @@ const koKR = {
 
 const ruRU = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': 'Максимальное число заявок на вход не может превышать число ячеек сетки и было скорректировано автоматически.',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': 'Плотная сетка может увеличить время бэктеста, особенно на коротких таймфреймах.',
   'executorStrategies.initialCapitalHint': 'Общий бюджет робота; режимы сигналов, бэктеста и реальной торговли используют одну сумму.',
   'executorStrategies.cycleRiskTitle': 'Управление позицией цикла',
   'executorStrategies.cycleRiskHint': 'Управляет текущей корзиной DCA или мартингейла; после выхода может начаться новый цикл.',
@@ -430,6 +448,8 @@ const ruRU = {
 
 const thTH = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': 'จำนวนคำสั่งเข้าสูงสุดต้องไม่เกินจำนวนกริดและได้รับการปรับโดยอัตโนมัติแล้ว',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': 'กริดที่มีความหนาแน่นสูงอาจใช้เวลาแบ็กเทสต์นานขึ้น โดยเฉพาะในกรอบเวลาสั้น',
   'executorStrategies.initialCapitalHint': 'งบประมาณรวมของโรบอต โดยโหมดสัญญาณ แบ็กเทสต์ และซื้อขายจริงใช้ยอดเดียวกัน',
   'executorStrategies.cycleRiskTitle': 'การจัดการสถานะรายรอบ',
   'executorStrategies.cycleRiskHint': 'ควบคุมตะกร้า DCA หรือมาร์ติงเกลปัจจุบัน และเริ่มรอบใหม่ได้หลังปิดสถานะ',
@@ -447,6 +467,8 @@ const thTH = {
 
 const viVN = {
   ...enUSFallback,
+  'executorStrategies.warning.max_open_orders_adjusted_to_grid_count': 'Số lệnh vào tối đa không thể vượt quá số lượng lưới và đã được tự động điều chỉnh.',
+  'executorStrategies.warning.high_frequency_grid_backtest_workload': 'Lưới dày có thể làm kiểm thử lâu hơn, đặc biệt ở khung thời gian ngắn.',
   'executorStrategies.initialCapitalHint': 'Tổng ngân sách của robot; chế độ tín hiệu, kiểm thử và giao dịch thật dùng cùng một số tiền.',
   'executorStrategies.cycleRiskTitle': 'Quản lý vị thế theo chu kỳ',
   'executorStrategies.cycleRiskHint': 'Kiểm soát rổ DCA hoặc martingale hiện tại; có thể bắt đầu chu kỳ mới sau khi thoát.',

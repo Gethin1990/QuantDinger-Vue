@@ -22,6 +22,7 @@ export const overrideModulePaths = [
   '../src/locales/lang/strategy-v2.js',
   '../src/locales/lang/strategy-live-risk.js',
   '../src/locales/lang/robot-builder-overrides.js',
+  '../src/locales/billing-payment-overrides.js',
   '../src/locales/lang/strategy-trade-records.js',
   '../src/locales/ux-overrides.js',
   '../src/locales/copilot-callsite-overrides.js',

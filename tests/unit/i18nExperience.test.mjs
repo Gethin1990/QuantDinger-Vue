@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
 
 import reviewedUiOverrides, {
   verifiedSameUiMessages
 } from '../../src/locales/reviewed-ui-overrides.js'
+import billingPaymentMessages from '../../src/locales/billing-payment-overrides.js'
 
 const translatedLocales = [
   'ar-SA',
@@ -75,6 +77,28 @@ const reviewedCopilotCoreKeys = [
 ]
 
 const placeholders = value => Array.from(value.matchAll(/\{([^}]+)\}/g), match => match[1]).sort()
+
+test('billing and payment UI is translated for every desktop locale', () => {
+  const locales = ['en-US', ...translatedLocales]
+  const keys = Object.keys(billingPaymentMessages['en-US'])
+
+  for (const locale of locales) {
+    const messages = billingPaymentMessages[locale]
+    assert.ok(messages, `${locale} must have billing and payment messages`)
+    for (const key of keys) {
+      assert.equal(typeof messages[key], 'string', `${locale} is missing ${key}`)
+      assert.ok(messages[key].trim(), `${locale}.${key} must not be empty`)
+      assert.deepEqual(placeholders(messages[key]), placeholders(billingPaymentMessages['en-US'][key]), `${locale}.${key} must preserve placeholders`)
+    }
+  }
+})
+
+test('Stripe checkout opens in a separate browser tab', () => {
+  const source = readFileSync(new URL('../../src/views/billing/index.vue', import.meta.url), 'utf8')
+  assert.match(source, /window\.open\('about:blank', '_blank'\)/)
+  assert.match(source, /checkoutWindow\.location\.replace\(res\.data\.checkout_url\)/)
+  assert.doesNotMatch(source, /window\.location\.assign\(res\.data\.checkout_url\)/)
+})
 
 test('high-traffic AI actions are reviewed for every translated locale', () => {
   for (const locale of translatedLocales) {
