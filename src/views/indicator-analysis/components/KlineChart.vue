@@ -24,7 +24,7 @@
         </a-tooltip>
       </div>
       <div class="chart-content-area">
-        <div class="indicator-toolbar">
+        <div v-if="showIndicatorToolbar" class="indicator-toolbar">
           <div
             v-for="indicator in indicatorButtons"
             :key="indicator.id"
@@ -36,7 +36,7 @@
             {{ indicator.shortName }}
           </div>
         </div>
-        <div v-if="activePresetIndicators.length" class="indicator-active-bar">
+        <div v-if="showIndicatorToolbar && activePresetIndicators.length" class="indicator-active-bar">
           <div
             v-for="indicator in activePresetIndicators"
             :key="indicator.instanceId || indicator.id"
@@ -168,6 +168,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch, shallowRef, getCurrentInstance } from 'vue'
 import { init, registerIndicator, registerOverlay } from 'klinecharts'
 import request from '@/utils/request'
+import { inferMarketPricePrecision } from '@/utils/marketPricePrecision.mjs'
 import ExchangeKlineWs from '@/utils/exchangeWs'
 import { splitIndicatorPlotsByPane } from '@/utils/indicatorPlotGrouping'
 import { usePyodide } from '@/services/pyodide/usePyodide'
@@ -223,6 +224,10 @@ export default {
       type: Array,
       default: () => []
     },
+    showIndicatorToolbar: {
+      type: Boolean,
+      default: true
+    },
     realtimeEnabled: {
       type: Boolean,
       default: false
@@ -238,6 +243,10 @@ export default {
     initialLimit: {
       type: Number,
       default: null
+    },
+    initialRows: {
+      type: Array,
+      default: () => []
     },
     userId: {
       type: Number,
@@ -350,33 +359,23 @@ export default {
     const calcPricePrecision = (data) => {
       if (!data || data.length === 0) return 2
 
-      let maxDecimals = 0
-      const sample = data.length > 50 ? data.slice(-50) : data
-      for (let i = 0; i < sample.length; i++) {
-        const vals = [sample[i].close, sample[i].open, sample[i].high, sample[i].low]
-        for (let j = 0; j < vals.length; j++) {
-          const s = String(vals[j])
-          const dot = s.indexOf('.')
-          if (dot >= 0) {
-            const dec = s.length - dot - 1
-            if (dec > maxDecimals) maxDecimals = dec
-          }
-        }
-      }
+    const clampNumber = (value, min, max) => Math.max(min, Math.min(max, value))
 
-      let minSpread = Infinity
-      for (let i = 0; i < sample.length; i++) {
-        const spread = sample[i].high - sample[i].low
-        if (spread > 0 && spread < minSpread) minSpread = spread
+    const getInitialKlineLimit = () => {
+      const requestedLimit = Number(props.initialLimit)
+      if (Number.isFinite(requestedLimit) && requestedLimit > 0) {
+        return clampNumber(Math.round(requestedLimit), 120, 1000)
       }
-      let spreadDecimals = 2
-      if (minSpread < Infinity && minSpread > 0) {
-        spreadDecimals = Math.ceil(-Math.log10(minSpread)) + 2
-      }
-
-      const result = Math.max(maxDecimals, spreadDecimals, 2)
-      return Math.min(result, 10)
+      return clampNumber(estimateVisibleBarCount() * 3, MIN_INITIAL_KLINE_LIMIT, MAX_INITIAL_KLINE_LIMIT)
     }
+
+    const getInitialBeforeTime = () => {
+      const requestedTime = Number(props.initialBeforeTime)
+      if (!Number.isFinite(requestedTime) || requestedTime <= 0) return undefined
+      return Math.floor(requestedTime > 100000000000 ? requestedTime / 1000 : requestedTime)
+    }
+
+    const calcPricePrecision = (data) => inferMarketPricePrecision(data, props.market)
 
     const formatPrice = (v) => {
       return (Number(v) || 0).toFixed(pricePrecision.value)
@@ -1569,7 +1568,7 @@ registerOverlay({
           const shortText = normalizeCompactBacktestMarkerText(overlay.extendData?.shortText || textStr, side)
           const compactFontSize = Number(overlay.extendData?.fontSize) || (isDashed ? 9 : 10)
           const compactHeight = isDashed ? 13 : 15
-          const compactWidth = Math.max(18, Math.min(38, shortText.length * 7 + 10))
+          const compactWidth = Math.max(18, Math.min(isBacktest ? 72 : 38, shortText.length * 7 + 10))
           const laneShift = lane * 16
           const compactY = isBuy ? signalY + laneShift : signalY - compactHeight - laneShift
           const dotY = anchorY
@@ -2310,6 +2309,10 @@ registerOverlay({
 
     const loadKlineData = async () => {
       if (!props.symbol) return
+      const seededRows = Array.isArray(props.initialRows) ? props.initialRows : []
+      const seedSignature = seededRows.length
+        ? `${seededRows.length}:${seededRows[0] && seededRows[0].time}:${seededRows[seededRows.length - 1] && seededRows[seededRows.length - 1].time}`
+        : ''
       const contextKey = JSON.stringify([
         props.market,
         props.symbol,
@@ -2318,7 +2321,8 @@ registerOverlay({
         props.marketType,
         props.instrumentId,
         props.initialBeforeTime,
-        props.initialLimit
+        props.initialLimit,
+        seedSignature
       ])
       if (loading.value && contextKey === activeLoadContextKey) return
       const generation = ++loadGeneration
@@ -2336,26 +2340,30 @@ registerOverlay({
       suppressHistoryRangeUntil = Date.now() + 1200
 
       try {
-        let formattedData = []
+        let formattedData = seededRows.length ? formatKlineData(seededRows) : []
         const initialLimit = getInitialKlineLimit()
         try {
-          const response = await request({
-            url: '/api/indicator/kline',
-            method: 'get',
-            params: marketRequestParams({ limit: initialLimit, before_time: getInitialBeforeTime() }),
-            timeout: 45000
-          })
-
-          if (generation !== loadGeneration) return
-
-          if (response.code === 1 && response.data && Array.isArray(response.data)) {
-            formattedData = formatKlineData(response.data)
+          if (formattedData.length) {
+            hasMoreHistory.value = false
           } else {
-            let errMsg = response.msg || 'Failed to load K-line data'
-            if (response.hint === 'tiingo_subscription') {
-              errMsg = proxy.$t('dashboard.indicator.error.tiingoSubscription') || 'Forex 1-minute data requires Tiingo paid subscription'
+            const response = await request({
+              url: '/api/indicator/kline',
+              method: 'get',
+              params: marketRequestParams({ limit: initialLimit, before_time: getInitialBeforeTime() }),
+              timeout: 45000
+            })
+
+            if (generation !== loadGeneration) return
+
+            if (response.code === 1 && response.data && Array.isArray(response.data)) {
+              formattedData = formatKlineData(response.data)
+            } else {
+              let errMsg = response.msg || 'Failed to load K-line data'
+              if (response.hint === 'tiingo_subscription') {
+                errMsg = proxy.$t('dashboard.indicator.error.tiingoSubscription') || 'Forex 1-minute data requires Tiingo paid subscription'
+              }
+              throw new Error(errMsg)
             }
-            throw new Error(errMsg)
           }
         } catch (apiErr) {
           throw new Error(apiErr && apiErr.message ? apiErr.message : String(apiErr))
@@ -2366,7 +2374,7 @@ registerOverlay({
         }
 
         klineData.value = formattedData
-        hasMoreHistory.value = true
+        hasMoreHistory.value = !seededRows.length
 
         pricePrecision.value = calcPricePrecision(formattedData)
 
@@ -4979,7 +4987,19 @@ registerOverlay({
     }
 
     watch(
-      () => [props.market, props.symbol, props.timeframe, props.exchangeId, props.marketType, props.instrumentId, props.initialBeforeTime, props.initialLimit],
+      () => [
+        props.market,
+        props.symbol,
+        props.timeframe,
+        props.exchangeId,
+        props.marketType,
+        props.instrumentId,
+        props.initialBeforeTime,
+        props.initialLimit,
+        Array.isArray(props.initialRows) ? props.initialRows.length : 0,
+        Array.isArray(props.initialRows) && props.initialRows.length ? props.initialRows[0].time : null,
+        Array.isArray(props.initialRows) && props.initialRows.length ? props.initialRows[props.initialRows.length - 1].time : null
+      ],
       () => {
         if (props.symbol) loadKlineData()
       },

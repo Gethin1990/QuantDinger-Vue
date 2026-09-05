@@ -22,3 +22,9 @@ test('restored legacy details are disclosed in the result trust bar', () => {
   assert.match(source, /v-if="legacyBackfilled"/)
   assert.match(source, /strategyV2\.backtest\.legacyBackfillHint/)
 })
+
+test('completed-trade table exposes a prominent horizontal scrollbar', () => {
+  assert.match(source, /class="completed-trades-table"/)
+  assert.match(source, /\.completed-trades-table \/deep\/ \.ant-table-body::\-webkit-scrollbar \{ width: 14px; height: 14px; \}/)
+  assert.match(source, /scrollbar-color: var\(--primary-color/)
+})

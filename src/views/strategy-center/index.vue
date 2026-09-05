@@ -33,6 +33,7 @@
 
     <live-strategy-editor
       v-if="editorOpen"
+      :key="editorInstanceKey"
       :visible="editorOpen"
       :mode="editorMode"
       :strategy-id="editorStrategyId"
@@ -62,7 +63,9 @@ export default {
       controlLoadingId: null,
       editorOpen: false,
       editorMode: '',
-      editorStrategyId: null
+      editorStrategyId: null,
+      editorInstanceKey: 0,
+      editorRouteSignature: ''
     }
   },
   computed: {
@@ -82,12 +85,18 @@ export default {
   },
   activated () {
     this.startRefreshTimer()
+    this.openEditorFromRoute()
   },
   deactivated () {
     this.stopRefreshTimer()
   },
   beforeDestroy () {
     this.stopRefreshTimer()
+  },
+  watch: {
+    '$route.fullPath' () {
+      this.openEditorFromRoute()
+    }
   },
   methods: {
     parseList (res) {
@@ -155,23 +164,40 @@ export default {
     openCreateLive () {
       this.editorMode = 'create'
       this.editorStrategyId = null
+      this.editorInstanceKey += 1
       this.editorOpen = true
     },
     openEditLive (strategy) {
       if (!strategy || !strategy.id) return
       this.editorMode = 'edit'
       this.editorStrategyId = Number(strategy.id)
+      this.editorInstanceKey += 1
       this.editorOpen = true
     },
     openEditorFromRoute () {
       const mode = String(this.$route.query.mode || '')
+      const sourceId = String(this.$route.query.sourceId || '')
+      const strategyId = String(this.$route.query.strategyId || '')
+      const signature = mode === 'create'
+        ? `create:${sourceId}`
+        : (mode === 'edit' && strategyId ? `edit:${strategyId}` : '')
+      if (!signature) {
+        this.editorRouteSignature = ''
+        return
+      }
+      if (signature === this.editorRouteSignature && this.editorOpen) return
+      this.editorRouteSignature = signature
       if (mode === 'create') {
-        this.openCreateLive()
+        this.editorMode = 'create'
+        this.editorStrategyId = null
+        this.editorInstanceKey += 1
+        this.editorOpen = true
         return
       }
       if (mode === 'edit' && this.$route.query.strategyId) {
         this.editorMode = 'edit'
         this.editorStrategyId = Number(this.$route.query.strategyId)
+        this.editorInstanceKey += 1
         this.editorOpen = true
       }
     },
@@ -179,6 +205,7 @@ export default {
       this.editorOpen = false
       this.editorMode = ''
       this.editorStrategyId = null
+      this.editorRouteSignature = ''
       this.clearEditorRouteState()
     },
     async handleEditorSaved () {

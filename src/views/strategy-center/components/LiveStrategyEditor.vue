@@ -29,7 +29,8 @@
               option-filter-prop="children"
               :loading="loadingSources"
               :placeholder="$t('trading-assistant.form.scriptSourcePlaceholder')"
-              @change="loadSourceDetail">
+              @change="loadSourceDetail"
+              @dropdownVisibleChange="onSourceDropdownVisibleChange">
               <a-select-option v-for="source in sources" :key="String(source.id)" :value="String(source.id)">
                 {{ source.name || source.title || source.strategy_name || `#${source.id}` }}
               </a-select-option>
@@ -243,12 +244,15 @@ import { compileScriptSource, createStrategy, getScriptSourceDetail, getScriptSo
 import { mapState } from 'vuex'
 import { listExchangeCredentials } from '@/api/credentials'
 import { getNotificationSettings } from '@/api/user'
-import { formatExchangeCredentialLabel, getExchangeDisplayName } from '@/utils/exchangeCredential'
+import {
+  credentialMatchesLiveStrategy,
+  formatExchangeCredentialLabel,
+  getExchangeDisplayName,
+  supportsLiveExecutionMode
+} from '@/utils/exchangeCredential'
 import { extractScriptParamsFromCode } from '@/views/strategy-ide/components/scriptTemplateCatalog'
 
 const DEFAULT_CHANNELS = ['browser', 'email']
-const CRYPTO_EXCHANGES = ['binance', 'bitget', 'bybit', 'okx', 'gate', 'htx']
-const LIVE_CRYPTO_EXCHANGES = new Set(CRYPTO_EXCHANGES)
 const DIRECTION_MODE_ALIASES = {
   long: 'long_only',
   longonly: 'long_only',
@@ -368,8 +372,7 @@ export default {
       return value.toLocaleString(undefined, { maximumFractionDigits: 2 })
     },
     supportsLive () {
-      if (this.isPortfolioStrategy) return this.marketCategory === 'USStock'
-      return ['Crypto', 'USStock'].includes(this.marketCategory)
+      return supportsLiveExecutionMode(this.strategyManifest)
     },
     requiresDirectionMode () {
       if (this.marketCategory !== 'Crypto') return false
@@ -418,13 +421,9 @@ export default {
       }))
     },
     compatibleCredentials () {
-      return this.credentials.filter(credential => {
-        const exchange = String(credential.exchange_id || '').toLowerCase()
-        if (this.isPortfolioStrategy) return exchange === 'alpaca'
-        if (this.marketCategory === 'Crypto') return LIVE_CRYPTO_EXCHANGES.has(exchange)
-        if (this.marketCategory === 'USStock') return ['alpaca', 'ibkr'].includes(exchange)
-        return false
-      })
+      return this.credentials.filter(credential => (
+        credentialMatchesLiveStrategy(this.strategyManifest, credential.exchange_id)
+      ))
     },
     selectedCredentialExchange () {
       const credential = this.credentials.find(item => String(item.id) === String(this.model.credentialId))
@@ -505,6 +504,9 @@ export default {
         this.loadingSources = false
       }
     },
+    onSourceDropdownVisibleChange (visible) {
+      if (visible && !this.loadingSources) this.loadSources()
+    },
     async loadCredentials () {
       this.loadingCredentials = true
       try {
@@ -551,8 +553,8 @@ export default {
           this.model.templateParams = this.buildParameterValues(this.sourceParameterValues)
           this.model.leverageEnabled = false
           this.model.leverage = 1
-          this.normalizeExecutionFields()
         }
+        this.normalizeExecutionFields()
       } catch (error) {
         if (String(this.model.scriptSourceId) === sourceId) this.sourceContractError = true
         throw error
@@ -598,6 +600,16 @@ export default {
         this.model.leverage = 1
       } else if (this.model.leverage < 1) {
         this.model.leverage = 1
+      }
+      if (!this.supportsLive && this.model.executionMode === 'live') {
+        this.model.executionMode = 'signal'
+        this.model.disclaimer = false
+      }
+      if (
+        this.model.credentialId &&
+        !this.compatibleCredentials.some(item => String(item.id) === String(this.model.credentialId))
+      ) {
+        this.model.credentialId = undefined
       }
     },
     credentialLabel (credential) {
@@ -689,6 +701,7 @@ export default {
         const manifest = this.parseObject(res && res.data && res.data.manifest)
         this.compiledManifest = manifest
         this.sourceContractError = !Object.keys(manifest).length
+        this.normalizeExecutionFields()
         return !this.sourceContractError
       } catch (error) {
         if (String(this.model.scriptSourceId) === sourceId) {
@@ -710,6 +723,13 @@ export default {
         return false
       }
       if (this.model.executionMode === 'live' && !this.model.credentialId) {
+        this.$message.warning(this.$t('trading-assistant.validation.credentialRequired'))
+        return false
+      }
+      if (
+        this.model.executionMode === 'live' &&
+        !this.compatibleCredentials.some(item => String(item.id) === String(this.model.credentialId))
+      ) {
         this.$message.warning(this.$t('trading-assistant.validation.credentialRequired'))
         return false
       }

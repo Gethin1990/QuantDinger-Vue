@@ -91,7 +91,7 @@ ghcr.io/brokermr810/quantdinger-frontend
 docker run -d --name quantdinger-frontend \
   -p 8888:80 \
   -e BACKEND_URL=http://host.docker.internal:5000 \
-  ghcr.io/brokermr810/quantdinger-frontend:latest
+  ghcr.io/openbyteinc/quantdinger-frontend:latest
 ```
 
 `BACKEND_URL` 用来控制容器内 Nginx 的 `/api/` 反向代理目标。主仓库 Compose 中通常保持为 `http://backend:5000`。

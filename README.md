@@ -91,7 +91,7 @@ Use this when the backend is already running somewhere else:
 docker run -d --name quantdinger-frontend \
   -p 8888:80 \
   -e BACKEND_URL=http://host.docker.internal:5000 \
-  ghcr.io/brokermr810/quantdinger-frontend:latest
+  ghcr.io/openbyteinc/quantdinger-frontend:latest
 ```
 
 `BACKEND_URL` controls the Nginx `/api/` proxy inside the container. In the main Compose stack it normally stays as `http://backend:5000`.
