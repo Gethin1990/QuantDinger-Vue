@@ -265,14 +265,6 @@ export function setStrategyAiCandidateStatus (changeId, status) {
   })
 }
 
-export function getScriptTemplateList (params = {}) {
-  return request({
-    url: api.scriptTemplates,
-    method: 'get',
-    params
-  })
-}
-
 export function getIndicatorListForStrategy (params = {}) {
   return request({
     url: api.indicators,
@@ -379,34 +371,6 @@ export function tuneStrategyBacktest (data) {
     method: 'post',
     data: payload,
     timeout
-  })
-}
-
-export function runStrategyFactorResearch (data) {
-  const payload = { ...(data || {}) }
-  const timeout = Number(payload.timeout) > 0 ? Number(payload.timeout) : BACKTEST_TIMEOUT
-  delete payload.timeout
-  return request({
-    url: api.strategyFactorResearch,
-    method: 'post',
-    data: payload,
-    timeout
-  })
-}
-
-export function getStrategyFactorResearchHistory (params = {}) {
-  return request({
-    url: api.strategyFactorResearchHistory,
-    method: 'get',
-    params
-  })
-}
-
-export function getStrategyFactorResearchRun (runId) {
-  return request({
-    url: api.strategyFactorResearchGet,
-    method: 'get',
-    params: { runId }
   })
 }
 

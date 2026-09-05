@@ -154,7 +154,6 @@ const GRADIENT_PRESETS = [
 
 export default {
   name: 'IndicatorCard',
-  components: {}
   props: {
     indicator: {
       type: Object,

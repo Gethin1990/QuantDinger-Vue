@@ -718,7 +718,6 @@ export default {
       })
     },
 
-
     applyInitialTemplateKey (key, { preserveExistingCode = true } = {}) {
       const template = getScriptTemplateByKey(key)
       if (template) {

@@ -537,7 +537,6 @@
       </div>
     </a-modal>
 
-
     <a-modal
       v-model="memoryManagerVisible"
       :title="text.manageMemory"
@@ -788,11 +787,6 @@ export default {
       promptUsage: {},
       savedPrompts: [],
       loadingSavedPrompts: false
-    }
-  },
-  watch: {
-    '$i18n.locale' () {
-      this.refreshLocalizedDraft()
     }
   },
   watch: {
@@ -1686,16 +1680,6 @@ export default {
       this.monitorSetupDraft = null
       this.memoryManagerVisible = false
       this.draftReferencedReportId = null
-      this.composerHeight = this.composerMinHeight
-      this.$nextTick(this.resizeComposer)
-    },
-    resetComposerDraft () {
-      this.draft = ''
-      this.attachments = []
-      this.draftContextLock = null
-      this.localizedDraft = null
-      this.pendingAgentTask = null
-      this.monitorSetupDraft = null
       this.composerHeight = this.composerMinHeight
       this.$nextTick(this.resizeComposer)
     },

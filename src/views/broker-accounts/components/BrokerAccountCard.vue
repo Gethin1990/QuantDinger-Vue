@@ -64,7 +64,7 @@ export default {
       if (this.brokerId === 'alpaca') {
         return [
           { key: 'equity', label: this.$t('brokerAccounts.kpi.equity'), value: money(i.equity || i.portfolio_value || i.summary?.Equity?.value, ccy) },
-          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash || i.summary?.Cash?.value, ccy) }, 
+          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash || i.summary?.Cash?.value, ccy) },
           { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.summary?.BuyingPower?.value, ccy), tone: 'accent' },
           { key: 'positions', label: this.$t('brokerAccounts.kpi.positionsCount'), value: positionCount == null ? '--' : String(positionCount) },
           { key: 'daytrades', label: this.$t('brokerAccounts.kpi.dayTrades'), value: String(i.daytrade_count || i.summary?.DayTradeCount?.value || '--') },

@@ -2103,30 +2103,14 @@ export default {
       try {
         const res = await getScriptSourceVersions(this.currentSourceId)
         if (res && res.code === 1) {
-          const saved = (res && res.data) || {}
-          const metadata = this.parseObject(saved.metadata || (this.currentSource && this.currentSource.metadata))
-          this.currentSource = {
-            ...(this.currentSource || {}),
-            ...saved,
-            code: '',
-            code_hidden: 1,
-            metadata: {
-              ...metadata,
-              code_hidden: true
-            }
-          }
-          this.lastSavedSnapshot = this.scriptSnapshot()
-          if (!options.silent) this.$message.success(this.text.saveSuccess)
-          return this.currentSourceId
+          this.scriptVersions = Array.isArray(res.data) ? res.data : []
+        } else {
+          this.$message.error((res && res.msg) || this.text.versionLoadFailed)
         }
-        if (!options.silent) this.$message.error((res && res.msg) || this.text.saveFailed)
-        return null
       } catch (e) {
-        if (!options.silent) this.$message.error(e.backendMessage || e.message || this.text.saveFailed)
-        return null
+        this.$message.error(e.backendMessage || e.message || this.text.versionLoadFailed)
       } finally {
-        this.savingScript = false
-        this.savingScriptMode = ''
+        this.scriptVersionLoading = false
       }
     },
     async previewScriptVersion (item) {

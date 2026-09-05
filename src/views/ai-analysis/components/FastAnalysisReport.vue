@@ -935,25 +935,6 @@ export default {
     formatOutlookTrend (trend, bias, score) {
       return this.formatDecisionLabel(trend, bias, score)
     },
-    neutralizeDecisionText (text) {
-      if (text === undefined || text === null) return ''
-      const buy = this.formatDecisionLabel('BUY')
-      const sell = this.formatDecisionLabel('SELL')
-      const hold = this.formatDecisionLabel('HOLD')
-      return String(text)
-        .replace(/建议\s*BUY/gi, `倾向${buy}`)
-        .replace(/建议\s*SELL/gi, `倾向${sell}`)
-        .replace(/建议\s*HOLD/gi, `倾向${hold}`)
-        .replace(/suggested\s+decision\s+BUY/gi, `outlook ${buy}`)
-        .replace(/suggested\s+decision\s+SELL/gi, `outlook ${sell}`)
-        .replace(/suggested\s+decision\s+HOLD/gi, `outlook ${hold}`)
-        .replace(/\bBUY\b/gi, buy)
-        .replace(/\bSELL\b/gi, sell)
-        .replace(/\bHOLD\b/gi, hold)
-    },
-    formatOutlookTrend (trend) {
-      return this.formatDecisionLabel(trend)
-    },
     outlookTrendClass (trend) {
       const t = String(trend || '').toUpperCase()
       if (t === 'BUY') return 'trend-bull'

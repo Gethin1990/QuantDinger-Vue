@@ -356,25 +356,6 @@ export default {
       return Math.floor(requestedTime > 100000000000 ? requestedTime / 1000 : requestedTime)
     }
 
-    const calcPricePrecision = (data) => {
-      if (!data || data.length === 0) return 2
-
-    const clampNumber = (value, min, max) => Math.max(min, Math.min(max, value))
-
-    const getInitialKlineLimit = () => {
-      const requestedLimit = Number(props.initialLimit)
-      if (Number.isFinite(requestedLimit) && requestedLimit > 0) {
-        return clampNumber(Math.round(requestedLimit), 120, 1000)
-      }
-      return clampNumber(estimateVisibleBarCount() * 3, MIN_INITIAL_KLINE_LIMIT, MAX_INITIAL_KLINE_LIMIT)
-    }
-
-    const getInitialBeforeTime = () => {
-      const requestedTime = Number(props.initialBeforeTime)
-      if (!Number.isFinite(requestedTime) || requestedTime <= 0) return undefined
-      return Math.floor(requestedTime > 100000000000 ? requestedTime / 1000 : requestedTime)
-    }
-
     const calcPricePrecision = (data) => inferMarketPricePrecision(data, props.market)
 
     const formatPrice = (v) => {
