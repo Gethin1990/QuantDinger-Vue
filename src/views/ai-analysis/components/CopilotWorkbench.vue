@@ -1,6 +1,10 @@
 <template>
   <div class="copilot-workbench">
-    <aside class="left-rail">
+    <div v-if="mobileSessionsOpen" class="mobile-rail-backdrop" @click="mobileSessionsOpen = false"></div>
+    <aside class="left-rail" :class="{ 'mobile-open': mobileSessionsOpen }">
+      <button type="button" class="mobile-rail-close" :aria-label="text.sessions" @click="mobileSessionsOpen = false">
+        <a-icon type="close" />
+      </button>
       <section class="rail-panel sessions-panel">
         <div class="panel-head">
           <span><a-icon type="history" /> {{ text.sessions }}</span>
@@ -60,6 +64,10 @@
 
     <main class="chat-panel">
       <header class="chat-hero">
+        <button type="button" class="mobile-sessions-trigger" @click="mobileSessionsOpen = true">
+          <a-icon type="history" />
+          <span>{{ text.sessions }}</span>
+        </button>
         <div class="hero-main">
           <div class="hero-copy">
             <span class="eyebrow">{{ text.title }}</span>
@@ -149,15 +157,13 @@
                   <a-icon type="down" /> {{ text.viewFullReport }}
                 </button>
               </div>
-              <FastAnalysisReport
+              <ProfessionalAnalysisReport
                 v-else
                 :result="msg.report || null"
                 :loading="!!msg.reportLoading"
                 :error="msg.reportError || null"
                 :error-tone="msg.reportErrorTone || 'error'"
                 @retry="retryProfessionalAnalysis(msg)"
-                @generate-strategy="handleReportGenerateStrategy"
-                @go-backtest="handleReportGoBacktest"
               />
               <button v-if="msg.report && isReportExpanded(msg)" type="button" class="report-collapse-button" @click="toggleReportExpanded(msg)">
                 <a-icon type="up" /> {{ text.collapseReport }}
@@ -362,7 +368,7 @@
                 <em>{{ item.name || marketLabel(item.market) }}</em>
               </span>
               <span class="watch-market-data">
-                <strong class="watch-price">{{ formatPriceValue(priceFor(item) && priceFor(item).price) }}</strong>
+                <strong class="watch-price">{{ formatPriceValue(priceFor(item) && priceFor(item).price, item.market) }}</strong>
                 <em :class="watchChangeClass(item)" class="watch-change">
                   {{ formatChangePercent(priceFor(item)) }}
                 </em>
@@ -690,7 +696,8 @@ import {
   deleteSavedPrompt,
   trackCopilotEvent,
   getCopilotEventSummary,
-  exportChatReportPdf
+  exportChatReportPdf,
+  createChatReportShare
 } from '@/api/market'
 import { aiGenerateStrategy } from '@/api/strategy'
 import { getEconomicCalendar } from '@/api/global-market'
@@ -700,8 +707,8 @@ import { fastAnalyze } from '@/api/fast-analysis'
 import storage from 'store'
 import { ACCESS_TOKEN } from '@/store/mutation-types'
 import { loadEnabledMarketOptions, firstMarketValue } from '@/utils/marketModules'
-import { resolveDecisionLabelKey } from '@/utils/fastAnalysisPresentation'
-import FastAnalysisReport from './FastAnalysisReport.vue'
+import { resolveMarketBiasLabelKey, resolveTradeActionLabelKey } from '@/utils/fastAnalysisPresentation'
+import ProfessionalAnalysisReport from './ProfessionalAnalysisReport.vue'
 import {
   mergeWatchlistSuggestions,
   sortCopilotMarkets
@@ -719,7 +726,7 @@ let localId = 1
 export default {
   name: 'CopilotWorkbench',
   components: {
-    FastAnalysisReport
+    ProfessionalAnalysisReport
   },
   data () {
     return {
@@ -735,6 +742,7 @@ export default {
       messages: [],
       sessions: [],
       sessionId: null,
+      mobileSessionsOpen: false,
       sending: false,
       lastSendSignature: '',
       lastSendAt: 0,
@@ -1597,6 +1605,7 @@ export default {
     async loadHistory (sessionId) {
       this.resetComposerDraft()
       this.sessionId = sessionId
+      this.mobileSessionsOpen = false
       try {
         const res = await getChatHistory({ session_id: sessionId })
         const rawMessages = Array.isArray(res.data) ? res.data : ((res.data && res.data.messages) || [])
@@ -1610,10 +1619,11 @@ export default {
       const content = String(message.content || '').trim()
       if (content) return content
       if (message.report) {
-        const report = message.report || {}
+        const report = this.professionalArtifact(message.report) || {}
+        const instrument = report.instrument || {}
         const target = message.reportTarget || {}
-        const market = report.market || target.market || ''
-        const symbol = report.symbol || target.symbol || ''
+        const market = instrument.market || target.market || ''
+        const symbol = instrument.canonical_symbol || instrument.symbol || target.symbol || ''
         const label = [market, symbol].filter(Boolean).join(':') || this.text.marketFallback
         return this.i18nText('aiAssetAnalysis.copilot.professionalReportMessage', 'Professional analysis report: {label}', { label })
       }
@@ -1668,6 +1678,7 @@ export default {
       this.resetComposerDraft()
       this.sessionId = null
       this.messages = []
+      this.mobileSessionsOpen = false
       this.sessionMemory = { summary: {}, recent_requests: [], version: 0 }
       this.draftReferencedReportId = null
     },
@@ -1711,11 +1722,17 @@ export default {
       this.symbolSearching = true
       try {
         const params = { keyword: kw, limit: 14 }
-        if (this.context.market) params.market = this.context.market
         const res = await searchSymbols(params)
         const data = res.data || {}
         const list = Array.isArray(data) ? data : (data.results || data.symbols || data.items || [])
         this.symbolOptions = list.map(x => this.normalizeSymbolOption(x)).filter(Boolean)
+        if (!this.symbolOptions.length) {
+          const inferred = this.inferSymbolFromText(kw)
+          this.symbolOptions = [{
+            market: (inferred && inferred.market) || this.context.market || firstMarketValue(this.markets),
+            symbol: (inferred && inferred.symbol) || kw.toUpperCase()
+          }]
+        }
       } catch (_) {
         const inferred = this.inferSymbolFromText(kw)
         this.symbolOptions = [{ market: (inferred && inferred.market) || this.context.market || firstMarketValue(this.markets), symbol: kw.toUpperCase() }]
@@ -2348,6 +2365,10 @@ export default {
         this.exportReportPdf(action.payload && action.payload.reportId)
         return
       }
+      if (action && action.type === 'share_report') {
+        this.shareReport(action.payload && action.payload.reportId)
+        return
+      }
       if (action && action.type === 'ask_about_report') {
         this.askAboutReport(action.payload && action.payload.reportId)
         return
@@ -2444,6 +2465,9 @@ export default {
       const type = String((action && action.type) || '')
       if (type === 'export_report_pdf') {
         return this.i18nText('aiAssetAnalysis.copilot.exportPdf', 'Export PDF')
+      }
+      if (type === 'share_report') {
+        return this.$t('aiAssetAnalysis.copilot.shareReport')
       }
       if (type === 'ask_about_report') {
         return this.i18nText('aiAssetAnalysis.copilot.askFollowup', 'Ask follow-up')
@@ -2815,6 +2839,14 @@ export default {
       if (cnCode) return { market: 'CNStock', symbol: cnCode[1] }
       const hkCode = value.match(/(?:^|[^\d])(\d{5})(?:[^\d]|$)/)
       if (hkCode) return { market: 'HKStock', symbol: hkCode[1] }
+      const plainTicker = value.trim().match(/^[A-Z][A-Z0-9.-]{0,9}$/)
+      if (plainTicker) {
+        const symbol = plainTicker[0]
+        const cryptoBases = ['BTC', 'ETH', 'SOL', 'TON', 'HYPE', 'DOGE', 'XRP', 'BNB', 'ADA', 'AVAX']
+        return cryptoBases.includes(symbol)
+          ? { market: 'Crypto', symbol: `${symbol}/USDT` }
+          : { market: 'USStock', symbol }
+      }
       return null
     },
     commonSymbolAliases () {
@@ -3111,7 +3143,7 @@ export default {
       } catch (e) {
         const fallback = this.i18nText('aiAssetAnalysis.copilot.analysisFailed', 'Analysis failed')
         assistantMsg.reportLoading = false
-        assistantMsg.reportError = (e && e.response && e.response.data && e.response.data.msg) || (e && e.message) || fallback
+        assistantMsg.reportError = this.professionalAnalysisError(e, fallback)
         assistantMsg.reportErrorTone = this.isInProgressError(e) ? 'warning' : 'error'
         assistantMsg.meta = fallback
       } finally {
@@ -3128,7 +3160,8 @@ export default {
         market: target.market,
         symbol: target.symbol,
         language: this.$i18n ? this.$i18n.locale : 'en-US',
-        timeframe: '1D'
+        timeframe: '1D',
+        response_contract: 'professional_report_v1'
       })
       if (!res || res.code === 0) {
         const err = new Error((res && res.msg) || this.i18nText('aiAssetAnalysis.copilot.analysisFailed', 'Analysis failed'))
@@ -3136,16 +3169,37 @@ export default {
         throw err
       }
       const data = res.data || {}
+      const report = this.professionalArtifact(data)
+      if (!report) {
+        throw new Error(this.$t('fastAnalysis.professionalResponseInvalid'))
+      }
       return {
-        ...data,
-        market: data.market || target.market,
-        symbol: data.symbol || target.symbol
+        schema_version: 'professional_analysis_envelope_v1',
+        report,
+        runtime: data.runtime || {
+          memory_id: data.memory_id,
+          analysis_time_ms: data.analysis_time_ms,
+          llm_time_ms: data.llm_time_ms,
+          data_collection_time_ms: data.data_collection_time_ms
+        }
       }
     },
     isInProgressError (e) {
       const data = e && e.response && e.response.data
       const msg = String((data && data.msg) || (e && e.message) || '')
       return msg.toLowerCase().includes('in progress') || msg.includes('进行中') || msg.includes('处理中')
+    },
+    professionalAnalysisError (e, fallback) {
+      const data = e && e.response && e.response.data
+      const raw = String((data && (data.error || data.msg)) || (e && e.message) || '').trim()
+      const normalized = raw.toLowerCase()
+      if (normalized.includes('professional_report_v1') && normalized.includes('generation failed')) {
+        return this.$t('fastAnalysis.professionalGenerationFailed')
+      }
+      if (normalized.includes('professional_report_v1') && (normalized.includes('invalid') || normalized.includes('missing'))) {
+        return this.$t('fastAnalysis.professionalResponseInvalid')
+      }
+      return raw || fallback
     },
     reportId (msg) {
       return String((msg && (msg.id || msg.localId)) || '')
@@ -3157,48 +3211,90 @@ export default {
       const id = this.reportId(msg)
       this.$set(this.expandedReports, id, !this.expandedReports[id])
     },
+    professionalArtifact (value) {
+      if (!value || typeof value !== 'object') return null
+      const candidate = value.report || value.professional_report || value
+      return candidate && ['professional_report_v1', '1.0'].includes(candidate.schema_version)
+        ? candidate
+        : null
+    },
+    reportObservation (msg, metric) {
+      const report = this.professionalArtifact(msg && msg.report)
+      const rows = report && report.evidence_snapshot && report.evidence_snapshot.observations
+      if (!Array.isArray(rows)) return null
+      const metrics = (Array.isArray(metric) ? metric : [metric]).map(value => String(value || '').toLowerCase())
+      return rows.find(item => metrics.includes(String(item && item.metric || '').toLowerCase())) || null
+    },
     reportTargetLabel (msg) {
-      const report = (msg && msg.report) || {}
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      const instrument = report.instrument || {}
       const target = (msg && msg.reportTarget) || {}
-      return [report.market || target.market, report.symbol || target.symbol].filter(Boolean).join(':') || '--'
+      return [instrument.market || target.market, instrument.canonical_symbol || instrument.symbol || target.symbol].filter(Boolean).join(':') || '--'
     },
     reportDecision (msg) {
-      const report = (msg && msg.report) || {}
-      return this.$t(resolveDecisionLabelKey({
-        decision: report.decision,
-        bias: report.outlook_bias,
-        score: report.consensus && report.consensus.consensus_score
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      const profile = report.decision_profile || {}
+      const dimensions = Array.isArray(report.dimensions) ? report.dimensions : []
+      const technicalScore = Number((dimensions.find(item => item.key === 'technical') || {}).score)
+      const bias = this.$t(resolveMarketBiasLabelKey({
+        marketBias: profile.market_bias,
+        biasScore: profile.market_bias_score,
+        technicalScore
       }))
+      const action = this.$t(resolveTradeActionLabelKey(profile.decision))
+      return `${bias} · ${action}`
     },
     reportDecisionClass (msg) {
-      const decision = String((msg && msg.report && msg.report.decision) || 'HOLD').toLowerCase()
-      return `decision-${decision}`
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      const profile = report.decision_profile || {}
+      const dimensions = Array.isArray(report.dimensions) ? report.dimensions : []
+      const technicalScore = Number((dimensions.find(item => item.key === 'technical') || {}).score)
+      const key = resolveMarketBiasLabelKey({
+        marketBias: profile.market_bias,
+        biasScore: profile.market_bias_score,
+        technicalScore
+      })
+      if (key.endsWith('Bullish')) return 'decision-buy'
+      if (key.endsWith('Bearish')) return 'decision-sell'
+      return 'decision-hold'
     },
     reportSummary (msg) {
-      return String((msg && msg.report && msg.report.summary) || this.text.reportReady)
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      return String(report.executive_summary || (report.decision_profile && report.decision_profile.rationale) || this.text.reportReady)
+        .replace(/\s*\[(?:ev_[a-f0-9]+(?:\s*,\s*)?)+\]/gi, '')
+        .trim()
     },
     reportConfidence (msg) {
-      return Math.round(Number((msg && msg.report && msg.report.confidence) || 0))
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      return Math.round(Number((report.decision_profile && report.decision_profile.confidence) || 0))
     },
     reportCurrentPrice (msg) {
-      const data = (msg && msg.report && msg.report.market_data) || {}
-      const value = data.current_price
-      return value === null || value === undefined || value === '' ? '--' : this.formatPriceValue(value)
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      const observation = this.reportObservation(msg, ['quote.price', 'current_price'])
+      const value = observation && observation.value
+      const market = report.instrument && report.instrument.market
+      return value === null || value === undefined || value === '' ? '--' : this.formatPriceValue(value, market)
     },
     reportRiskReward (msg) {
-      const plan = (msg && msg.report && msg.report.trading_plan) || {}
-      const value = plan.risk_reward_ratio
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      if (String((report.decision_profile && report.decision_profile.decision) || '').toUpperCase() === 'HOLD') return '--'
+      const plan = report.risk_plan || {}
+      const value = plan.net_risk_reward ?? plan.gross_risk_reward
       return value === null || value === undefined || value === '' ? '--' : Number(value).toFixed(2)
     },
     reportHasRrWarning (msg) {
-      const plan = (msg && msg.report && msg.report.trading_plan) || {}
-      const value = plan.risk_reward_ratio
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      if (String((report.decision_profile && report.decision_profile.decision) || '').toUpperCase() === 'HOLD') return false
+      const plan = report.risk_plan || {}
+      const value = plan.net_risk_reward ?? plan.gross_risk_reward
       const hasRatio = value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
-      return !!plan.rr_warning || (hasRatio && Number(value) < 1)
+      const warnings = Array.isArray(plan.warnings) ? plan.warnings : []
+      return warnings.includes('net_risk_reward_below_one') || (hasRatio && Number(value) < 1)
     },
     reportRiskRewardWarning (msg) {
-      const plan = (msg && msg.report && msg.report.trading_plan) || {}
-      const value = plan.risk_reward_ratio
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      const plan = report.risk_plan || {}
+      const value = plan.net_risk_reward ?? plan.gross_risk_reward
       const hasRatio = value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
       if (!hasRatio) {
         return this.text.riskRewardUnavailable
@@ -3208,6 +3304,13 @@ export default {
     reportActions (msg) {
       const id = this.reportId(msg)
       return [
+        {
+          key: `share-report-${id}`,
+          type: 'share_report',
+          icon: 'share-alt',
+          label: this.$t('aiAssetAnalysis.copilot.shareReport'),
+          payload: { reportId: id }
+        },
         {
           key: `export-report-${id}`,
           type: 'export_report_pdf',
@@ -3223,6 +3326,48 @@ export default {
           payload: { reportId: id }
         }
       ]
+    },
+    reportMessageByReportId (reportId) {
+      const id = String(reportId || '')
+      return (this.messages || []).find(item => this.reportId(item) === id) ||
+        (this.messages || []).find(item => item && item.report && Array.isArray(item.actions) &&
+          item.actions.some(action => String(action && action.payload && action.payload.reportId) === id))
+    },
+    async copyTextToClipboard (value) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value)
+        return
+      }
+      const textarea = document.createElement('textarea')
+      textarea.value = value
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    },
+    async shareReport (reportId) {
+      const msg = this.reportMessageByReportId(reportId)
+      if (!msg || !msg.report) {
+        this.$message.warning(this.i18nText('aiAssetAnalysis.copilot.noReportData', 'No report data to share'))
+        return
+      }
+      try {
+        if (!msg.id) await this.persistCopilotMessage(msg, 'fast_analysis_report')
+        if (!msg.id) throw new Error(this.$t('aiAssetAnalysis.copilot.shareSaveFailed'))
+        const res = await createChatReportShare({
+          message_id: msg.id,
+          language: (this.$i18n && this.$i18n.locale) || 'en-US'
+        })
+        const path = res && res.data && res.data.path
+        if (!path) throw new Error((res && res.msg) || this.$t('aiAssetAnalysis.copilot.shareFailed'))
+        const url = `${window.location.origin}${window.location.pathname}#${path}`
+        await this.copyTextToClipboard(url)
+        this.$message.success(this.$t('aiAssetAnalysis.copilot.shareCopied'))
+      } catch (e) {
+        this.$message.error((e && (e.backendMessage || e.message)) || this.$t('aiAssetAnalysis.copilot.shareFailed'))
+      }
     },
     async retryProfessionalAnalysis (msg) {
       const target = msg && msg.reportTarget
@@ -3245,42 +3390,17 @@ export default {
         this.sending = false
       }
     },
-    handleReportGenerateStrategy (result) {
-      const market = result.market || (this.context && this.context.market) || ''
-      const symbol = result.symbol || (this.context && this.context.symbol) || ''
-      const decision = result.decision || 'HOLD'
-      const tp = result.trading_plan || {}
-      const query = {
-        mode: 'create',
-        market,
-        symbol,
-        from_analysis: '1',
-        decision,
-        entry_price: tp.entry_price || tp.entryPrice || '',
-        stop_loss: tp.stop_loss || tp.stopLoss || '',
-        take_profit: tp.take_profit || tp.takeProfit || ''
-      }
-      Object.keys(query).forEach(k => { if (!query[k] && query[k] !== 0) delete query[k] })
-      this.$router.push({ path: '/strategy-center', query })
-    },
-    handleReportGoBacktest (result) {
-      const market = result.market || (this.context && this.context.market) || ''
-      const symbol = result.symbol || (this.context && this.context.symbol) || ''
-      this.$router.push({ path: '/backtest-center', query: { market, symbol } })
-    },
     async exportReportPdf (reportId) {
       if (!reportId) return
       const id = String(reportId)
-      const msg = (this.messages || []).find(item => this.reportId(item) === id) ||
-        (this.messages || []).find(item => item && item.report && Array.isArray(item.actions) &&
-          item.actions.some(action => String(action && action.payload && action.payload.reportId) === id))
+      const msg = this.reportMessageByReportId(id)
       if (!msg || !msg.report) {
         this.$message.warning(this.i18nText('aiAssetAnalysis.copilot.noReportData', 'No report data to export'))
         return
       }
       try {
         const blob = await exportChatReportPdf({
-          report: msg.report,
+          report: this.professionalArtifact(msg.report),
           target: msg.reportTarget || this.context || {},
           language: (this.$i18n && this.$i18n.locale) || 'en-US'
         })
@@ -3298,9 +3418,10 @@ export default {
       }
     },
     reportPdfFilename (msg) {
-      const report = (msg && msg.report) || {}
+      const report = this.professionalArtifact(msg && msg.report) || {}
+      const instrument = report.instrument || {}
       const target = (msg && msg.reportTarget) || this.context || {}
-      const symbol = String(report.symbol || target.symbol || 'report').replace(/[\\/:*?"<>|]+/g, '_')
+      const symbol = String(instrument.canonical_symbol || instrument.symbol || target.symbol || 'report').replace(/[\\/:*?"<>|]+/g, '_')
       const date = new Date().toISOString().slice(0, 10)
       return `QuantDinger_${symbol}_${date}.pdf`
     },
@@ -4681,9 +4802,12 @@ export default {
       if (pct === null) return ''
       return pct >= 0 ? 'up' : 'down'
     },
-    formatPriceValue (value) {
+    formatPriceValue (value, market = '') {
       const n = Number(value)
       if (!Number.isFinite(n) || n <= 0) return '--'
+      if (['USStock', 'HKStock'].includes(String(market))) {
+        return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      }
       if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
       if (n >= 1) return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
       return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })
@@ -8421,6 +8545,88 @@ body.realdark .followup-suggestions,
 
   .memory-editor-row {
     grid-template-columns: 1fr;
+  }
+}
+
+.mobile-sessions-trigger,
+.mobile-rail-close,
+.mobile-rail-backdrop {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .mobile-sessions-trigger {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 6px;
+    min-height: 32px;
+    margin: 0 0 10px;
+    padding: 5px 10px;
+    border: 1px solid var(--qd-accent-border);
+    border-radius: 8px;
+    background: var(--qd-accent-soft);
+    color: var(--qd-text);
+    cursor: pointer;
+  }
+
+  .mobile-rail-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1003;
+    display: block;
+    background: rgba(0, 0, 0, 0.56);
+  }
+
+  .copilot-workbench > .left-rail.mobile-open {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 1004;
+    display: flex !important;
+    width: 88vw;
+    max-width: 340px;
+    padding: 46px 10px 10px;
+    overflow-y: auto;
+    background: var(--qd-bg);
+    box-shadow: 18px 0 44px rgba(0, 0, 0, 0.24);
+  }
+
+  .mobile-rail-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+    display: inline-grid;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--qd-border);
+    border-radius: 8px;
+    background: var(--qd-panel);
+    color: var(--qd-text);
+    cursor: pointer;
+  }
+
+  .copilot-workbench > .left-rail.mobile-open .sessions-panel {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  .copilot-workbench .messages {
+    padding: 12px 8px 18px;
+  }
+
+  .copilot-workbench .message.report-message .avatar {
+    display: none;
+  }
+
+  .copilot-workbench .message.report-message.assistant .bubble,
+  .copilot-workbench .message.report-message .copilot-report-card {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
   }
 }
 </style>

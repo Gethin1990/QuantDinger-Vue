@@ -4,6 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { renderSafeMarkdown } from '../../src/utils/safeMarkdown.js'
+import strategyV2Messages from '../../src/locales/lang/strategy-v2.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8')
@@ -139,4 +140,26 @@ test('strategy candidate status messages are localized for current and historica
   assert.match(backendRoute, /_request_lang\(\)/)
   assert.match(backendRoute, /_strategy_ai_text\(STRATEGY_CANDIDATE_MESSAGE_KEY, lang\)/)
   assert.match(workspace, /summary\["message_key"\]/)
+})
+
+test('strategy AI generation failures surface and localize the nested validation error', () => {
+  const page = read('src/views/strategy-ide/index.vue')
+
+  assert.match(page, /localizeStrategyAiError \(error\)/)
+  assert.match(page, /details\.error/)
+  assert.match(page, /this\.\$t\(key\)/)
+  assert.match(page, /const message = this\.localizeStrategyAiError\(e\)/)
+  assert.equal(strategyV2Messages['en-US']['strategyV2.generationInvalid'], 'The generated strategy did not pass validation.')
+  assert.equal(strategyV2Messages['zh-CN']['strategyV2.generationInvalid'], 'AI 生成的策略未通过校验。')
+  assert.equal(strategyV2Messages['zh-CN']['strategyV2.aiDirectionModeMismatch'], '用户要求的交易方向与生成策略不一致。')
+  assert.equal(strategyV2Messages['zh-CN']['strategyV2.aiBidirectionalOrderLegsRequired'], '多空双向策略必须同时实现多头腿和空头腿的下单逻辑。')
+  assert.equal(strategyV2Messages['zh-CN']['strategyV2.aiProtectionImplementationRequired'], '用户要求的止损或止盈尚未通过可执行保护规则实现。')
+  assert.equal(strategyV2Messages['zh-CN']['strategyV2.aiSupertrendNativeRequired'], '生成的 Supertrend 策略必须使用平台标准 Supertrend 指标。')
+  assert.equal(strategyV2Messages['zh-CN']['strategyV2.aiRequestedFactorMissing'], '生成策略没有使用用户要求的全部技术指标。')
+  assert.equal(strategyV2Messages['zh-CN']['strategyV2.aiBehaviorOpenLegMissing'], '运行时冒烟测试未能触发用户要求的全部入场方向。')
+  for (const locale of Object.keys(strategyV2Messages)) {
+    assert.ok(strategyV2Messages[locale]['strategyV2.aiRequestedFactorMissing'])
+    assert.ok(strategyV2Messages[locale]['strategyV2.aiFactorParameterUnsupported'])
+    assert.ok(strategyV2Messages[locale]['strategyV2.aiFactorParameterInvalid'])
+  }
 })
