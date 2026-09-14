@@ -202,8 +202,16 @@ export default {
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+  > label {
+    flex: 0 0 auto;
+    margin: 0;
+    color: #475569;
+    font-weight: 500;
+    line-height: 32px;
+  }
   .ant-select { flex: 1; min-width: 220px; max-width: 560px; }
 }
+.theme-dark .bp-account-selector > label { color: rgba(255, 255, 255, 0.72); }
 .broker-panel {
   display: flex;
   flex-direction: column;

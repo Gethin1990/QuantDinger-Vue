@@ -18,6 +18,7 @@
     </header>
 
     <live-operations-table
+      ref="operationsTable"
       :strategies="strategies"
       :loading="loading"
       :load-error="loadError"
@@ -66,7 +67,8 @@ export default {
       editorMode: '',
       editorStrategyId: null,
       editorInstanceKey: 0,
-      editorRouteSignature: ''
+      editorRouteSignature: '',
+      strategyLoadPromise: null
     }
   },
   computed: {
@@ -105,20 +107,31 @@ export default {
       if (Array.isArray(res.data)) return res.data
       return []
     },
-    async loadStrategies () {
-      if (this.loading) return
+    async loadStrategies ({ force = false } = {}) {
+      if (this.loading && this.strategyLoadPromise) {
+        if (!force) return this.strategyLoadPromise
+        await this.strategyLoadPromise
+      }
       this.loading = true
       this.loadError = false
-      try {
-        const res = await getStrategyList()
-        if (!res || res.code !== 1) throw new Error('STRATEGY_LIST_LOAD_FAILED')
-        this.strategies = this.parseList(res)
-        this.refreshedAt = new Date()
-      } catch (error) {
-        this.loadError = true
-      } finally {
-        this.loading = false
-      }
+      const request = getStrategyList()
+      const loadPromise = (async () => {
+        try {
+          const res = await request
+          if (!res || res.code !== 1) throw new Error('STRATEGY_LIST_LOAD_FAILED')
+          this.strategies = this.parseList(res)
+          this.refreshedAt = new Date()
+        } catch (error) {
+          this.loadError = true
+        } finally {
+          if (this.strategyLoadPromise === loadPromise) {
+            this.strategyLoadPromise = null
+            this.loading = false
+          }
+        }
+      })()
+      this.strategyLoadPromise = loadPromise
+      return loadPromise
     },
     async handleStart (strategy) {
       if (!strategy || !strategy.id || this.controlLoadingId) return
@@ -205,9 +218,17 @@ export default {
       this.editorRouteSignature = ''
       this.clearEditorRouteState()
     },
-    async handleEditorSaved () {
+    async handleEditorSaved (saved = {}) {
+      const savedId = Number(saved.id || this.editorStrategyId || 0)
       this.closeLiveEditor()
-      await this.loadStrategies()
+      await this.loadStrategies({ force: true })
+      if (!savedId) return
+      await this.$nextTick()
+      const savedStrategy = this.strategies.find(item => Number(item.id) === savedId)
+      const operationsTable = this.$refs.operationsTable
+      if (savedStrategy && operationsTable && typeof operationsTable.selectStrategy === 'function') {
+        operationsTable.selectStrategy(savedStrategy)
+      }
     },
     clearEditorRouteState () {
       if (!this.$route.query.mode) return

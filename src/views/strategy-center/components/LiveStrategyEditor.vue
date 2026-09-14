@@ -780,7 +780,10 @@ export default {
           : await createStrategy(payload)
         if (!res || res.code !== 1) throw new Error((res && res.msg) || '')
         this.$message.success(this.$t(this.isEdit ? 'trading-assistant.messages.updateSuccess' : 'trading-assistant.messages.createSuccess'))
-        this.$emit('saved')
+        this.$emit('saved', {
+          id: Number((res.data && res.data.id) || this.strategyId || 0),
+          mode: this.isEdit ? 'edit' : 'create'
+        })
       } catch (error) {
         this.$message.error(error.backendMessage || error.message || this.$t(this.isEdit ? 'trading-assistant.messages.updateFailed' : 'trading-assistant.messages.createFailed'))
       } finally {
