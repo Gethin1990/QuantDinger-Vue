@@ -38,9 +38,18 @@ test('backtest center visual accents follow the configured system theme color', 
 
 test('backtest center follows routed source ids after keep-alive activation', () => {
   assert.match(source, /'\$route\.query\.sourceId' \(\)/)
-  assert.match(source, /activated \(\)[\s\S]*?this\.syncRouteSource/)
+  assert.match(source, /activated \(\)[\s\S]*?forceReload: true, preserveParams: true/)
   assert.match(source, /this\.sources\.find\(item => Number\(item\.id\) === routeSourceId\)/)
   assert.match(source, /await this\.syncRouteSource\(\{ fallback: true \}\)/)
+})
+
+test('backtest source refresh discards stale params when the saved code hash changes', () => {
+  assert.match(source, /previousCodeHash = String\(\(this\.manifest && this\.manifest\.codeHash\)/)
+  assert.match(source, /previousCodeHash === nextCodeHash/)
+  assert.match(source, /preserveParams && sameSourceVersion/)
+  assert.match(source, /this\.result = previousResult/)
+  assert.match(source, /:disabled="runDisabled"/)
+  assert.match(source, /return this\.sourceContractLoading \|\| !this\.manifest/)
 })
 
 test('source loading is prioritized and detail compilation runs concurrently', () => {

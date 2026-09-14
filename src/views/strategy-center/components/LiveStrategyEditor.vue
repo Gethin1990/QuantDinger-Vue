@@ -165,8 +165,8 @@
         <a-form layout="vertical" class="editor-form">
           <a-form-item :label="$t('trading-assistant.form.executionMode')">
             <a-radio-group v-model="model.executionMode" button-style="solid">
-              <a-radio-button value="signal">{{ $t('trading-assistant.form.executionModeSignal') }}</a-radio-button>
               <a-radio-button value="live" :disabled="!supportsLive">{{ $t('trading-assistant.form.executionModeLive') }}</a-radio-button>
+              <a-radio-button value="signal">{{ $t('trading-assistant.form.executionModeSignal') }}</a-radio-button>
             </a-radio-group>
             <div class="field-hint">{{ $t(model.executionMode === 'live' ? 'trading-assistant.form.executionModeLiveDesc' : 'trading-assistant.form.executionModeSignalDesc') }}</div>
           </a-form-item>
@@ -465,7 +465,7 @@ export default {
         initialCapital: Number(config.initial_capital) > 0 ? Number(config.initial_capital) : 1000,
         leverageEnabled: Boolean(config.leverage_enabled),
         leverage: Number(config.leverage) > 0 ? Number(config.leverage) : 1,
-        executionMode: 'signal',
+        executionMode: 'live',
         credentialId: undefined,
         directionMode: '',
         accountRisk: {

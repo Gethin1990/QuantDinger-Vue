@@ -404,6 +404,7 @@ export default {
       historyDetailRunId: null,
       pageReady: false,
       sourceLoadSequence: 0,
+      sourceContractLoading: false,
       equityChart: null,
       chartResizeObserver: null,
       form: {
@@ -544,7 +545,7 @@ export default {
       })
     },
     runDisabled () {
-      return !this.manifest || this.backtestRangeExceeded || (this.mode === 'factor' && !this.factorCompatible)
+      return this.sourceContractLoading || !this.manifest || this.backtestRangeExceeded || (this.mode === 'factor' && !this.factorCompatible)
     },
     strategyTypeLabel () {
       const type = String((this.manifest && this.manifest.strategyType) || 'cta')
@@ -681,7 +682,11 @@ export default {
     window.addEventListener('resize', this.resizeEquityChart)
   },
   activated () {
-    if (this.pageReady) this.syncRouteSource({ fallback: true })
+    if (this.pageReady) {
+      this.syncRouteSource({ fallback: true, forceReload: true, preserveParams: true }).catch(error => {
+        this.$message.error((error && error.backendMessage) || this.$t('strategyV2.backtest.runFailed'))
+      })
+    }
   },
   beforeDestroy () {
     window.removeEventListener('resize', this.resizeEquityChart)
@@ -839,7 +844,7 @@ export default {
         this.$message.error((error && error.backendMessage) || this.$t('strategyV2.backtest.historyLoadFailed'))
       })
     },
-    async syncRouteSource ({ fallback = false } = {}) {
+    async syncRouteSource ({ fallback = false, forceReload = false, preserveParams = false } = {}) {
       const routeSourceId = Number(this.$route.query.sourceId)
       const routeSource = Number.isFinite(routeSourceId) && routeSourceId > 0
         ? this.sources.find(item => Number(item.id) === routeSourceId)
@@ -850,9 +855,9 @@ export default {
       const target = routeSource || (fallback ? this.availableSources[0] : null)
       if (!target) return
       const sourceId = Number(target.id)
-      if (Number(this.form.sourceId) === sourceId && Number(this.source && this.source.id) === sourceId && this.manifest) return
+      if (!forceReload && Number(this.form.sourceId) === sourceId && Number(this.source && this.source.id) === sourceId && this.manifest) return
       this.form.sourceId = sourceId
-      await this.selectSource(sourceId)
+      await this.selectSource(sourceId, { preserveParams })
     },
     async handleModeChange () {
       this.selectedRun = null
@@ -887,26 +892,51 @@ export default {
         this.result = null
       }
     },
-    async selectSource (sourceId) {
+    async selectSource (sourceId, { preserveParams = false } = {}) {
       const requestSequence = ++this.sourceLoadSequence
+      const previousSourceId = Number(this.source && this.source.id)
+      const previousCodeHash = String((this.manifest && this.manifest.codeHash) || '')
+      const previousParams = { ...this.params }
+      const previousResult = this.result
+      const previousFactorResult = this.factorResult
+      const previousSelectedRun = this.selectedRun
+      const previousLeverageEnabled = this.form.leverageEnabled
+      const previousLeverage = this.form.leverage
+      this.sourceContractLoading = true
       this.result = null
       this.factorResult = null
       this.selectedRun = null
       this.form.leverageEnabled = false
       this.form.leverage = 1
-      const [response, compiled] = await Promise.all([
-        getScriptSourceDetail(sourceId),
-        compileScriptSource({ sourceId })
-      ])
-      if (requestSequence !== this.sourceLoadSequence) return
-      this.source = response.data
-      this.manifest = compiled.data && compiled.data.manifest
-      this.backtestRangePolicy = compiled.data && compiled.data.backtestRangePolicy
-      this.applyBacktestRangePolicy()
-      this.params = this.paramDefinitions.reduce((output, item) => {
-        output[item.name] = item.default
-        return output
-      }, {})
+      try {
+        const [response, compiled] = await Promise.all([
+          getScriptSourceDetail(sourceId),
+          compileScriptSource({ sourceId })
+        ])
+        if (requestSequence !== this.sourceLoadSequence) return
+        this.source = response.data
+        this.manifest = compiled.data && compiled.data.manifest
+        this.backtestRangePolicy = compiled.data && compiled.data.backtestRangePolicy
+        this.applyBacktestRangePolicy()
+        const nextCodeHash = String((this.manifest && this.manifest.codeHash) || '')
+        const sameSourceVersion = Number(sourceId) === previousSourceId &&
+          previousCodeHash && nextCodeHash && previousCodeHash === nextCodeHash
+        if (preserveParams && sameSourceVersion) {
+          this.result = previousResult
+          this.factorResult = previousFactorResult
+          this.selectedRun = previousSelectedRun
+          this.form.leverageEnabled = previousLeverageEnabled
+          this.form.leverage = previousLeverage
+        }
+        this.params = this.paramDefinitions.reduce((output, item) => {
+          output[item.name] = preserveParams && sameSourceVersion && Object.prototype.hasOwnProperty.call(previousParams, item.name)
+            ? previousParams[item.name]
+            : item.default
+          return output
+        }, {})
+      } finally {
+        if (requestSequence === this.sourceLoadSequence) this.sourceContractLoading = false
+      }
     },
     sourceTypeLabel (item) {
       if (String(item.template_key || '').startsWith('robot_v2_')) return this.$t('strategyV2.robot')

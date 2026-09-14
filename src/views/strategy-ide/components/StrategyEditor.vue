@@ -894,6 +894,7 @@ export default {
       if (!inferred) {
         this.inferredParamTemplate = null
         this.templateParamValues = {}
+        this.$emit('template-change', { key: '', params: {}, param_schema: { params: [] } })
         return
       }
       const nextValues = buildTemplateParamValues(inferred)
@@ -906,6 +907,11 @@ export default {
       }
       this.inferredParamTemplate = inferred
       this.templateParamValues = nextValues
+      this.$emit('template-change', {
+        key: '',
+        params: { ...nextValues },
+        param_schema: { params: inferred.params.map(item => ({ ...item })) }
+      })
       this.activeTab = 'params'
     },
 

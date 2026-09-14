@@ -40,3 +40,8 @@ test('live capital exposes the source quote currency', () => {
   assert.match(source, /strategyV2\.capitalCurrencyHint/)
   assert.match(source, /symbol\.split\('\/'\)\.pop\(\)/)
 })
+
+test('new deployments default to live execution and show it first', () => {
+  assert.match(source, /executionMode: 'live'/)
+  assert.match(source, /value="live"[\s\S]*value="signal"/)
+})

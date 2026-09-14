@@ -117,8 +117,8 @@
           <div v-if="!embedded" class="field-block">
             <label>{{ t('executorStrategies.executionMode') }}</label>
             <a-radio-group v-model="form.execution_mode" class="compact-segmented compact-segmented--auto" button-style="solid">
-              <a-radio-button value="signal">{{ t('executorStrategies.signal') }}</a-radio-button>
               <a-radio-button value="live">{{ t('executorStrategies.live') }}</a-radio-button>
+              <a-radio-button value="signal">{{ t('executorStrategies.signal') }}</a-radio-button>
             </a-radio-group>
           </div>
 
@@ -1079,7 +1079,7 @@ export default {
         timeframe: '1m',
         side: 'long',
         market_type: 'swap',
-        execution_mode: 'signal',
+        execution_mode: 'live',
         dynamic_anchor: true,
         start_price: 0.98,
         end_price: 1.02,

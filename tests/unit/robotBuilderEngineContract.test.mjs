@@ -81,3 +81,9 @@ test('grid preview warning codes are localized instead of leaking internal ident
   assert.match(robotBuilderLocaleSource, /executorStrategies\.warning\.high_frequency_grid_backtest_workload/)
   assert.match(builderSource, /previewWarnings\.join\(' · '\)/)
 })
+
+test('standalone robot creation defaults to live execution and shows it first', () => {
+  assert.match(builderSource, /execution_mode: 'live'/)
+  assert.match(builderSource, /value="live"[\s\S]*value="signal"/)
+  assert.match(builderSource, /if \(this\.embedded\)[\s\S]*execution_mode: 'signal'/)
+})
