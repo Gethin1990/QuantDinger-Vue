@@ -147,6 +147,9 @@ function normalizeBusinessErrorMessage (message, error) {
   const insufficientCredits = normalizeInsufficientCreditsError(error)
   if (insufficientCredits) return insufficientCredits
   if (!message) return ''
+  if (/^(strategyV2|strategyRuntime)\.[\w.]+$/.test(String(message))) {
+    return tt(message, message)
+  }
   const readiness = String(message).match(/^(strategyV2\.(?:insufficientWarmupData|fundamentalDataMissing|universeHistoryUnavailable))(?::(.*))?$/s)
   if (readiness) {
     const translated = tt(readiness[1], readiness[1])
