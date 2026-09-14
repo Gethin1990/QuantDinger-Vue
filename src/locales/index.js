@@ -153,6 +153,8 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(copilotOverrides[lang] || {}),
       ...(profileSecurityMessages[lang] || {}),
       ...(brokerAccountWorkspaceMessages[lang] || {}),
+      ...(strategyV2Messages[lang] || {}),
+      ...(fundamentalSyncMessages[lang] || {}),
       ...(strategyLiveRiskMessages[lang] || {}),
       ...(robotBuilderMessages[lang] || {}),
       ...(billingPaymentMessages[lang] || {}),

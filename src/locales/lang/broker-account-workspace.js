@@ -1,4 +1,12 @@
 const locale = {
+  'brokerAccounts.cryptoSection.environmentLabel': 'Environment',
+  'brokerAccounts.cryptoSection.scopeLabel': 'Permissions',
+  'brokerAccounts.cryptoSection.environment.live': 'Live',
+  'brokerAccounts.cryptoSection.environment.demo': 'Demo',
+  'brokerAccounts.cryptoSection.environment.testnet': 'Testnet',
+  'brokerAccounts.cryptoSection.scope.spot': 'Spot',
+  'brokerAccounts.cryptoSection.scope.swap': 'Derivatives',
+  'brokerAccounts.cryptoSection.scope.both': 'Spot + derivatives',
   'brokerAccounts.selectAccount': 'Select account',
   'brokerAccounts.accountName': 'Account name',
   'brokerAccounts.accountNameHint': 'For example: Alpaca paper research',
@@ -36,6 +44,14 @@ const locale = {
 }
 
 const zhCN = {
+  'brokerAccounts.cryptoSection.environmentLabel': '账户环境',
+  'brokerAccounts.cryptoSection.scopeLabel': '授权范围',
+  'brokerAccounts.cryptoSection.environment.live': '正式账户',
+  'brokerAccounts.cryptoSection.environment.demo': '模拟盘',
+  'brokerAccounts.cryptoSection.environment.testnet': '测试网',
+  'brokerAccounts.cryptoSection.scope.spot': '现货',
+  'brokerAccounts.cryptoSection.scope.swap': '合约',
+  'brokerAccounts.cryptoSection.scope.both': '现货 + 合约',
   'brokerAccounts.selectAccount': '选择账户',
   'brokerAccounts.accountName': '账户名称',
   'brokerAccounts.accountNameHint': '例如：Alpaca 模拟研究账户',
@@ -73,6 +89,14 @@ const zhCN = {
 }
 
 const zhTW = {
+  'brokerAccounts.cryptoSection.environmentLabel': '帳戶環境',
+  'brokerAccounts.cryptoSection.scopeLabel': '授權範圍',
+  'brokerAccounts.cryptoSection.environment.live': '正式帳戶',
+  'brokerAccounts.cryptoSection.environment.demo': '模擬盤',
+  'brokerAccounts.cryptoSection.environment.testnet': '測試網',
+  'brokerAccounts.cryptoSection.scope.spot': '現貨',
+  'brokerAccounts.cryptoSection.scope.swap': '合約',
+  'brokerAccounts.cryptoSection.scope.both': '現貨 + 合約',
   'brokerAccounts.selectAccount': '選擇帳戶',
   'brokerAccounts.accountName': '帳戶名稱',
   'brokerAccounts.accountNameHint': '例如：Alpaca 模擬研究帳戶',
@@ -109,11 +133,92 @@ const zhTW = {
   'brokerAccounts.cryptoSection.emptyHint': '請使用右上角「新增帳戶」連線第一個交易所。'
 }
 
-const enUSFallback = locale
 const locales = ['ar-SA', 'de-DE', 'fr-FR', 'ja-JP', 'ko-KR', 'ru-RU', 'th-TH', 'vi-VN']
+const credentialMetaLocales = {
+  'ar-SA': {
+    'brokerAccounts.cryptoSection.environmentLabel': 'بيئة الحساب',
+    'brokerAccounts.cryptoSection.scopeLabel': 'نطاق الصلاحيات',
+    'brokerAccounts.cryptoSection.environment.live': 'حساب حقيقي',
+    'brokerAccounts.cryptoSection.environment.demo': 'حساب تجريبي',
+    'brokerAccounts.cryptoSection.environment.testnet': 'شبكة اختبار',
+    'brokerAccounts.cryptoSection.scope.spot': 'فوري',
+    'brokerAccounts.cryptoSection.scope.swap': 'مشتقات',
+    'brokerAccounts.cryptoSection.scope.both': 'فوري + مشتقات'
+  },
+  'de-DE': {
+    'brokerAccounts.cryptoSection.environmentLabel': 'Kontoumgebung',
+    'brokerAccounts.cryptoSection.scopeLabel': 'Berechtigungen',
+    'brokerAccounts.cryptoSection.environment.live': 'Live-Konto',
+    'brokerAccounts.cryptoSection.environment.demo': 'Demokonto',
+    'brokerAccounts.cryptoSection.environment.testnet': 'Testnetz',
+    'brokerAccounts.cryptoSection.scope.spot': 'Kassahandel',
+    'brokerAccounts.cryptoSection.scope.swap': 'Derivate',
+    'brokerAccounts.cryptoSection.scope.both': 'Spot + Derivate'
+  },
+  'fr-FR': {
+    'brokerAccounts.cryptoSection.environmentLabel': 'Environnement du compte',
+    'brokerAccounts.cryptoSection.scopeLabel': 'Autorisations',
+    'brokerAccounts.cryptoSection.environment.live': 'Compte réel',
+    'brokerAccounts.cryptoSection.environment.demo': 'Compte démo',
+    'brokerAccounts.cryptoSection.environment.testnet': 'Réseau de test',
+    'brokerAccounts.cryptoSection.scope.spot': 'Au comptant',
+    'brokerAccounts.cryptoSection.scope.swap': 'Produits dérivés',
+    'brokerAccounts.cryptoSection.scope.both': 'Comptant + dérivés'
+  },
+  'ja-JP': {
+    'brokerAccounts.cryptoSection.environmentLabel': '口座環境',
+    'brokerAccounts.cryptoSection.scopeLabel': '権限範囲',
+    'brokerAccounts.cryptoSection.environment.live': '本番口座',
+    'brokerAccounts.cryptoSection.environment.demo': 'デモ口座',
+    'brokerAccounts.cryptoSection.environment.testnet': 'テストネット',
+    'brokerAccounts.cryptoSection.scope.spot': '現物',
+    'brokerAccounts.cryptoSection.scope.swap': 'デリバティブ',
+    'brokerAccounts.cryptoSection.scope.both': '現物 + デリバティブ'
+  },
+  'ko-KR': {
+    'brokerAccounts.cryptoSection.environmentLabel': '계정 환경',
+    'brokerAccounts.cryptoSection.scopeLabel': '권한 범위',
+    'brokerAccounts.cryptoSection.environment.live': '실거래 계정',
+    'brokerAccounts.cryptoSection.environment.demo': '데모 계정',
+    'brokerAccounts.cryptoSection.environment.testnet': '테스트넷',
+    'brokerAccounts.cryptoSection.scope.spot': '현물',
+    'brokerAccounts.cryptoSection.scope.swap': '파생상품',
+    'brokerAccounts.cryptoSection.scope.both': '현물 + 파생상품'
+  },
+  'ru-RU': {
+    'brokerAccounts.cryptoSection.environmentLabel': 'Среда счёта',
+    'brokerAccounts.cryptoSection.scopeLabel': 'Область доступа',
+    'brokerAccounts.cryptoSection.environment.live': 'Реальный счёт',
+    'brokerAccounts.cryptoSection.environment.demo': 'Демо-счёт',
+    'brokerAccounts.cryptoSection.environment.testnet': 'Тестовая сеть',
+    'brokerAccounts.cryptoSection.scope.spot': 'Спот',
+    'brokerAccounts.cryptoSection.scope.swap': 'Деривативы',
+    'brokerAccounts.cryptoSection.scope.both': 'Спот + деривативы'
+  },
+  'th-TH': {
+    'brokerAccounts.cryptoSection.environmentLabel': 'สภาพแวดล้อมบัญชี',
+    'brokerAccounts.cryptoSection.scopeLabel': 'ขอบเขตสิทธิ์',
+    'brokerAccounts.cryptoSection.environment.live': 'บัญชีจริง',
+    'brokerAccounts.cryptoSection.environment.demo': 'บัญชีทดลอง',
+    'brokerAccounts.cryptoSection.environment.testnet': 'เครือข่ายทดสอบ',
+    'brokerAccounts.cryptoSection.scope.spot': 'สปอต',
+    'brokerAccounts.cryptoSection.scope.swap': 'อนุพันธ์',
+    'brokerAccounts.cryptoSection.scope.both': 'สปอต + อนุพันธ์'
+  },
+  'vi-VN': {
+    'brokerAccounts.cryptoSection.environmentLabel': 'Môi trường tài khoản',
+    'brokerAccounts.cryptoSection.scopeLabel': 'Phạm vi quyền',
+    'brokerAccounts.cryptoSection.environment.live': 'Tài khoản thật',
+    'brokerAccounts.cryptoSection.environment.demo': 'Tài khoản demo',
+    'brokerAccounts.cryptoSection.environment.testnet': 'Mạng thử nghiệm',
+    'brokerAccounts.cryptoSection.scope.spot': 'Giao ngay',
+    'brokerAccounts.cryptoSection.scope.swap': 'Phái sinh',
+    'brokerAccounts.cryptoSection.scope.both': 'Giao ngay + phái sinh'
+  }
+}
 
 export default locales.reduce((messages, localeName) => {
-  messages[localeName] = { ...enUSFallback }
+  messages[localeName] = { ...credentialMetaLocales[localeName] }
   return messages
 }, {
   'en-US': locale,
