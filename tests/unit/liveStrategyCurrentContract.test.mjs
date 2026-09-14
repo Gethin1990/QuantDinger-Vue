@@ -34,3 +34,9 @@ test('source changes clear an incompatible saved credential before submission', 
   assert.match(source, /this\.compatibleCredentials\.some\(item => String\(item\.id\) === String\(this\.model\.credentialId\)\)/)
   assert.match(source, /this\.model\.credentialId = undefined/)
 })
+
+test('live capital exposes the source quote currency', () => {
+  assert.match(source, /capitalCurrency \(\)/)
+  assert.match(source, /strategyV2\.capitalCurrencyHint/)
+  assert.match(source, /symbol\.split\('\/'\)\.pop\(\)/)
+})

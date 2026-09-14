@@ -172,6 +172,8 @@ const locale = {
   'strategyV2.dynamicUniverse': 'Dynamic universe: {reference}',
   'strategyV2.runtimeTitle': 'Run settings',
   'strategyV2.runtimeHint': 'Only capital, date range, and optional contract leverage can be overridden for this run.',
+  'strategyV2.capitalCurrencyHint': 'This deployment is accounted for in {currency}. Enter capital in the same currency.',
+  'strategyV2.mixedQuoteCurrencyLiveUnsupported': 'One live strategy cannot share one capital balance across instruments with different quote currencies. Use one quote currency per deployment.',
   'strategyV2.leverageEnabled': 'Enable contract leverage',
   'strategyV2.leverageMultiplier': 'Leverage multiplier',
   'strategyV2.leverageNotAllowed': 'This strategy source does not allow leverage.',
@@ -786,6 +788,8 @@ const zhCN = {
   'strategyV2.dynamicUniverse': '动态标的池：{reference}',
   'strategyV2.runtimeTitle': '本次运行设置',
   'strategyV2.runtimeHint': '本次运行只允许覆盖资金、日期区间，以及策略允许时的合约杠杆。',
+  'strategyV2.capitalCurrencyHint': '此实盘按 {currency} 记账，请用相同币种填写投入资金。',
+  'strategyV2.mixedQuoteCurrencyLiveUnsupported': '同一个实盘不能用一份资金同时核算不同计价币种的标的，请按计价币种分别部署。',
   'strategyV2.leverageEnabled': '开启合约杠杆',
   'strategyV2.leverageMultiplier': '杠杆倍数',
   'strategyV2.leverageNotAllowed': '该策略源码未声明允许使用杠杆。',
@@ -1222,6 +1226,13 @@ const additionalAiContractErrors = {
     'strategyV2.aiInitializeRuntimeApiUnsupported': 'Khởi tạo chỉ được khai báo cấu hình và trạng thái; dữ liệu thị trường, vị thế và lệnh phải nằm trong handler thực thi.'
   }
 }
+
+locale['strategyV2.aiHistoryWindowClockUnsupported'] = 'A rolling history window cannot be used as a bar clock. Use bar timestamps or a counter that advances once per bar for cooldowns and duplicate-order checks.'
+zhCN['strategyV2.aiHistoryWindowClockUnsupported'] = '不能用滚动历史窗口的长度作为 K 线计时器。冷却期和重复下单检查应使用 K 线时间戳或逐根递增的计数器。'
+zhTW['strategyV2.aiHistoryWindowClockUnsupported'] = '不能用滾動歷史視窗的長度作為 K 線計時器。冷卻期和重複下單檢查應使用 K 線時間戳或逐根遞增的計數器。'
+Object.values(additionalAiContractErrors).forEach(messages => {
+  messages['strategyV2.aiHistoryWindowClockUnsupported'] = locale['strategyV2.aiHistoryWindowClockUnsupported']
+})
 
 export default {
   'en-US': locale,

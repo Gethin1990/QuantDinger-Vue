@@ -381,6 +381,9 @@
                         >
                           <span class="wl-opt-tag" :class="'wl-mkt-' + (w.market || '').toLowerCase()">{{ marketLabel(w.market) }}</span>
                           <strong class="wl-opt-symbol">{{ w.symbol }}</strong>
+                          <a-tag v-if="isExchangeEquityProduct(w)" color="blue" class="wl-product-tag">
+                            {{ productTypeLabel(w.product_type) }}
+                          </a-tag>
                           <span v-if="w.name" class="wl-opt-name">{{ w.name }}</span>
                         </a-select-option>
                         <a-select-option key="__add__" value="__add__" class="add-option">
@@ -587,6 +590,13 @@
           <a-select-option value="swap">{{ $t('marketContext.swap') }}</a-select-option>
         </a-select>
       </div>
+      <a-alert
+        v-if="addMarketTab === 'Crypto'"
+        class="ide-exchange-product-hint"
+        type="info"
+        show-icon
+        :message="$t('marketContext.exchangeProductWatchlistHint')"
+      />
       <a-input-search
         v-model="addSearchKeyword"
         :placeholder="$t('backtest-center.config.symbolPlaceholder')"
@@ -607,12 +617,18 @@
           slot="renderItem"
           slot-scope="item"
           style="cursor: pointer;"
-          :class="{ 'add-item-active': addSelectedItem && addSelectedItem.symbol === item.symbol }"
+          :class="{ 'add-item-active': addSelectedItem && watchlistContextKey(addSelectedItem) === watchlistContextKey(item) }"
           @click="addSelectedItem = item"
         >
           <strong>{{ item.symbol }}</strong>
+          <a-tag v-if="isExchangeEquityProduct(item)" color="blue" style="margin-left: 8px;">
+            {{ productTypeLabel(item.product_type) }}
+          </a-tag>
+          <span v-if="item.underlying_symbol" style="color: #999; margin-left: 4px;">
+            {{ item.underlying_symbol }}
+          </span>
           <span v-if="item.name" style="color: #999; margin-left: 8px;">{{ item.name }}</span>
-          <a-icon v-if="addSelectedItem && addSelectedItem.symbol === item.symbol" type="check-circle" theme="filled" style="color: #52c41a; margin-left: auto;" />
+          <a-icon v-if="addSelectedItem && watchlistContextKey(addSelectedItem) === watchlistContextKey(item)" type="check-circle" theme="filled" style="color: #52c41a; margin-left: auto;" />
         </a-list-item>
       </a-list>
       <div v-if="addSearchResults.length === 0 && addSearchKeyword && addSearched" style="padding: 16px 0; text-align: center; color: #999;">
@@ -1579,9 +1595,7 @@ export default {
         if (s.market && s.symbol) {
           this.market = String(s.market)
           this.symbol = String(s.symbol)
-          this.currentInstrumentId = this.market === 'Crypto'
-            ? ''
-            : String(s.instrument_id || s.instrumentId || '')
+          this.currentInstrumentId = String(s.instrument_id || s.instrumentId || '')
           this.qtSymbol = this.symbol
           this.selectedWatchlistKey = marketContextKey({
             market: this.market,
@@ -1642,14 +1656,26 @@ export default {
 
         const market = String(saved.market || '')
         const symbol = String(saved.symbol || '')
-        const watchlistKey = marketContextKey({ market, symbol })
+        const watchlistKey = marketContextKey({
+          market,
+          symbol,
+          exchange_id: saved.exchangeId || saved.exchange_id,
+          market_type: saved.marketType || saved.market_type,
+          instrument_id: saved.instrumentId || saved.instrument_id
+        })
         const hasWatchlistItem = this.watchlist.some(item => this.watchlistContextKey(item) === watchlistKey)
         if (market && symbol && hasWatchlistItem) {
           this.market = market
           this.symbol = symbol
           this.qtSymbol = symbol
           this.selectedWatchlistKey = watchlistKey
-          this.currentInstrumentId = market === 'Crypto' ? '' : String(saved.instrumentId || '')
+          this.cryptoExchangeId = market === 'Crypto'
+            ? this.normalizeCryptoExchange(saved.exchangeId || saved.exchange_id)
+            : this.cryptoExchangeId
+          this.cryptoMarketType = market === 'Crypto'
+            ? normalizeMarketType(saved.marketType || saved.market_type, 'Crypto')
+            : this.cryptoMarketType
+          this.currentInstrumentId = String(saved.instrumentId || saved.instrument_id || '')
         }
 
         const indicatorId = Number(saved.indicatorId)
@@ -1671,6 +1697,8 @@ export default {
         storage.set(ideSelectionStorageKey(this.userId), JSON.stringify({
           market: this.market,
           symbol: this.symbol,
+          exchangeId: this.market === 'Crypto' ? this.cryptoExchangeId : '',
+          marketType: this.market === 'Crypto' ? this.cryptoMarketType : 'spot',
           instrumentId: this.currentInstrumentId,
           indicatorId: this.selectedIndicatorId,
           visibleIndicatorIds: this.chartVisibleIndicatorIds
@@ -1749,7 +1777,13 @@ export default {
 
     reconcileIdeMarketFromWatchlist () {
       if (this.market && this.symbol) {
-        this.selectedWatchlistKey = marketContextKey({ market: this.market, symbol: this.symbol })
+        this.selectedWatchlistKey = marketContextKey({
+          market: this.market,
+          symbol: this.symbol,
+          exchange_id: this.market === 'Crypto' ? this.cryptoExchangeId : '',
+          market_type: this.market === 'Crypto' ? this.cryptoMarketType : 'spot',
+          instrument_id: this.currentInstrumentId
+        })
       }
       const key = this.selectedWatchlistKey
       if (!key || key === '__add__') return
@@ -1759,6 +1793,11 @@ export default {
       if (row) {
         this.market = String(row.market)
         this.symbol = String(row.symbol)
+        if (this.market === 'Crypto') {
+          this.cryptoExchangeId = this.normalizeCryptoExchange(row.exchange_id || row.exchangeId)
+          this.cryptoMarketType = normalizeMarketType(row.market_type || row.marketType, 'Crypto')
+        }
+        this.currentInstrumentId = String(row.instrument_id || row.instrumentId || '')
         this.qtSymbol = this.symbol
       }
     },
@@ -3484,6 +3523,7 @@ export default {
           symbol: this.symbol || '',
           exchange_id: this.market === 'Crypto' ? this.cryptoExchangeId : '',
           market_type: this.market === 'Crypto' ? this.cryptoMarketType : 'spot',
+          instrument_id: this.currentInstrumentId || '',
           timeframe: this.timeframe || '',
           source_indicator_id: String(indicator.id || '')
         }
@@ -3593,11 +3633,17 @@ export default {
         if (row) {
           this.market = String(row.market)
           this.symbol = String(row.symbol)
+          if (this.market === 'Crypto') {
+            this.cryptoExchangeId = this.normalizeCryptoExchange(row.exchange_id || row.exchangeId)
+            this.cryptoMarketType = normalizeMarketType(row.market_type || row.marketType, 'Crypto')
+          }
+          this.currentInstrumentId = String(row.instrument_id || row.instrumentId || '')
         } else {
-          const i = val.indexOf(':')
+          const legacyValue = String(val).split('|')[0]
+          const i = legacyValue.indexOf(':')
           if (i > 0) {
-            this.market = val.slice(0, i)
-            this.symbol = val.slice(i + 1)
+            this.market = legacyValue.slice(0, i)
+            this.symbol = legacyValue.slice(i + 1)
           }
         }
         this.qtSymbol = this.symbol
@@ -3616,6 +3662,14 @@ export default {
       const key = 'dashboard.indicator.market.' + m
       const t = this.$t(key)
       return t !== key ? t : m
+    },
+    isExchangeEquityProduct (item) {
+      return ['tokenized_equity', 'stock_perpetual', 'direct_equity'].includes(String(item && item.product_type || '').toLowerCase())
+    },
+    productTypeLabel (productType) {
+      const key = `marketContext.product.${String(productType || 'crypto').toLowerCase()}`
+      const translated = this.$t(key)
+      return translated !== key ? translated : String(productType || '')
     },
     handleCryptoExchangeChange (value) {
       this.cryptoExchangeId = this.normalizeCryptoExchange(value)
@@ -3738,10 +3792,18 @@ export default {
         await this.loadWatchlist()
         this.selectedWatchlistKey = marketContextKey({
           market: mkt,
-          symbol: item.symbol
+          symbol: item.symbol,
+          exchange_id: item.exchange_id || (mkt === 'Crypto' ? this.cryptoExchangeId : ''),
+          market_type: item.market_type || (mkt === 'Crypto' ? this.cryptoMarketType : 'spot'),
+          instrument_id: item.instrument_id || ''
         })
         this.market = mkt
         this.symbol = item.symbol
+        if (mkt === 'Crypto') {
+          this.cryptoExchangeId = this.normalizeCryptoExchange(item.exchange_id || this.cryptoExchangeId)
+          this.cryptoMarketType = normalizeMarketType(item.market_type || this.cryptoMarketType, 'Crypto')
+        }
+        this.currentInstrumentId = String(item.instrument_id || '')
         this.showAddModal = false
       } catch (e) {
         this.$message.error(e.message || 'Failed')
@@ -7220,6 +7282,10 @@ body.dark .ide-param-modal-wrap {
   display: flex;
   gap: 8px;
   margin-top: 12px;
+}
+
+.ide-exchange-product-hint {
+  margin-top: 10px;
 }
 
 .ant-select-dropdown.ide-qt-select-dropdown {

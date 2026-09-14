@@ -2265,23 +2265,24 @@ export default {
         '',
         'Hard boundaries:',
         '- Return Strategy API V2 code only, using the current manifest and handler contract.',
-        '- Start with a metadata docstring, then define initialize(context) and handle_data(context, data), scheduled callbacks, or on_rebalance(context, data).',
+        '- Start with a metadata docstring, then define initialize(context) and handle_data(context, data). This conversion must remain a single-instrument CTA; do not use on_rebalance or a portfolio manifest.',
         '- The strategy source owns its universe, markets, subscriptions, frequency, factors, schedules, direction, sizing, entries, exits, and risk rules.',
         '- Preserve the source instrument and timeframe below in context.set_universe(...) and context.subscribe(...). Never replace them with USStock:SPY or another fallback instrument.',
         '- In initialize(context), call context.set_universe(...) and context.subscribe(frequency=...). Use context.set_warmup(...) when indicators need history.',
         '- Backtest and deployment panels only provide initial capital, date range, and optional leverage for a Crypto @swap strategy that explicitly calls context.allow_leverage(max_leverage=N).',
         '- Preserve the indicator signal logic first. Map visual buy/entry markers to long entries, sell/exit markers to long exits, and warning markers to wait/risk states.',
-        '- Default to long-only unless the user explicitly asks for shorts and the indicator has clear bearish short-entry logic.',
+        '- Default to long-only. Shorts require an explicit user request and a preserved Crypto @swap instrument; express short-entry conditions independently from long exits.',
         '- First classify every marker as long entry, long exit, short entry, short exit, warning/wait, or visual-only. Marker color and type="sell" alone do not prove short-entry intent.',
         '- Preserve composite event algebra exactly. For edge(A | B), compare the complete previous composite A_prev | B_prev; do not emit a duplicate event on the next bar.',
         '- If the user explicitly requests symmetric shorts from a long-only indicator, derive and label them as new behavior; otherwise do not invent short entries.',
-        '- Confirm indicator conditions on completed bars. Orders from handle_data are filled by the engine on the next available bar open.',
+        '- Confirm indicator conditions on completed bars. In backtests, market orders from handle_data become eligible at the next available bar open; live orders are asynchronous and fills must be confirmed.',
+        '- Follow the server-provided Strategy API V2 system contract and active capability definitions for exact API signatures, factor semantics, bar clocks, and native protection rules.',
         '- Use get_history, indicator, factor, get_factors, and get_fundamentals without future data. TA-Lib functions are available through indicator/factor.',
         '- Use data.current(symbol, field) for current scalar values. There is no get_current_data API. get_position(symbol) returns a Position with amount, avg_cost, and last_price; it has no quantity or cost_basis.',
         '- Fundamental factors are point-in-time and portfolio-oriented; never invent fundamental values or backfill future observations.',
         '- Use order, order_value, order_target, order_target_value, and order_target_percent. Prevent duplicate intents on the same bar.',
         '- Declare tunable strategy knobs with # @param and read matching context.params defaults only inside handlers or callbacks, never inside initialize(context).',
-        '- For risk-managed entries, attach explicit protection rules to entries with stop_loss_pct, take_profit_pct, trailing_stop_pct, or time_limit_seconds.',
+        '- For risk-managed entries, attach native protection using stop_loss_pct, take_profit_pct, trailing_stop_pct, trailing_activation_pct, or time_limit_seconds. Spot strategies may also call set_default_protection inside an executable handler before entry; Crypto swaps require direct protection on every entry leg. Ratios use decimals: 0.03 means 3%. Signal exits alone do not implement native protection.',
         '- Remove display-only parameters such as colors, visibility toggles, marker offsets, line extension, and plot layout.',
         '- Do not generate grid, DCA, or martingale logic unless the user explicitly requests a Strategy API V2 robot.',
         '',
@@ -2317,6 +2318,7 @@ export default {
           existingCode: '',
           context: {
             source: 'indicator_ide_conversion',
+            conversionRequest: String(this.indicatorConvertInstruction || '').trim(),
             instrument: source.instrument,
             timeframe: source.timeframe
           }
@@ -2336,7 +2338,7 @@ export default {
         this.finishIndicatorConversion(sourceId)
         this.$message.success(this.text.indicatorConvertSuccess)
       } catch (e) {
-        this.indicatorConvertError = e.backendMessage || e.message || this.text.indicatorConvertFailed
+        this.indicatorConvertError = this.localizeStrategyAiError(e)
       } finally {
         this.indicatorConvertLoading = false
       }

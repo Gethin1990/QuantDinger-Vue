@@ -3158,6 +3158,9 @@ export default {
       const res = await fastAnalyze({
         market: target.market,
         symbol: target.symbol,
+        exchange_id: target.exchange_id || '',
+        market_type: target.market_type || '',
+        instrument_id: target.instrument_id || '',
         language: this.$i18n ? this.$i18n.locale : 'en-US',
         timeframe: '1D',
         response_contract: 'professional_report_v1'

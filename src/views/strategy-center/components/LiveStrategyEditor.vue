@@ -112,6 +112,9 @@
             <a-alert show-icon type="info" :message="$t('strategyV2.runtimeTitle')" :description="$t('strategyV2.runtimeHint')" />
             <a-form-item :label="$t(capitalIsMargin ? 'trading-assistant.form.initialMargin' : 'trading-assistant.form.initialCapital')" required>
               <a-input-number v-model="model.initialCapital" :min="1" :max="1000000000" :precision="2" :step="1000" />
+              <div v-if="capitalCurrency" class="field-hint">
+                {{ $t('strategyV2.capitalCurrencyHint', { currency: capitalCurrency }) }}
+              </div>
               <div v-if="capitalIsMargin" class="field-hint field-hint--notional">
                 {{ $t('trading-assistant.form.marginNotionalCapacity', {
                   margin: formattedInitialCapital,
@@ -359,6 +362,20 @@ export default {
     },
     capitalIsMargin () {
       return this.supportsStrategyV2Leverage
+    },
+    capitalCurrency () {
+      const universe = this.parseObject(this.strategyManifest.universe)
+      if (universe.reference) return ''
+      const instruments = Array.isArray(universe.instruments) ? universe.instruments : []
+      const currencies = new Set(instruments.map(item => {
+        const market = String(item.market || '')
+        if (market === 'USStock') return 'USD'
+        if (market === 'HKStock') return 'HKD'
+        if (market === 'CNStock') return 'CNY'
+        const symbol = String(item.symbol || '').toUpperCase()
+        return symbol.includes('/') ? symbol.split('/').pop() : ''
+      }).filter(Boolean))
+      return currencies.size === 1 ? Array.from(currencies)[0] : ''
     },
     effectiveLeverage () {
       if (!this.capitalIsMargin || !this.model.leverageEnabled) return 1

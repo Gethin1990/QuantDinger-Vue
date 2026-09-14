@@ -670,9 +670,13 @@ export default {
       if (this.currentSymbol) this.loadPrice()
     },
     selectedCredentialId (val) {
+      this.resetBalance()
+      this.currentPositions = []
+      this.recentTrades = []
       // Reload position when credential changes
       if (val && this.currentSymbol) {
         this.loadPosition()
+        this.loadHistory()
       }
     },
     presetSide (val) {
@@ -1004,7 +1008,7 @@ export default {
           return
         }
         if (this.isStockMarket) {
-          const quote = await broker.alpaca.quote(this.normalizeBrokerSymbol(this.currentSymbol), { marketType: 'USStock' })
+          const quote = await broker.alpaca.quote(this.normalizeBrokerSymbol(this.currentSymbol), { marketType: 'USStock', credential_id: this.selectedCredentialId })
           const data = this.apiPayload(quote)
           this.applyNewPrice(data.price || data.latest || data.last || data.ask || data.bid)
         }
@@ -1012,7 +1016,7 @@ export default {
         console.warn('loadPrice error:', e)
         if (this.isStockMarket) {
           try {
-            const quote = await broker.alpaca.quote(this.normalizeBrokerSymbol(this.currentSymbol), { marketType: 'USStock' })
+            const quote = await broker.alpaca.quote(this.normalizeBrokerSymbol(this.currentSymbol), { marketType: 'USStock', credential_id: this.selectedCredentialId })
             const data = this.apiPayload(quote)
             this.applyNewPrice(data.price || data.latest || data.last || data.ask || data.bid)
           } catch (stockErr) {
@@ -1032,19 +1036,16 @@ export default {
       this.credLoading = true
       try {
         if (this.isStockMarket) {
-          const status = await broker.alpaca.status()
-          const payload = this.apiPayload(status)
-          const connected = !!(payload.connected || payload.isConnected || payload.status === 'connected')
-          this.credentials = connected
-            ? [{
-                id: 'alpaca',
-                type: 'broker',
-                broker_id: 'alpaca',
-                exchange_id: 'alpaca',
-                name: this.$t('quickTrade.alpacaAccount'),
-                market_type: 'USStock'
-              }]
-            : []
+          const response = await broker.alpaca.accounts()
+          const payload = this.apiPayload(response)
+          this.credentials = (Array.isArray(payload) ? payload : []).map(account => ({
+            id: Number(account.id),
+            type: 'broker',
+            broker_id: 'alpaca',
+            exchange_id: 'alpaca',
+            name: `${account.name} · ${account.api_key_hint} · #${account.id}`,
+            market_type: 'USStock'
+          }))
           if (this.selectedCredentialId && !this.credentials.some(c => c.id === this.selectedCredentialId)) {
             this.selectedCredentialId = undefined
             this.resetBalance()
@@ -1103,10 +1104,12 @@ export default {
     },
     async loadBalance () {
       if (!this.selectedCredentialId) return
+      const credentialId = this.selectedCredentialId
       this.balanceLoading = true
       try {
         if (this.isStockMarket) {
-          const res = await broker.alpaca.account()
+          const res = await broker.alpaca.account({ credential_id: credentialId, include_counts: false })
+          if (this.selectedCredentialId !== credentialId) return
           const d = this.apiPayload(res)
           const available = parseFloat(d.buying_power || d.buyingPower || d.cash || 0) || 0
           const total = parseFloat(d.equity || d.portfolio_value || d.portfolioValue || d.cash || available) || available
@@ -1154,6 +1157,7 @@ export default {
         }
       } catch (e) {
         console.warn('loadBalance error:', e)
+        if (this.selectedCredentialId !== credentialId) return
         this.balance = {
           available: 0,
           total: 0,
@@ -1166,13 +1170,16 @@ export default {
       }
     },
     async loadPosition () {
+      const credentialId = this.selectedCredentialId
+      const symbol = this.currentSymbol
       if (!this.selectedCredentialId || !this.currentSymbol) {
         console.log('loadPosition skipped:', { credentialId: this.selectedCredentialId, symbol: this.currentSymbol })
         return
       }
       try {
         if (this.isStockMarket) {
-          const res = await broker.alpaca.positions()
+          const res = await broker.alpaca.positions({ credential_id: credentialId })
+          if (this.selectedCredentialId !== credentialId || this.currentSymbol !== symbol) return
           const payload = this.apiPayload(res)
           const items = Array.isArray(payload) ? payload : (payload.positions || payload.items || payload.data || [])
           const target = this.normalizeBrokerSymbol(this.currentSymbol).toUpperCase()
@@ -1202,6 +1209,7 @@ export default {
         }
       } catch (e) {
         console.error('loadPosition error:', e)
+        if (this.selectedCredentialId !== credentialId || this.currentSymbol !== symbol) return
         this.currentPositions = []
         return false
       }
@@ -1223,9 +1231,12 @@ export default {
       console.log('Position not found after all retries')
     },
     async loadHistory () {
+      const credentialId = this.selectedCredentialId
       try {
         if (this.isStockMarket) {
-          const res = await broker.alpaca.orders({ limit: 5, status: 'all' })
+          if (!credentialId) return
+          const res = await broker.alpaca.orders({ limit: 5, status: 'all', credential_id: credentialId })
+          if (this.selectedCredentialId !== credentialId) return
           const payload = this.apiPayload(res)
           const items = Array.isArray(payload) ? payload : (payload.orders || payload.items || payload.data || [])
           this.recentTrades = (items || []).slice(0, 5).map(o => ({
@@ -1324,6 +1335,7 @@ export default {
         return
       }
       const payload = {
+        credential_id: this.selectedCredentialId,
         symbol: this.normalizeBrokerSymbol(this.currentSymbol),
         side,
         quantity,
@@ -1355,6 +1367,7 @@ export default {
           const qty = parseFloat(pos.size || pos.qty || 0) || 0
           if (!(qty > 0)) return
           const res = await broker.alpaca.placeOrder({
+            credential_id: this.selectedCredentialId,
             symbol: this.normalizeBrokerSymbol(this.currentSymbol),
             side: 'sell',
             quantity: Number(qty.toFixed(6)),

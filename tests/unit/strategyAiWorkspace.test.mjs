@@ -57,6 +57,23 @@ test('indicator conversion declares machine-enforced source instrument and timef
   assert.match(page, /Never replace them with USStock:SPY/)
 })
 
+test('indicator conversion prompt agrees with CTA and native protection contracts', () => {
+  const page = read('src/views/strategy-ide/index.vue')
+  const body = page.split('    buildIndicatorConversionPrompt () {')[1].split('\n    async confirmIndicatorToStrategy')[0].replace(/},\s*$/, '')
+  const prompt = new Function(body).call({
+    indicatorConvertContext: { name: 'EMA', code: 'output = {}', params: {} },
+    indicatorConvertInstruction: 'Add risk controls',
+    resolveIndicatorConversionContext: () => ({ instrument: 'Crypto:SOL/USDT@spot', timeframe: '1d' }),
+    text: {}
+  })
+  assert.match(prompt, /single-instrument CTA; do not use on_rebalance/)
+  assert.doesNotMatch(prompt, /scheduled callbacks, or on_rebalance/)
+  assert.match(prompt, /Ratios use decimals: 0.03 means 3%/)
+  assert.match(prompt, /set_default_protection inside an executable handler/)
+  assert.match(prompt, /server-provided Strategy API V2 system contract/)
+  assert.match(prompt, /Source instrument: Crypto:SOL\/USDT@spot/)
+})
+
 test('side rail exposes scalable parameters and strategy contract while verification stays in the editor header', () => {
   const editor = read('src/views/strategy-ide/components/StrategyEditor.vue')
   assert.match(editor, /activeSideTab/)
@@ -153,4 +170,28 @@ test('strategy AI generation failures surface and localize the nested validation
     assert.ok(strategyV2Messages[locale]['strategyV2.aiFactorParameterUnsupported'])
     assert.ok(strategyV2Messages[locale]['strategyV2.aiFactorParameterInvalid'])
   }
+})
+
+test('indicator conversion displays the underlying localized validation failure', async () => {
+  const page = read('src/views/strategy-ide/index.vue')
+  const localizeBody = page.split('    localizeStrategyAiError (error) {')[1].split('\n    toggleStrategyAiPanel')[0].replace(/},\s*$/, '')
+  const convertBody = page.split('    async confirmIndicatorToStrategy () {')[1].split('\n    extractAiGeneratedCode')[0].replace(/},\s*$/, '')
+  const failure = { response: { data: { msg: 'strategyV2.generationInvalid', data: { error: 'strategyV2.aiPersistentStateRequired' } } } }
+  const vm = {
+    indicatorConvertContext: { indicatorId: '1', code: 'indicator source' },
+    indicatorConvertInstruction: 'Add a stop loss',
+    resolveIndicatorConversionContext: () => ({ instrument: 'Crypto:SOL/USDT@spot', timeframe: '1d' }),
+    buildIndicatorConversionPrompt: () => 'Conversion template',
+    $t: key => strategyV2Messages['zh-CN'][key] || key,
+    aiWorkspaceText: { sendFailed: 'fallback' },
+    localizeStrategyAiError: new Function('error', localizeBody)
+  }
+  const convert = new Function('aiGenerateStrategy', `return async function () { ${convertBody} }`)(async payload => {
+    assert.equal(payload.context.conversionRequest, 'Add a stop loss')
+    throw failure
+  })
+  await convert.call(vm)
+  assert.equal(vm.indicatorConvertError, strategyV2Messages['zh-CN']['strategyV2.aiPersistentStateRequired'])
+  assert.ok(vm.indicatorConvertError)
+  assert.equal(vm.indicatorConvertLoading, false)
 })
