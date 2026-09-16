@@ -9,15 +9,16 @@
     <div v-if="records.length === 0 && !isRecordsLoading" class="empty-state strategy-tab-empty">
       <a-empty :image="false" :description="$t('trading-assistant.table.noTrades')" />
     </div>
+    <p v-if="records.length" class="execution-note">{{ $t('trading-assistant.execution.note') }}</p>
     <a-table
-      v-else
+      v-if="records.length > 0 || isRecordsLoading"
       :columns="columns"
       :data-source="records"
       :loading="isRecordsLoading"
       :pagination="{ pageSize: 10 }"
       size="small"
       rowKey="id"
-      :scroll="{ x: 800 }"
+      :scroll="{ x: 1500 }"
     >
       <template slot="type" slot-scope="text, record">
         <div class="trade-type-cell">
@@ -30,11 +31,21 @@
       <template slot="instrument" slot-scope="text, record">
         <span class="trade-instrument">{{ formatTradeInstrument(record) }}</span>
       </template>
-      <template slot="price" slot-scope="text">
-        ${{ parseFloat(text).toFixed(4) }}
+      <template slot="price" slot-scope="text, record">
+        <a-tooltip :title="record.exchange_order_id ? $t('trading-assistant.execution.orderId') + ': ' + record.exchange_order_id : null">
+          <span>{{ formatExecutionNumber(text) }}</span>
+        </a-tooltip>
+      </template>
+      <template slot="reference_price" slot-scope="text">
+        {{ formatExecutionNumber(text) }}
+      </template>
+      <template slot="price_deviation_pct" slot-scope="text">
+        <a-tooltip :title="$t('trading-assistant.execution.deviationHint')">
+          <span>{{ formatPriceDeviation(text) }}</span>
+        </a-tooltip>
       </template>
       <template slot="amount" slot-scope="text">
-        {{ parseFloat(text).toFixed(4) }}
+        {{ formatExecutionNumber(text) }}
       </template>
       <template slot="value" slot-scope="text">
         ${{ parseFloat(text).toFixed(2) }}
@@ -68,6 +79,7 @@
 
 <script>
 import { getStrategyTrades } from '@/api/strategy'
+import { formatExecutionNumber, formatPriceDeviation } from '@/utils/tradeExecution'
 import { formatTradeCommission } from '@/utils/tradeCommission'
 import { formatUserDateTime, formatBrowserLocalDateTime, getUserTimezoneFromStorage } from '@/utils/userTime'
 
@@ -154,11 +166,25 @@ export default {
           scopedSlots: { customRender: 'instrument' }
         },
         {
-          title: this.$t('trading-assistant.table.price'),
+          title: this.$t('trading-assistant.execution.reference'),
+          dataIndex: 'reference_price',
+          key: 'reference_price',
+          width: 140,
+          scopedSlots: { customRender: 'reference_price' }
+        },
+        {
+          title: this.$t('trading-assistant.execution.price'),
           dataIndex: 'price',
           key: 'price',
           width: 120,
           scopedSlots: { customRender: 'price' }
+        },
+        {
+          title: this.$t('trading-assistant.execution.deviation'),
+          dataIndex: 'price_deviation_pct',
+          key: 'price_deviation_pct',
+          width: 130,
+          scopedSlots: { customRender: 'price_deviation_pct' }
         },
         {
           title: this.$t('trading-assistant.table.amount'),
@@ -220,6 +246,8 @@ export default {
     }
   },
   methods: {
+    formatExecutionNumber,
+    formatPriceDeviation,
     formatTradeInstrument (record) {
       if (!record || typeof record !== 'object') return '--'
       const raw = record.symbol || record.symbol_canonical || record.instrument || record.inst_id || record.ticker
@@ -537,6 +565,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.execution-note { opacity: 0.7; font-size: 12px; margin: 0 0 12px; }
 @primary-color: #1890ff;
 @success-color: #0ecb81;
 @danger-color: #f6465d;
