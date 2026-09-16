@@ -1,4 +1,7 @@
 const locale = {
+  'strategyRuntime.spotBalanceUnavailable': 'The available spot balance could not be verified. No sell order was submitted. Refresh the account balance and try again.',
+  'strategyRuntime.spotBalanceInsufficient': 'No sellable spot balance is available, or the quantity is below the trading minimum. Check frozen balances and pending orders before retrying.',
+  'strategyRuntime.spotCloseQuantityInvalid': 'The spot sell quantity or its precision adjustment is invalid. No order was submitted.',
   'strategyCenter.positionOwnership.alpacaRiskDescription': 'For each Alpaca snapshot, holdings above the combined strategy allocation are treated as user-owned surplus. Each strategy exit is capped by its own inventory and reserves other strategy allocations. External orders and manual trades change the next snapshot, and opposite entries remain blocked when they would offset an existing account position.',
   'strategyCenter.positionOwnership.alpacaHelp': 'No manual ownership registration is required. Active orders must finish or be cancelled before another strategy order is submitted. Account shortfalls block new entries; exits remain capped by available strategy inventory. The crypto 10 USD tolerance does not apply to stocks.',
   'strategyCenter.positionOwnership.alpacaQuoteDifference': 'Approximately {value} USD',
@@ -151,6 +154,9 @@ const enUSFallback = locale
 
 const zhCN = {
   ...enUSFallback,
+  'strategyRuntime.spotBalanceUnavailable': '无法确认现货可用余额，未提交卖单。请刷新账户余额后重试。',
+  'strategyRuntime.spotBalanceInsufficient': '现货可卖余额为零，或数量低于交易最小要求。请检查冻结余额和未完成订单后重试。',
+  'strategyRuntime.spotCloseQuantityInvalid': '现货卖出数量或精度调整结果无效，未提交订单。',
   'strategyCenter.positionOwnership.alpacaRiskDescription': '每次读取 Alpaca 快照时，账户持仓超过关联策略合计的部分会作为用户自有余量。每个策略平仓只使用自己的仓位，并为其他策略预留其账本数量。外部挂单或手动交易会改变下一次快照；可能抵消账户反方向持仓的开仓仍会被拦截。',
   'strategyCenter.positionOwnership.alpacaHelp': '用户原有仓位无需手动登记。有未完成订单时，需要等待成交核对或处理订单后再提交策略订单。账户持仓不足会限制新开仓，平仓仍以策略实际可用数量为上限；加密货币 10U 容差不适用于股票。',
   'strategyCenter.positionOwnership.alpacaQuoteDifference': '约 {value} 美元',
@@ -300,6 +306,9 @@ const zhCN = {
 
 const zhTW = {
   ...zhCN,
+  'strategyRuntime.spotBalanceUnavailable': '無法確認現貨可用餘額，未提交賣單。請重新整理帳戶餘額後重試。',
+  'strategyRuntime.spotBalanceInsufficient': '現貨可賣餘額為零，或數量低於交易最小要求。請檢查凍結餘額和未完成訂單後重試。',
+  'strategyRuntime.spotCloseQuantityInvalid': '現貨賣出數量或精度調整結果無效，未提交訂單。',
   'strategyCenter.positionOwnership.resolveNow': '查看差額與處理方式',
   'strategyCenter.positionOwnership.relatedStrategies': '關聯策略合計',
   'strategyCenter.positionOwnership.toleranceHelp': '有目前價格時，加密貨幣 10U 內的差額自動容忍；超過容差會限制新開倉，按實際可用數量執行的減倉保護仍保留。',

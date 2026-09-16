@@ -16,3 +16,15 @@ test('technical runtime lines remain intact', () => {
   assert.equal(translateStrategyRuntimeMessage(message, () => assert.fail('Unexpected translation')), message)
   assert.equal(translateStrategyRuntimeMessage('strategyRuntime.leaseLost', key => `translated:${key}`), 'translated:strategyRuntime.leaseLost')
 })
+
+test('spot sell failures are localized in runtime logs', () => {
+  for (const suffix of ['spotBalanceUnavailable', 'spotBalanceInsufficient', 'spotCloseQuantityInvalid']) {
+    const key = `strategyRuntime.${suffix}`
+    for (const locale of Object.keys(messages)) {
+      assert.ok(messages[locale][key])
+      assert.equal(translateStrategyRuntimeMessage(key, value => messages[locale][value]), messages[locale][key])
+    }
+    assert.notEqual(messages['zh-CN'][key], messages['en-US'][key])
+    assert.notEqual(messages['zh-TW'][key], messages['zh-CN'][key])
+  }
+})
