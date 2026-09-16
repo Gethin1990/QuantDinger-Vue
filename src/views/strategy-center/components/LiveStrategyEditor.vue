@@ -207,6 +207,7 @@
                 <a-radio-group v-model="model.directionMode" button-style="solid" class="full-radio-group">
                   <a-radio-button value="long_only">{{ $t('strategyCenter.editor.directionLongOnly') }}</a-radio-button>
                   <a-radio-button value="short_only">{{ $t('strategyCenter.editor.directionShortOnly') }}</a-radio-button>
+                  <a-radio-button value="one_way">{{ $t('strategyCenter.editor.directionOneWay') }}</a-radio-button>
                   <a-radio-button value="both">{{ $t('strategyCenter.editor.directionBoth') }}</a-radio-button>
                   <a-radio-button value="neutral">{{ $t('strategyCenter.editor.directionNeutral') }}</a-radio-button>
                 </a-radio-group>
@@ -261,11 +262,15 @@ const DIRECTION_MODE_ALIASES = {
   longonly: 'long_only',
   short: 'short_only',
   shortonly: 'short_only',
+  net: 'one_way',
+  oneway: 'one_way',
+  net_position: 'one_way',
+  single_position: 'one_way',
   dual: 'both',
   hedged: 'both',
   bidirectional: 'both'
 }
-const DIRECTION_MODES = new Set(['long_only', 'short_only', 'both', 'neutral'])
+const DIRECTION_MODES = new Set(['long_only', 'short_only', 'one_way', 'both', 'neutral'])
 const normalizeDirectionMode = value => {
   const normalized = String(value || '').trim().toLowerCase().replace(/-/g, '_')
   const result = DIRECTION_MODE_ALIASES[normalized] || normalized
@@ -652,6 +657,7 @@ export default {
       return {
         long_only: 'green',
         short_only: 'red',
+        one_way: 'orange',
         both: 'blue',
         neutral: 'purple'
       }[normalizeDirectionMode(mode)] || 'default'

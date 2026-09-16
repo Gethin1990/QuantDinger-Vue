@@ -1,5 +1,6 @@
 <template>
   <div class="trading-records strategy-tab-pane-inner" :class="{ 'theme-dark': isDark }">
+    <p v-if="records.length || hasCostSummary" class="execution-note">{{ $t('trading-assistant.execution.systemSummary') }}</p>
     <div v-if="records.length || hasCostSummary" class="cost-summary-grid">
       <div v-for="item in costSummaryItems" :key="item.key" class="cost-summary-card">
         <span>{{ item.label }}</span>
@@ -9,6 +10,12 @@
     <div v-if="records.length === 0 && !isRecordsLoading" class="empty-state strategy-tab-empty">
       <a-empty :image="false" :description="$t('trading-assistant.table.noTrades')" />
     </div>
+    <a-alert
+      v-if="costSummary && costSummary.pnl_pending_count"
+      type="warning"
+      show-icon
+      :message="$t('trading-assistant.execution.gridPendingSummary', { count: costSummary.pnl_pending_count })"
+    />
     <p v-if="records.length" class="execution-note">{{ $t('trading-assistant.execution.note') }}</p>
     <a-table
       v-if="records.length > 0 || isRecordsLoading"
@@ -18,7 +25,7 @@
       :pagination="{ pageSize: 10 }"
       size="small"
       rowKey="id"
-      :scroll="{ x: 1500 }"
+      :scroll="{ x: 1800 }"
     >
       <template slot="type" slot-scope="text, record">
         <div class="trade-type-cell">
@@ -32,12 +39,14 @@
         <span class="trade-instrument">{{ formatTradeInstrument(record) }}</span>
       </template>
       <template slot="price" slot-scope="text, record">
-        <a-tooltip :title="record.exchange_order_id ? $t('trading-assistant.execution.orderId') + ': ' + record.exchange_order_id : null">
-          <span>{{ formatExecutionNumber(text) }}</span>
+        <a-tooltip :title="formatExecutionNumber(text) + (record.exchange_order_id ? ' · ' + $t('trading-assistant.execution.orderId') + ': ' + record.exchange_order_id : '')">
+          <span>{{ formatExecutionPrice(text) }}</span>
         </a-tooltip>
       </template>
       <template slot="reference_price" slot-scope="text">
-        {{ formatExecutionNumber(text) }}
+        <a-tooltip :title="formatExecutionNumber(text)">
+          <span>{{ formatExecutionPrice(text) }}</span>
+        </a-tooltip>
       </template>
       <template slot="price_deviation_pct" slot-scope="text">
         <a-tooltip :title="$t('trading-assistant.execution.deviationHint')">
@@ -50,12 +59,32 @@
       <template slot="value" slot-scope="text">
         ${{ parseFloat(text).toFixed(2) }}
       </template>
-      <template slot="profit" slot-scope="text, record">
-        <a-popover v-if="hasRealizedProfit(record)" placement="top" trigger="hover">
+      <template slot="exchange_pnl" slot-scope="text">
+        <a-popover v-if="text && text.status === 'reported'" placement="top" trigger="hover">
           <div slot="content" class="pnl-breakdown">
+            <p>{{ $t('trading-assistant.execution.exchangePnlHint') }}</p>
+            <p>{{ $t('trading-assistant.execution.' + text.fee_basis) }}</p>
+            <p>{{ $t('trading-assistant.execution.orderId') }}: {{ text.order_id }}</p>
+            <p>{{ $t('trading-assistant.execution.reportedQuantity') }}: {{ formatExecutionNumber(text.quantity) }}</p>
+            <p>{{ $t('trading-assistant.execution.reportSource') }}: {{ text.source }}</p>
+          </div>
+          <span :class="['ta-pnl', { 'ta-pnl-pos': text.amount > 0, 'ta-pnl-neg': text.amount < 0 }]">{{ formatReportedPnl(text) }}</span>
+        </a-popover>
+        <span v-else class="pnl-status">{{ formatReportedPnl(text) }}</span>
+      </template>
+      <template slot="profit" slot-scope="text, record">
+        <a-popover v-if="hasRealizedProfit(record) || record.pnl_source === 'grid_exchange_order_pairs'" placement="top" trigger="hover">
+          <div slot="content" class="pnl-breakdown">
+            <p>{{ $t(record.pnl_source === 'grid_exchange_order_pairs' ? 'trading-assistant.execution.gridPnlHint' : 'trading-assistant.execution.pnlHint') }}</p>
             <div><span>{{ $t('trading-assistant.costs.grossRealized') }}</span><strong>{{ formatMoneyValue(record.profit_gross) }}</strong></div>
-            <div><span>{{ $t('trading-assistant.costs.openingCommission') }}</span><strong>-{{ formatMoneyValue(record.open_commission_allocated) }}</strong></div>
-            <div><span>{{ $t('trading-assistant.costs.closingCommission') }}</span><strong>-{{ formatMoneyValue(record.close_commission) }}</strong></div>
+            <div><span>{{ $t('trading-assistant.costs.openingCommission') }}</span><strong>{{ formatExpense(record.open_commission_allocated) }}</strong></div>
+            <div><span>{{ $t('trading-assistant.costs.closingCommission') }}</span><strong>{{ formatExpense(record.close_commission) }}</strong></div>
+            <div v-for="(match, index) in record.matched_orders || []" :key="index" class="grid-order-match">
+              <p>{{ $t('trading-assistant.execution.entryOrders') }}: {{ match.entry_order_ids.join(', ') }}</p>
+              <p>{{ $t('trading-assistant.execution.exitOrder') }}: {{ match.exit_order_id }}</p>
+              <p>{{ $t('trading-assistant.table.amount') }}: {{ formatExecutionNumber(match.quantity) }}</p>
+              <p>{{ formatExecutionPrice(match.entry_price) }} → {{ formatExecutionPrice(match.exit_price) }}</p>
+            </div>
             <div class="pnl-breakdown-total"><span>{{ $t('trading-assistant.costs.netRealized') }}</span><strong>{{ formatProfit(record) }}</strong></div>
           </div>
           <span :class="['ta-pnl', profitToneClass(record)]">{{ formatProfit(record) }}</span>
@@ -79,7 +108,7 @@
 
 <script>
 import { getStrategyTrades } from '@/api/strategy'
-import { formatExecutionNumber, formatPriceDeviation } from '@/utils/tradeExecution'
+import { formatExecutionNumber, formatExecutionPrice, formatPriceDeviation, formatTradeMoney } from '@/utils/tradeExecution'
 import { formatTradeCommission } from '@/utils/tradeCommission'
 import { formatUserDateTime, formatBrowserLocalDateTime, getUserTimezoneFromStorage } from '@/utils/userTime'
 
@@ -120,8 +149,8 @@ export default {
       const funding = Number(summary.funding_payment || 0)
       const items = [
         { key: 'gross', label: this.$t('trading-assistant.costs.grossRealized'), value: this.formatSignedMoney(summary.gross_realized_pnl), tone: this.moneyTone(summary.gross_realized_pnl) },
-        { key: 'openFee', label: this.$t('trading-assistant.costs.openingCommission'), value: this.formatExpense(summary.opening_commission), tone: 'cost-negative' },
-        { key: 'closeFee', label: this.$t('trading-assistant.costs.closingCommission'), value: this.formatExpense(summary.closing_commission), tone: 'cost-negative' }
+        { key: 'openFee', label: this.$t('trading-assistant.costs.openingCommission'), value: this.formatExpense(summary.opening_commission), tone: this.moneyTone(-summary.opening_commission) },
+        { key: 'closeFee', label: this.$t('trading-assistant.costs.closingCommission'), value: this.formatExpense(summary.closing_commission), tone: this.moneyTone(-summary.closing_commission) }
       ]
       const brokerPayments = [
         { key: 'regulatory', label: this.$t('trading-assistant.costs.regulatoryFees'), raw: summary.regulatory_payment },
@@ -201,14 +230,23 @@ export default {
           scopedSlots: { customRender: 'value' }
         },
         {
-          title: this.$t('trading-assistant.table.netProfit'),
+          title: this.$t('trading-assistant.execution.exchangePnl'),
+          dataIndex: 'exchange_pnl',
+          key: 'exchange_pnl',
+          className: 'pnl-column',
+          width: 210,
+          scopedSlots: { customRender: 'exchange_pnl' }
+        },
+        {
+          title: this.$t(this.records.some(r => r.pnl_source === 'grid_exchange_order_pairs') ? 'trading-assistant.execution.gridNetPnl' : 'trading-assistant.execution.systemPnl'),
           dataIndex: 'profit',
           key: 'profit',
-          width: 120,
+          className: 'pnl-column',
+          width: 180,
           scopedSlots: { customRender: 'profit' }
         }
       ]
-      if (this.isGridBot) {
+      if (this.isGridBot && !this.records.some(r => r.pnl_source === 'grid_exchange_order_pairs')) {
         cols.push({
           title: this.$t('trading-assistant.table.gridMatchedProfit'),
           dataIndex: 'grid_matched_profit',
@@ -247,7 +285,16 @@ export default {
   },
   methods: {
     formatExecutionNumber,
+    formatExecutionPrice,
     formatPriceDeviation,
+    formatReportedPnl (report) {
+      if (!report || report.status === 'not_applicable') return '--'
+      if (report.status === 'reported') {
+        return formatTradeMoney(report.amount, true).replace('$', '') + ' ' + report.currency
+      }
+      const key = report.status === 'order_total_elsewhere' ? 'orderTotalElsewhere' : (report.status === 'pending' ? 'reportPending' : 'reportUnavailable')
+      return this.$t('trading-assistant.execution.' + key)
+    },
     formatTradeInstrument (record) {
       if (!record || typeof record !== 'object') return '--'
       const raw = record.symbol || record.symbol_canonical || record.instrument || record.inst_id || record.ticker
@@ -316,6 +363,7 @@ export default {
     /** Net realised P&L after open + close fees (API may pre-compute net_pnl / profit). */
     netTradePnl (row) {
       if (!row || typeof row !== 'object') return null
+      if (row.pnl_source === 'grid_exchange_order_pairs' && row.pnl_status !== 'matched') return null
       if (row.net_pnl !== null && row.net_pnl !== undefined && row.net_pnl !== '') {
         const n = parseFloat(row.net_pnl)
         if (!isNaN(n)) return n
@@ -489,21 +537,17 @@ export default {
     },
     formatMoney (value) {
       if (value === null || value === undefined) return '--'
-      const sign = value >= 0 ? '+' : '-'
-      return `${sign}$${Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      return formatTradeMoney(value, true)
     },
     formatMoneyValue (value) {
-      const number = Number(value || 0)
-      return `$${Math.abs(number).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`
+      return formatTradeMoney(value)
     },
     formatSignedMoney (value) {
-      const number = Number(value || 0)
-      const sign = number > 0 ? '+' : (number < 0 ? '-' : '')
-      return `${sign}${this.formatMoneyValue(number)}`
+      return formatTradeMoney(value, true)
     },
     formatExpense (value) {
-      const number = Math.abs(Number(value || 0))
-      return number > 0 ? `-${this.formatMoneyValue(number)}` : '$0.00'
+      if (value === null || value === undefined || value === '') return '--'
+      return formatTradeMoney(-Number(value), true)
     },
     moneyTone (value) {
       const number = Number(value || 0)
@@ -515,6 +559,8 @@ export default {
       return record && record.profit_gross !== null && record.profit_gross !== undefined
     },
     formatProfit (record) {
+      if (record && record.pnl_status === 'unmatched') return this.$t('trading-assistant.execution.pairPending')
+      if (record && record.pnl_status === 'fees_pending') return this.$t('trading-assistant.execution.feesPending')
       const net = this.netTradePnl(record)
       if (net === null) return '--'
 
@@ -523,13 +569,6 @@ export default {
       const openTypes = ['open_long', 'open_short', 'add_long', 'add_short']
       if (numValue === 0 && record && openTypes.includes(record.type)) {
         return '--'
-      }
-
-      if (Math.abs(numValue) < 0.000001) {
-        if (record && openTypes.includes(record.type)) {
-          return '--'
-        }
-        return '$0.00'
       }
 
       return this.formatMoney(numValue)
@@ -565,6 +604,18 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.trading-records ::v-deep .ant-table .pnl-column {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  .ta-pnl, .pnl-status {
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .ta-pnl.ta-pnl-pos { color: #0ecb81 !important; }
+  .ta-pnl.ta-pnl-neg { color: #f6465d !important; }
+}
+
 .execution-note { opacity: 0.7; font-size: 12px; margin: 0 0 12px; }
 @primary-color: #1890ff;
 @success-color: #0ecb81;

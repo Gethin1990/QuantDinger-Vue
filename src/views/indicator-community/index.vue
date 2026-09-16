@@ -645,7 +645,7 @@ export default {
       showAdvancedStrategyFilters: false,
       strategyMarketOptions: [],
       strategyBindingModes: ['fixed', 'parameterized', 'universe', 'portfolio'],
-      strategyDirections: ['long_only', 'short_only', 'both'],
+      strategyDirections: ['long_only', 'short_only', 'one_way', 'both'],
       pagination: {
         current: 1,
         pageSize: 12,

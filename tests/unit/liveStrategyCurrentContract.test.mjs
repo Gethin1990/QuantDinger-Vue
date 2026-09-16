@@ -22,6 +22,8 @@ test('live strategy direction is contract-driven with a legacy fallback', () => 
   assert.match(source, /requiresDirectionFallback/)
   assert.match(source, /directionMode: this\.requiresDirectionMode \? this\.effectiveDirectionMode/)
   assert.doesNotMatch(source, /v-model="model\.positionSide"/)
+  assert.match(source, /value="one_way"/)
+  assert.match(source, /new Set\(\['long_only', 'short_only', 'one_way', 'both', 'neutral'\]\)/)
 })
 
 test('live eligibility follows the manifest market instead of the strategy shape', () => {
