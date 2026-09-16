@@ -1,4 +1,9 @@
 const locale = {
+  'strategyRuntime.fillContractMetadataUnavailable': 'Contract specifications are unavailable. Fill accounting will retry without guessing the quantity.',
+  'strategyRuntime.unsupportedFillContract': 'This contract unit is not supported by the current accounting model.',
+  'strategyRuntime.invalidFillQuantity': 'The exchange fill quantity is invalid. Accounting has been deferred.',
+  'strategyRuntime.inconsistentFillSnapshot': 'The cumulative fill value is inconsistent. Reconciliation is required.',
+  'strategyRuntime.fillSnapshotNotReady': 'The exchange fill snapshot is not ready. Accounting will retry.',
   'strategyRuntime.spotBalanceUnavailable': 'The available spot balance could not be verified. No sell order was submitted. Refresh the account balance and try again.',
   'strategyRuntime.spotBalanceInsufficient': 'No sellable spot balance is available, or the quantity is below the trading minimum. Check frozen balances and pending orders before retrying.',
   'strategyRuntime.spotCloseQuantityInvalid': 'The spot sell quantity or its precision adjustment is invalid. No order was submitted.',
@@ -154,6 +159,11 @@ const enUSFallback = locale
 
 const zhCN = {
   ...enUSFallback,
+  'strategyRuntime.fillContractMetadataUnavailable': '合约规格暂不可用，成交入账将重试，不会猜测成交数量。',
+  'strategyRuntime.unsupportedFillContract': '当前入账模型不支持此合约单位。',
+  'strategyRuntime.invalidFillQuantity': '交易所成交数量无效，已暂缓入账。',
+  'strategyRuntime.inconsistentFillSnapshot': '累计成交金额不一致，需要对账。',
+  'strategyRuntime.fillSnapshotNotReady': '交易所成交快照尚未就绪，入账将重试。',
   'strategyRuntime.spotBalanceUnavailable': '无法确认现货可用余额，未提交卖单。请刷新账户余额后重试。',
   'strategyRuntime.spotBalanceInsufficient': '现货可卖余额为零，或数量低于交易最小要求。请检查冻结余额和未完成订单后重试。',
   'strategyRuntime.spotCloseQuantityInvalid': '现货卖出数量或精度调整结果无效，未提交订单。',
@@ -306,6 +316,11 @@ const zhCN = {
 
 const zhTW = {
   ...zhCN,
+  'strategyRuntime.fillContractMetadataUnavailable': '合約規格暫不可用，成交入帳將重試，不會猜測成交數量。',
+  'strategyRuntime.unsupportedFillContract': '目前入帳模型不支援此合約單位。',
+  'strategyRuntime.invalidFillQuantity': '交易所成交數量無效，已暫緩入帳。',
+  'strategyRuntime.inconsistentFillSnapshot': '累計成交金額不一致，需要對帳。',
+  'strategyRuntime.fillSnapshotNotReady': '交易所成交快照尚未就緒，入帳將重試。',
   'strategyRuntime.spotBalanceUnavailable': '無法確認現貨可用餘額，未提交賣單。請重新整理帳戶餘額後重試。',
   'strategyRuntime.spotBalanceInsufficient': '現貨可賣餘額為零，或數量低於交易最小要求。請檢查凍結餘額和未完成訂單後重試。',
   'strategyRuntime.spotCloseQuantityInvalid': '現貨賣出數量或精度調整結果無效，未提交訂單。',
