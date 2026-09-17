@@ -51,78 +51,6 @@
       </div>
     </div>
 
-    <section v-if="hasTradeReview" class="trade-review-card">
-      <div class="trade-review-heading">
-        <div>
-          <h3>{{ $t(isPortfolioStrategy ? 'strategyV2.backtest.portfolioReviewOverview' : 'strategyV2.backtest.tradeReviewOverview') }}</h3>
-          <span>{{ $t(isPortfolioStrategy ? 'strategyV2.backtest.portfolioReviewHint' : 'strategyV2.backtest.tradeReviewHint') }}</span>
-        </div>
-        <a-select
-          v-if="reviewSymbols.length > 1"
-          v-model="activeReviewSymbol"
-          size="small"
-          class="review-symbol-select">
-          <a-select-option v-for="symbol in reviewSymbols" :key="symbol" :value="symbol">
-            {{ symbol }}
-          </a-select-option>
-        </a-select>
-      </div>
-      <div v-if="isPortfolioStrategy && portfolioContributionRows.length" class="portfolio-contribution-panel">
-        <div class="contribution-heading">
-          <strong>{{ $t('strategyV2.backtest.symbolContribution') }}</strong>
-          <span>{{ $t('strategyV2.backtest.symbolContributionHint') }}</span>
-        </div>
-        <div class="contribution-list">
-          <button
-            v-for="item in portfolioContributionRows"
-            :key="item.symbol"
-            type="button"
-            class="contribution-item"
-            :class="{ active: item.symbol === effectiveReviewSymbol }"
-            @click="activeReviewSymbol = item.symbol"
-          >
-            <span class="contribution-symbol">{{ item.symbol }}</span>
-            <span><small>{{ $t('strategyV2.backtest.closedTrades') }}</small><b>{{ item.trades }}</b></span>
-            <span><small>{{ $t('backtest-center.metrics.winRate') }}</small><b>{{ formatPercent(item.winRate, false) }}</b></span>
-            <span><small>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</small><b :class="profitTone(item.profit)">{{ formatSignedNumber(item.profit) }}</b></span>
-            <a-icon :type="item.hasSnapshot ? 'line-chart' : 'info-circle'" />
-          </button>
-        </div>
-      </div>
-      <div class="review-facts">
-        <div><span>{{ $t('backtest-center.symbol') }}</span><strong>{{ effectiveReviewSymbol }}</strong></div>
-        <div><span>{{ $t('strategyV2.backtest.closedTrades') }}</span><strong>{{ reviewTrades.length }}</strong></div>
-        <div><span>{{ $t('strategyV2.backtest.tradeReviewTimeframe') }}</span><strong>{{ reviewTimeframe }}</strong></div>
-        <div><span>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</span><strong :class="profitTone(reviewProfit)">{{ formatSignedNumber(reviewProfit) }}</strong></div>
-        <div><span>{{ $t('strategyV2.backtest.tradeReviewRange') }}</span><strong>{{ reviewDateRange }}</strong></div>
-      </div>
-      <div v-if="canRenderTradeReview" class="inline-review-chart">
-        <kline-chart
-          :key="reviewChartKey"
-          ref="reviewChart"
-          :symbol="reviewInstrument.symbol"
-          :market="reviewInstrument.market"
-          :exchange-id="reviewInstrument.exchangeId"
-          :market-type="reviewInstrument.marketType"
-          :timeframe="reviewTimeframe"
-          :initial-before-time="reviewWindow.beforeTime"
-          :initial-limit="reviewWindow.limit"
-          :initial-rows="reviewRows"
-          :theme="isDark ? 'dark' : 'light'"
-          :active-indicators="[]"
-          :show-indicator-toolbar="false"
-          :realtime-enabled="false"
-          :full-width="true"
-          @load="renderReviewMarkers"
-          @indicators-updated="renderReviewMarkers"
-        />
-      </div>
-      <a-empty
-        v-else
-        class="review-snapshot-empty"
-        :description="$t('strategyV2.backtest.tradeReviewSnapshotMissing')" />
-    </section>
-
     <section class="chart-card">
       <div class="chart-heading">
         <div>
@@ -149,20 +77,56 @@
       <a-tab-pane key="overview" :tab="$t('strategyV2.backtest.tabs.overview')">
         <div class="overview-grid">
           <div class="overview-card">
-            <span>{{ $t('strategyV2.backtest.latestCash') }}</span>
+            <span>
+              {{ $t('strategyV2.backtest.ledgerCash') }}
+              <a-tooltip :title="$t('strategyV2.backtest.ledgerCashHint')">
+                <a-icon type="info-circle" />
+              </a-tooltip>
+            </span>
             <strong>{{ formatNumber(latestSnapshot.cash) }}</strong>
           </div>
           <div class="overview-card">
-            <span>{{ $t('strategyV2.backtest.grossExposure') }}</span>
+            <span>
+              {{ $t('strategyV2.backtest.grossExposure') }}
+              <a-tooltip :title="$t('strategyV2.backtest.grossExposureHint')">
+                <a-icon type="info-circle" />
+              </a-tooltip>
+            </span>
             <strong>{{ formatRate(latestSnapshot.grossExposure) }}</strong>
           </div>
           <div class="overview-card">
-            <span>{{ $t('strategyV2.backtest.netExposure') }}</span>
+            <span>
+              {{ $t('strategyV2.backtest.netExposure') }}
+              <a-tooltip :title="$t('strategyV2.backtest.netExposureHint')">
+                <a-icon type="info-circle" />
+              </a-tooltip>
+            </span>
             <strong>{{ formatRate(latestSnapshot.netExposure) }}</strong>
           </div>
           <div class="overview-card">
-            <span>{{ $t('strategyV2.backtest.feeDrag') }}</span>
+            <span>
+              {{ $t('strategyV2.backtest.feeDrag') }}
+              <a-tooltip :title="$t('strategyV2.backtest.feeDragHint')">
+                <a-icon type="info-circle" />
+              </a-tooltip>
+            </span>
             <strong class="negative">{{ formatRate(attribution.feeDrag) }}</strong>
+          </div>
+          <div class="overview-card">
+            <span>{{ $t('strategyV2.backtest.executions') }}</span>
+            <strong>{{ Number(result.totalExecutions || 0) }}</strong>
+          </div>
+          <div class="overview-card">
+            <span>{{ $t('strategyV2.backtest.closedTrades') }}</span>
+            <strong>{{ Number(result.totalTrades || 0) }}</strong>
+          </div>
+          <div class="overview-card">
+            <span>{{ $t('backtest-center.metrics.winRate') }}</span>
+            <strong>{{ formatPercent(result.winRate, false) }}</strong>
+          </div>
+          <div class="overview-card">
+            <span>{{ $t('backtest-center.metrics.sharpe') }}</span>
+            <strong>{{ formatNullableNumber(result.sharpeRatio) }}</strong>
           </div>
         </div>
         <div class="status-grid">
@@ -255,6 +219,78 @@
           :scroll="{ x: 1300 }" />
       </a-tab-pane>
     </a-tabs>
+
+    <section v-if="hasTradeReview" class="trade-review-card">
+      <div class="trade-review-heading">
+        <div>
+          <h3>{{ $t(isPortfolioStrategy ? 'strategyV2.backtest.portfolioReviewOverview' : 'strategyV2.backtest.tradeReviewOverview') }}</h3>
+          <span>{{ $t(isPortfolioStrategy ? 'strategyV2.backtest.portfolioReviewHint' : 'strategyV2.backtest.tradeReviewHint') }}</span>
+        </div>
+        <a-select
+          v-if="reviewSymbols.length > 1"
+          v-model="activeReviewSymbol"
+          size="small"
+          class="review-symbol-select">
+          <a-select-option v-for="symbol in reviewSymbols" :key="symbol" :value="symbol">
+            {{ symbol }}
+          </a-select-option>
+        </a-select>
+      </div>
+      <div v-if="isPortfolioStrategy && portfolioContributionRows.length" class="portfolio-contribution-panel">
+        <div class="contribution-heading">
+          <strong>{{ $t('strategyV2.backtest.symbolContribution') }}</strong>
+          <span>{{ $t('strategyV2.backtest.symbolContributionHint') }}</span>
+        </div>
+        <div class="contribution-list">
+          <button
+            v-for="item in portfolioContributionRows"
+            :key="item.symbol"
+            type="button"
+            class="contribution-item"
+            :class="{ active: item.symbol === effectiveReviewSymbol }"
+            @click="activeReviewSymbol = item.symbol"
+          >
+            <span class="contribution-symbol">{{ item.symbol }}</span>
+            <span><small>{{ $t('strategyV2.backtest.closedTrades') }}</small><b>{{ item.trades }}</b></span>
+            <span><small>{{ $t('backtest-center.metrics.winRate') }}</small><b>{{ formatPercent(item.winRate, false) }}</b></span>
+            <span><small>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</small><b :class="profitTone(item.profit)">{{ formatSignedNumber(item.profit) }}</b></span>
+            <a-icon :type="item.hasSnapshot ? 'line-chart' : 'info-circle'" />
+          </button>
+        </div>
+      </div>
+      <div class="review-facts">
+        <div><span>{{ $t('backtest-center.symbol') }}</span><strong>{{ effectiveReviewSymbol }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.closedTrades') }}</span><strong>{{ reviewTrades.length }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.tradeReviewTimeframe') }}</span><strong>{{ reviewTimeframe }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</span><strong :class="profitTone(reviewProfit)">{{ formatSignedNumber(reviewProfit) }}</strong></div>
+        <div><span>{{ $t('strategyV2.backtest.tradeReviewRange') }}</span><strong>{{ reviewDateRange }}</strong></div>
+      </div>
+      <div v-if="canRenderTradeReview" class="inline-review-chart">
+        <kline-chart
+          :key="reviewChartKey"
+          ref="reviewChart"
+          :symbol="reviewInstrument.symbol"
+          :market="reviewInstrument.market"
+          :exchange-id="reviewInstrument.exchangeId"
+          :market-type="reviewInstrument.marketType"
+          :timeframe="reviewTimeframe"
+          :initial-before-time="reviewWindow.beforeTime"
+          :initial-limit="reviewWindow.limit"
+          :initial-rows="reviewRows"
+          :theme="isDark ? 'dark' : 'light'"
+          :active-indicators="[]"
+          :show-indicator-toolbar="false"
+          :realtime-enabled="false"
+          :full-width="true"
+          @load="renderReviewMarkers"
+          @indicators-updated="renderReviewMarkers"
+        />
+      </div>
+      <a-empty
+        v-else
+        class="review-snapshot-empty"
+        :description="$t('strategyV2.backtest.tradeReviewSnapshotMissing')" />
+    </section>
 
   </div>
 </template>
@@ -376,15 +412,19 @@ export default {
     },
     metrics () {
       return [
-        { key: 'return', label: this.$t('backtest-center.metrics.totalReturn'), value: this.formatPercent(this.result.totalReturn), tone: this.profitTone(this.result.totalReturn) },
-        { key: 'benchmark', label: this.$t('strategyV2.backtest.benchmarkReturn'), value: this.hasBenchmarkMetrics ? this.formatPercent(this.result.benchmarkTotalReturn) : '-', tone: this.hasBenchmarkMetrics ? this.profitTone(this.result.benchmarkTotalReturn) : '' },
-        { key: 'excess', label: this.$t('strategyV2.backtest.excessReturn'), value: this.hasBenchmarkMetrics ? this.formatPercent(this.result.excessReturn) : '-', tone: this.hasBenchmarkMetrics ? this.profitTone(this.result.excessReturn) : '' },
+        { key: 'return', label: this.$t('backtest-center.metrics.totalReturn'), value: this.formatPercent(this.result.totalReturn), tone: this.profitTone(this.result.totalReturn), hint: this.$t('strategyV2.backtest.totalReturnHint') },
+        { key: 'benchmark', label: this.$t('strategyV2.backtest.benchmarkReturn'), value: this.hasBenchmarkMetrics ? this.formatPercent(this.result.benchmarkTotalReturn) : '-', tone: this.hasBenchmarkMetrics ? this.profitTone(this.result.benchmarkTotalReturn) : '', hint: this.$t('strategyV2.backtest.benchmarkReturnHint') },
+        { key: 'excess', label: this.$t('strategyV2.backtest.excessReturn'), value: this.hasBenchmarkMetrics ? this.formatPercentagePointValue(this.result.excessReturn) : '-', tone: this.hasBenchmarkMetrics ? this.profitTone(this.result.excessReturn) : '', hint: this.$t('strategyV2.backtest.excessReturnHint') },
         { key: 'drawdown', label: this.$t('backtest-center.metrics.maxDrawdown'), value: this.formatNullablePercent(this.result.maxDrawdown), tone: this.result.maxDrawdown === null || this.result.maxDrawdown === undefined ? '' : 'negative', hint: this.$t('strategyV2.backtest.maxDrawdownHint') },
-        { key: 'executions', label: this.$t('strategyV2.backtest.executions'), value: Number(this.result.totalExecutions || 0), tone: '' },
-        { key: 'trades', label: this.$t('strategyV2.backtest.closedTrades'), value: Number(this.result.totalTrades || 0), tone: '' },
-        { key: 'win', label: this.$t('backtest-center.metrics.winRate'), value: this.formatPercent(this.result.winRate, false), tone: '' },
-        { key: 'sharpe', label: this.$t('backtest-center.metrics.sharpe'), value: this.formatNullableNumber(this.result.sharpeRatio), tone: '' }
+        { key: 'equity', label: this.$t('strategyV2.backtest.finalEquity'), value: this.formatNumber(this.endingEquity), tone: '', hint: this.$t('strategyV2.backtest.finalEquityHint') },
+        { key: 'fees', label: this.$t('strategyV2.backtest.feeDrag'), value: this.formatRate(this.attribution.feeDrag), tone: Number(this.attribution.feeDrag || 0) > 0 ? 'negative' : '', hint: this.$t('strategyV2.backtest.feeDragHint') }
       ]
+    },
+    endingEquity () {
+      const curve = this.result.equityCurve || []
+      const last = curve[curve.length - 1] || {}
+      const value = Number(last.value)
+      return Number.isFinite(value) ? value : this.initialCapital
     },
     latestSnapshot () {
       const snapshots = Array.isArray(this.result.holdingSnapshots) ? this.result.holdingSnapshots : []
@@ -664,38 +704,82 @@ export default {
       const benchmarkBase = benchmarkRaw.length ? Number(benchmarkRaw[0].value || 1) : 1
       const benchmark = benchmarkRaw.map(item => [timestampMillisecondsUtc(item.time), Number(item.value) / benchmarkBase * 100])
       const cash = curve.map(item => [timestampMillisecondsUtc(item.time), Number(item.cash || 0)])
-      const gross = curve.map(item => [timestampMillisecondsUtc(item.time), Number(item.grossExposure || 0) * 100])
-      const net = curve.map(item => [timestampMillisecondsUtc(item.time), Number(item.netExposure || 0) * 100])
+      const longExposure = curve.map(item => {
+        const gross = Number(item.grossExposure || 0)
+        const net = Number(item.netExposure || 0)
+        return [timestampMillisecondsUtc(item.time), Math.max(0, (gross + net) / 2) * 100]
+      })
+      const shortExposure = curve.map(item => {
+        const gross = Number(item.grossExposure || 0)
+        const net = Number(item.netExposure || 0)
+        return [timestampMillisecondsUtc(item.time), -Math.max(0, (gross - net) / 2) * 100]
+      })
+      const maxExposure = [...longExposure, ...shortExposure].reduce((maximum, item) => Math.max(maximum, Math.abs(item[1])), 0)
+      const exposureLimit = Math.max(100, Math.ceil(maxExposure / 25) * 25)
       const text = this.isDark ? '#8c8c8c' : '#64748b'
       const grid = this.isDark ? '#242424' : '#e8edf3'
       const strategyName = this.$t('strategyV2.backtest.strategyNormalized')
       const benchmarkName = this.$t('strategyV2.backtest.benchmarkNormalized')
+      const drawdownName = this.$t('strategyV2.backtest.drawdown')
+      const longExposureName = this.$t('strategyV2.backtest.longExposure')
+      const shortExposureName = this.$t('strategyV2.backtest.shortExposure')
+      const cashName = this.$t('strategyV2.backtest.ledgerCash')
+      const percentageSeries = new Set([drawdownName, longExposureName, shortExposureName])
+      const formatTooltipValue = item => {
+        const rawValue = Array.isArray(item.value) ? item.value[1] : item.value
+        const value = Number(rawValue)
+        if (!Number.isFinite(value)) return '-'
+        if (percentageSeries.has(item.seriesName)) return `${value.toFixed(2)}%`
+        if (item.seriesName === cashName) return this.formatNumber(value, 2)
+        return value.toFixed(2)
+      }
       this.chart.setOption({
         animationDuration: 260,
-        color: ['#52c41a', '#f5a623', '#ff4d4f', '#69c0ff', '#9254de', '#13c2c2'],
-        legend: { top: 6, left: 8, right: 8, itemGap: 16, textStyle: { color: text } },
-        tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'cross', snap: true }, backgroundColor: this.isDark ? 'rgba(14,14,14,.98)' : '#fff', borderColor: grid, textStyle: { color: this.isDark ? '#f5f5f5' : '#1f2937' } },
+        color: ['#17b3a3', '#f5a623', '#ff5a64', '#22c55e', '#f43f5e', '#94a3b8'],
+        legend: {
+          top: 6,
+          left: 8,
+          right: 8,
+          itemGap: 16,
+          selected: { [cashName]: false },
+          textStyle: { color: text }
+        },
+        tooltip: {
+          trigger: 'axis',
+          confine: true,
+          axisPointer: { type: 'cross', snap: true },
+          backgroundColor: this.isDark ? 'rgba(14,14,14,.98)' : '#fff',
+          borderColor: grid,
+          textStyle: { color: this.isDark ? '#f5f5f5' : '#1f2937' },
+          formatter: values => {
+            const items = Array.isArray(values) ? values : [values]
+            const first = items.find(item => Array.isArray(item.value))
+            const timestamp = first && first.value[0]
+            const rows = items.map(item => `${item.marker || ''}${item.seriesName}<span style="float:right;margin-left:24px;font-weight:600">${formatTooltipValue(item)}</span>`)
+            return [this.formatDate(timestamp), ...rows].join('<br/>')
+          }
+        },
         axisPointer: { link: [{ xAxisIndex: [0, 1, 2] }] },
         grid: [
-          { left: 58, right: 56, top: 64, height: 222 },
-          { left: 58, right: 56, top: 326, height: 92 },
-          { left: 58, right: 56, top: 454, height: 92 }
+          { left: 58, right: 56, top: 58, height: 184 },
+          { left: 58, right: 56, top: 278, height: 74 },
+          { left: 58, right: 56, top: 388, height: 76 }
         ],
         xAxis: [0, 1, 2].map((value, index) => ({ type: 'time', gridIndex: index, axisLabel: { show: index === 2, color: text }, axisLine: { lineStyle: { color: grid } }, splitLine: { show: false } })),
         yAxis: [
           { type: 'value', gridIndex: 0, scale: true, name: this.$t('strategyV2.backtest.normalizedBase'), nameTextStyle: { color: text }, axisLabel: { color: text }, splitLine: { lineStyle: { color: grid, type: 'dashed' } } },
           { type: 'value', gridIndex: 1, max: 0, name: this.$t('strategyV2.backtest.drawdown'), nameTextStyle: { color: text }, axisLabel: { color: text, formatter: '{value}%' }, splitLine: { lineStyle: { color: grid, type: 'dashed' } } },
-          { type: 'value', gridIndex: 2, name: this.$t('strategyV2.backtest.exposure'), nameTextStyle: { color: text }, axisLabel: { color: text, formatter: '{value}%' }, splitLine: { lineStyle: { color: grid, type: 'dashed' } } },
-          { type: 'value', gridIndex: 2, position: 'right', name: this.$t('strategyV2.backtest.cash'), nameTextStyle: { color: text }, axisLabel: { color: text }, splitLine: { show: false } }
+          { type: 'value', gridIndex: 2, min: -exposureLimit, max: exposureLimit, name: this.$t('strategyV2.backtest.positionExposure'), nameTextStyle: { color: text }, axisLabel: { color: text, formatter: '{value}%' }, splitLine: { lineStyle: { color: grid, type: 'dashed' } } },
+          { type: 'value', gridIndex: 2, position: 'right', name: this.$t('strategyV2.backtest.ledgerCash'), nameTextStyle: { color: text }, axisLabel: { color: text }, splitLine: { show: false } }
         ],
         dataZoom: [{ type: 'inside', xAxisIndex: [0, 1, 2], filterMode: 'none' }, { type: 'slider', xAxisIndex: [0, 1, 2], bottom: 0, height: 22, showDetail: false }],
         series: [
           { name: strategyName, type: 'line', data: normalized, xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2.2 }, areaStyle: { opacity: 0.06 } },
           { name: benchmarkName, type: 'line', data: benchmark, xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.6, type: 'dashed' } },
-          { name: this.$t('strategyV2.backtest.drawdown'), type: 'line', data: drawdown, xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, areaStyle: { opacity: 0.22 }, lineStyle: { width: 1.4 } },
-          { name: this.$t('strategyV2.backtest.grossExposure'), type: 'line', data: gross, xAxisIndex: 2, yAxisIndex: 2, showSymbol: false },
-          { name: this.$t('strategyV2.backtest.netExposure'), type: 'line', data: net, xAxisIndex: 2, yAxisIndex: 2, showSymbol: false },
-          { name: this.$t('strategyV2.backtest.cash'), type: 'line', data: cash, xAxisIndex: 2, yAxisIndex: 3, showSymbol: false, lineStyle: { type: 'dotted' } }
+          { name: drawdownName, type: 'line', data: drawdown, xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, areaStyle: { opacity: 0.22 }, lineStyle: { width: 1.4 } },
+          { name: longExposureName, type: 'line', data: longExposure, xAxisIndex: 2, yAxisIndex: 2, showSymbol: false, step: 'end', sampling: 'lttb', lineStyle: { width: 1.2, color: '#22c55e' }, areaStyle: { opacity: 0.2, color: '#22c55e' }, markLine: { silent: true, symbol: 'none', label: { show: false }, lineStyle: { width: 1, color: grid }, data: [{ yAxis: 0 }] } },
+          { name: shortExposureName, type: 'line', data: shortExposure, xAxisIndex: 2, yAxisIndex: 2, showSymbol: false, step: 'end', sampling: 'lttb', lineStyle: { width: 1.2, color: '#f43f5e' }, areaStyle: { opacity: 0.2, color: '#f43f5e' } },
+          { name: cashName, type: 'line', data: cash, xAxisIndex: 2, yAxisIndex: 3, showSymbol: false, sampling: 'lttb', lineStyle: { width: 1.2, type: 'dotted', color: '#94a3b8' } }
         ]
       }, true)
     },
@@ -782,6 +866,7 @@ export default {
       return translated === key ? String(value) : translated
     },
     formatPercent (value, signed = true) { const number = Number(value || 0); return `${signed && number > 0 ? '+' : ''}${number.toFixed(2)}%` },
+    formatPercentagePointValue (value) { const number = Number(value || 0); return `${number > 0 ? '+' : ''}${number.toFixed(2)}` },
     formatNullablePercent (value, signed = true) { return value === null || value === undefined ? '-' : this.formatPercent(value, signed) },
     formatRate (value) { return `${(Number(value || 0) * 100).toFixed(2)}%` },
     formatNumber (value, digits = 2) { const number = Number(value || 0); return Number.isFinite(number) ? number.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '-' },
@@ -797,24 +882,31 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.portfolio-result { min-width: 0; }
-.result-trustbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid; border-radius: 8px; }
+.portfolio-result { display: flex; min-width: 0; flex-direction: column; }
+.result-trustbar { order: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding: 8px 10px; border: 1px solid; border-radius: 7px; }
 .result-trustbar > div { display: flex; align-items: center; gap: 8px; }
 .result-trustbar span { color: #64748b; font-size: 12px; }
 .result-trustbar.is-success { border-color: #b7eb8f; background: #f6ffed; color: #3f8600; }
 .result-trustbar.is-warning { border-color: #ffe58f; background: #fffbe6; color: #ad6800; }
 .result-trustbar.is-error { border-color: #ffccc7; background: #fff2f0; color: #cf1322; }
-.metrics-grid { display: grid; grid-template-columns: repeat(8, minmax(105px, 1fr)); gap: 8px; }
-.metric-card, .overview-card, .status-card { min-width: 0; padding: 12px; border: 1px solid #edf0f4; border-radius: 8px; background: #f8fafc; }
+.liquidation-alert { order: 2; }
+.metrics-grid { order: 5; display: grid; grid-template-columns: repeat(6, minmax(112px, 1fr)); gap: 0; overflow: hidden; margin-top: 10px; border: 1px solid #e5e9ee; border-radius: 8px; }
+.metric-card, .overview-card, .status-card { min-width: 0; padding: 11px 12px; border: 1px solid #edf0f4; border-radius: 8px; background: #f8fafc; }
+.metrics-grid .metric-card { border-width: 0 1px 0 0; border-radius: 0; background: #fbfcfd; }
+.metrics-grid .metric-card:last-child { border-right: 0; }
 .metric-card { display: flex; flex-direction: column; gap: 3px; }
 .metric-card span, .overview-card span, .status-card span { color: #7c8ca1; font-size: 11px; }
 .metric-label { display: inline-flex; align-items: center; gap: 5px; }
 .metric-label .anticon { cursor: help; }
-.metric-card strong { color: #20324a; font-size: 18px; font-variant-numeric: tabular-nums; }
+.metric-card strong { color: #20324a; font-size: 20px; font-variant-numeric: tabular-nums; }
 .positive { color: #16a34a !important; }
 .negative { color: #dc2626 !important; }
 .neutral { color: #94a3b8 !important; }
-.chart-card, .trade-review-card { margin-top: 12px; padding: 13px; border: 1px solid #edf0f4; border-radius: 8px; }
+.chart-card, .trade-review-card { margin-top: 10px; padding: 12px; border: 1px solid #e5e9ee; border-radius: 8px; background: #fff; }
+.assumption-strip { order: 3; }
+.trade-review-card { order: 4; }
+.chart-card { order: 6; }
+.result-tabs { order: 7; }
 .chart-heading { display: flex; justify-content: space-between; gap: 16px; }
 .chart-heading h3, .trade-review-heading h3 { margin: 0; color: #26364c; font-size: 14px; }
 .chart-heading span, .chart-legend-note { color: #7c8ca1; font-size: 11px; }
@@ -842,10 +934,11 @@ export default {
 .review-snapshot-empty { margin: 16px 0 4px; padding: 28px 12px; border: 1px dashed #d9e2ec; border-radius: 8px; background: #fafcff; }
 .inline-review-chart /deep/ .chart-left { width: 100% !important; height: 100% !important; }
 .inline-review-chart /deep/ .kline-chart-container { height: auto !important; min-height: 0; }
-.portfolio-chart { width: 100%; height: 590px; }
+.portfolio-chart { width: 100%; height: 520px; }
 .assumption-strip, .overview-grid, .status-grid { display: grid; gap: 8px; margin-top: 12px; }
-.assumption-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.assumption-strip div { padding: 9px 10px; border-radius: 8px; background: #f8fafc; }
+.assumption-strip { grid-template-columns: repeat(8, minmax(104px, 1fr)); overflow: hidden; border: 1px solid #e5e9ee; border-radius: 8px; }
+.assumption-strip div { min-width: 0; padding: 8px 9px; border-right: 1px solid #e5e9ee; background: #f8fafc; }
+.assumption-strip div:last-child { border-right: 0; }
 .assumption-strip span { display: block; color: #7c8ca1; font-size: 11px; }
 .assumption-strip strong { display: block; color: #334155; font-size: 11px; }
 .overview-grid { grid-template-columns: repeat(4, 1fr); }
@@ -855,7 +948,7 @@ export default {
 .status-card.status-partial { border-color: rgba(250, 173, 20, .45); }
 .status-card.status-deferred { border-color: rgba(24, 144, 255, .45); }
 .status-card.status-rejected { border-color: rgba(255, 77, 79, .45); }
-.result-tabs { margin-top: 12px; }
+.result-tabs { margin-top: 10px; }
 .grid-accounting-alert { margin-bottom: 12px; }
 .completed-trades-table /deep/ .ant-table-body {
   scrollbar-width: auto;
@@ -881,15 +974,16 @@ export default {
 .audit-summary.failed { color: #ff4d4f; background: rgba(255, 77, 79, .08); }
 .audit-summary div { display: flex; flex-direction: column; }
 .audit-summary span { color: #7c8ca1; font-size: 11px; }
-.portfolio-result.theme-dark .metric-card, .portfolio-result.theme-dark .overview-card, .portfolio-result.theme-dark .status-card, .portfolio-result.theme-dark .assumption-strip div, .portfolio-result.theme-dark .review-facts div { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
+.portfolio-result.theme-dark .metrics-grid, .portfolio-result.theme-dark .assumption-strip { border-color: #282b30; }
+.portfolio-result.theme-dark .metric-card, .portfolio-result.theme-dark .overview-card, .portfolio-result.theme-dark .status-card, .portfolio-result.theme-dark .assumption-strip div, .portfolio-result.theme-dark .review-facts div { border-color: #282b30; background: #151719; }
 .portfolio-result.theme-dark .portfolio-contribution-panel { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
 .portfolio-result.theme-dark .contribution-heading strong, .portfolio-result.theme-dark .contribution-item b, .portfolio-result.theme-dark .contribution-symbol { color: #e5e7eb; }
 .portfolio-result.theme-dark .contribution-item { border-color: rgba(255,255,255,.1); background: #151515; color: #e5e7eb; }
 .portfolio-result.theme-dark .contribution-item:hover { border-color: #389e0d; }
 .portfolio-result.theme-dark .contribution-item.active { border-color: #52c41a; background: rgba(82,196,26,.12); }
 .portfolio-result.theme-dark .metric-card strong, .portfolio-result.theme-dark .overview-card strong, .portfolio-result.theme-dark .status-card strong, .portfolio-result.theme-dark .chart-heading h3, .portfolio-result.theme-dark .trade-review-heading h3, .portfolio-result.theme-dark .review-facts strong, .portfolio-result.theme-dark .assumption-strip strong { color: #e5e7eb; }
-.liquidation-alert { margin-top: 12px; }
-.portfolio-result.theme-dark .chart-card, .portfolio-result.theme-dark .trade-review-card { border-color: rgba(255,255,255,.1); }
+.liquidation-alert { margin-top: 0; margin-bottom: 10px; }
+.portfolio-result.theme-dark .chart-card, .portfolio-result.theme-dark .trade-review-card { border-color: #282b30; background: #111315; }
 .portfolio-result.theme-dark .review-snapshot-empty { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
 .portfolio-result.theme-dark .completed-trades-table /deep/ .ant-table-body {
   scrollbar-color: var(--primary-color, #52c41a) rgba(255,255,255,.14);
@@ -909,8 +1003,8 @@ export default {
 .portfolio-result.theme-dark .result-trustbar /deep/ .trust-tag--error { border-color: #6b2525; background: rgba(255, 77, 79, .18); color: #ffa39e; }
 .portfolio-result.theme-dark .result-trustbar /deep/ .trust-tag--info { border-color: #164c7e; background: rgba(24, 144, 255, .18); color: #91d5ff; }
 .portfolio-result.theme-dark .result-trustbar /deep/ .trust-tag--warning { border-color: #664d03; background: rgba(250, 173, 20, .18); color: #ffe58f; }
-@media (max-width: 1500px) { .metrics-grid { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 900px) { .metrics-grid, .overview-grid, .status-grid, .assumption-strip { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1500px) { .metrics-grid { grid-template-columns: repeat(6, minmax(95px, 1fr)); } .assumption-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .metrics-grid, .overview-grid, .status-grid, .assumption-strip { grid-template-columns: repeat(2, 1fr); } .metrics-grid .metric-card, .assumption-strip div { border-right: 0; border-bottom: 1px solid #e5e9ee; } }
 @media (max-width: 900px) { .review-facts { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 1150px) { .contribution-list { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .result-trustbar { align-items: flex-start; flex-direction: column; }.result-trustbar > div { flex-wrap: wrap; } }

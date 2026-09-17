@@ -27,9 +27,19 @@
           :hidden-source="scriptCodeHidden"
           :readonly="false"
           :consume-copilot-draft="false"
+          :runtime-config="runConfig"
+          :runtime-exchange-options="strategyExchangeOptions"
+          :runtime-symbol-options="strategySymbolOptions"
+          :runtime-symbol-loading="strategySymbolLoading"
+          :runtime-watchlist-count="strategyWatchlistOptions.length"
+          :runtime-capabilities="strategyRuntimeContract"
           side-mode="split"
           @verified="handleStrategyVerified"
           @template-change="handleTemplateChange"
+          @runtime-change="handleRuntimeConfigChange"
+          @runtime-symbol-search="searchStrategySymbols"
+          @runtime-symbol-change="handleRuntimeSymbolChange"
+          @runtime-symbol-open="loadStrategyWatchlistOptions"
         >
           <template #toolbar>
             <div class="ide-toolbar">
@@ -290,25 +300,6 @@
                   </div>
                 </template>
               </div>
-            </div>
-          </template>
-
-          <template #strategy-contract>
-            <div class="strategy-side-panel">
-              <div class="strategy-side-panel__hero">
-                <a-icon :type="currentAssetType === 'portfolio_strategy' ? 'cluster' : 'line-chart'" />
-                <div>
-                  <strong>{{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.portfolioContract : aiWorkspaceText.ctaContract }}</strong>
-                  <span>{{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.portfolioContractDesc : aiWorkspaceText.ctaContractDesc }}</span>
-                </div>
-              </div>
-              <div class="strategy-contract-list">
-                <div><span>{{ aiWorkspaceText.manifestType }}</span><b>{{ expectedStrategyManifestType }}</b></div>
-                <div><span>{{ aiWorkspaceText.instrumentRule }}</span><b>{{ currentAssetType === 'portfolio_strategy' ? aiWorkspaceText.multiInstrument : aiWorkspaceText.singleInstrument }}</b></div>
-                <div><span>{{ aiWorkspaceText.marketRule }}</span><b>{{ aiWorkspaceText.marketRuleValue }}</b></div>
-                <div><span>{{ aiWorkspaceText.executionRule }}</span><b>{{ aiWorkspaceText.nextBarRule }}</b></div>
-              </div>
-              <a-alert type="info" show-icon :message="aiWorkspaceText.contractSourceTruth" />
             </div>
           </template>
 
@@ -622,6 +613,12 @@ import UniverseLibraryModal from './UniverseLibraryModal.vue'
 import ExecutorStrategies from '@/views/executor-strategies'
 import { resolveIndicatorStrategyContext } from '@/utils/indicatorStrategyContext'
 import { renderSafeMarkdown } from '@/utils/safeMarkdown'
+import { getWatchlist, searchSymbols } from '@/api/market'
+import { CRYPTO_EXCHANGE_IDS, normalizeExchangeId, normalizeMarketType } from '@/utils/marketContext'
+import {
+  applyStrategyRuntimeConfigToCode,
+  extractStrategyRuntimeContractFromCode
+} from './components/scriptTemplateCatalog'
 import {
   aiGenerateStrategy,
   clearStrategyAiWorkspace,
@@ -721,6 +718,11 @@ export default {
         initial_capital: 10000,
         leverage: 5
       },
+      strategySymbolOptions: [],
+      strategyWatchlistOptions: [],
+      strategySymbolLoading: false,
+      strategyWatchlistLoading: false,
+      strategySymbolSearchTimer: null,
       lastSavedSnapshot: ''
     }
   },
@@ -791,11 +793,17 @@ export default {
     currentWorkspaceDescription () {
       return this.currentAssetType === 'portfolio_strategy' ? this.text.portfolioWorkspaceDescription : this.text.ctaWorkspaceDescription
     },
+    strategyExchangeOptions () {
+      return CRYPTO_EXCHANGE_IDS.map(value => ({ value, label: value.toUpperCase() }))
+    },
+    strategyRuntimeContract () {
+      if (this.currentAssetType !== 'script' || this.scriptCodeHidden) {
+        return { config: {}, hasControls: false }
+      }
+      return extractStrategyRuntimeContractFromCode(this.scriptCode)
+    },
     currentNewScriptLabel () {
       return this.currentAssetType === 'portfolio_strategy' ? this.text.newPortfolioStrategy : this.text.newCtaStrategy
-    },
-    expectedStrategyManifestType () {
-      return this.currentAssetType === 'portfolio_strategy' ? 'portfolio' : 'cta'
     },
     aiCandidateValidationPassed () {
       return !!(this.aiCandidate && this.aiCandidate.validation && this.aiCandidate.validation.success)
@@ -815,9 +823,7 @@ export default {
         'title', 'resize', 'ctaContract', 'portfolioContract', 'memoryActive', 'temporaryMemory', 'clear',
         'loading', 'emptyTitle', 'ctaEmptyDesc', 'portfolioEmptyDesc', 'you', 'candidateBadge',
         'discussionBadge', 'candidateValid', 'candidateNeedsReview', 'preview', 'apply', 'discard',
-        'thinking', 'placeholder', 'shortcut', 'send', 'contractTab', 'checksTab', 'ctaContractDesc',
-        'portfolioContractDesc', 'manifestType', 'instrumentRule', 'singleInstrument', 'multiInstrument',
-        'marketRule', 'marketRuleValue', 'executionRule', 'nextBarRule', 'contractSourceTruth',
+        'thinking', 'placeholder', 'shortcut', 'send', 'checksTab',
         'checkPassed', 'checkPassedDesc', 'checkPending', 'checkPendingDesc', 'frequencies', 'instruments',
         'runCheck', 'previewTitle', 'previewHint', 'clearConfirm', 'candidateReady', 'candidateApplied',
         'candidateDiscarded', 'editorChangedTitle', 'editorChangedDesc', 'sendFailed', 'temporaryHint',
@@ -953,9 +959,10 @@ export default {
     }
   },
   watch: {
-    scriptCode () {
+    scriptCode (value) {
       this.scriptVerified = false
       this.strategyValidation = null
+      this.syncRunConfigFromCode(value)
     },
     currentSourceId (value) {
       this.loadStrategyAiWorkspace(value)
@@ -978,12 +985,14 @@ export default {
     this._saveShortcut = (event) => this.handleSaveShortcut(event)
     window.addEventListener('keydown', this._saveShortcut, true)
     this._initialPagePromise = this.initPage()
+    this.initializeStrategyBuilderOptions()
   },
   activated () {
     if (this._saveShortcut) {
       window.addEventListener('keydown', this._saveShortcut, true)
     }
     this.applyStrategyRouteSource()
+    this.initializeStrategyBuilderOptions()
   },
   deactivated () {
     if (this._saveShortcut) {
@@ -991,12 +1000,165 @@ export default {
     }
   },
   beforeDestroy () {
+    if (this.strategySymbolSearchTimer) clearTimeout(this.strategySymbolSearchTimer)
     if (this._saveShortcut) {
       window.removeEventListener('keydown', this._saveShortcut, true)
       this._saveShortcut = null
     }
   },
   methods: {
+    syncRunConfigFromCode (code = this.scriptCode) {
+      if (this.currentAssetType !== 'script' || this.scriptCodeHidden) return
+      const inferred = extractStrategyRuntimeContractFromCode(code).config
+      if (!Object.keys(inferred).length) return
+      this.runConfig = { ...this.runConfig, ...inferred }
+    },
+    async initializeStrategyBuilderOptions () {
+      await this.loadStrategyWatchlistOptions()
+      this.ensureCurrentSymbolOption()
+    },
+    async loadStrategyWatchlistOptions () {
+      if (this.strategyWatchlistLoading) return
+      this.strategyWatchlistLoading = true
+      this.strategySymbolLoading = true
+      try {
+        const res = await getWatchlist()
+        const data = res && res.data
+        const list = Array.isArray(data) ? data : ((data && data.watchlist) || [])
+        this.strategyWatchlistOptions = list
+          .map(item => this.normalizeStrategySymbolOption(item, true))
+          .filter(Boolean)
+        this.strategySymbolOptions = [...this.strategyWatchlistOptions]
+        this.ensureCurrentSymbolOption()
+      } catch (_) {
+        if (!this.strategyWatchlistOptions.length) this.strategySymbolOptions = []
+        this.ensureCurrentSymbolOption()
+      } finally {
+        this.strategyWatchlistLoading = false
+        this.strategySymbolLoading = false
+      }
+    },
+    ensureCurrentSymbolOption () {
+      const symbol = String(this.runConfig.symbol || '').trim().toUpperCase()
+      if (!symbol) return
+      const exists = this.strategySymbolOptions.some(item => (
+        item.symbol === symbol &&
+        item.market === this.runConfig.market_category &&
+        (item.market !== 'Crypto' || item.market_type === this.runConfig.market_type) &&
+        (!this.strategyRuntimeContract.hasExchange || !item.exchange_id || item.exchange_id === this.runConfig.exchange_id)
+      ))
+      if (!exists) {
+        const current = this.normalizeStrategySymbolOption({
+          market: this.runConfig.market_category,
+          symbol,
+          exchange_id: this.runConfig.exchange_id,
+          market_type: this.runConfig.market_type,
+          instrument_id: this.runConfig.instrument_id
+        })
+        if (current) this.strategySymbolOptions = [current, ...this.strategySymbolOptions]
+      }
+    },
+    normalizeStrategySymbolOption (item, isWatchlist = false) {
+      const symbol = String((item && (item.symbol || item.code || item.value)) || '').trim().toUpperCase()
+      if (!symbol) return null
+      const market = String((item && (item.market || item.category)) || 'Crypto')
+      const exchangeId = String((item && (item.exchange_id || item.exchangeId)) || '')
+      const marketType = market === 'Crypto'
+        ? normalizeMarketType(item && (item.market_type || item.marketType), market)
+        : 'spot'
+      const instrumentId = String((item && (item.instrument_id || item.instrumentId)) || '')
+      const name = String((item && (item.name || item.display_name)) || '').trim()
+      return {
+        value: [market, exchangeId, marketType, instrumentId, symbol].join('|'),
+        label: [symbol, name, market].filter(Boolean).join(' · '),
+        market,
+        symbol,
+        exchange_id: exchangeId,
+        market_type: marketType,
+        instrument_id: instrumentId,
+        is_watchlist: isWatchlist
+      }
+    },
+    searchStrategySymbols (keyword) {
+      if (this.strategySymbolSearchTimer) clearTimeout(this.strategySymbolSearchTimer)
+      this.strategySymbolSearchTimer = setTimeout(() => this.loadStrategySymbols(keyword), 280)
+    },
+    async loadStrategySymbols (keyword) {
+      const term = String(keyword || '').trim()
+      if (!term) {
+        this.strategySymbolOptions = [...this.strategyWatchlistOptions]
+        this.ensureCurrentSymbolOption()
+        return
+      }
+      this.strategySymbolLoading = true
+      try {
+        const res = await searchSymbols({
+          keyword: term,
+          limit: 20
+        })
+        const data = res && res.data
+        const list = Array.isArray(data) ? data : ((data && (data.results || data.symbols || data.items)) || [])
+        this.strategySymbolOptions = list.map(this.normalizeStrategySymbolOption).filter(Boolean)
+        this.ensureCurrentSymbolOption()
+      } catch (_) {
+        this.strategySymbolOptions = []
+        this.ensureCurrentSymbolOption()
+      } finally {
+        this.strategySymbolLoading = false
+      }
+    },
+    handleRuntimeSymbolChange (value) {
+      if (!this.strategyRuntimeContract.hasInstrument) return
+      const selected = this.strategySymbolOptions.find(option => option.value === value)
+      if (!selected) return
+      const patch = {
+        market_category: selected.market,
+        symbol: selected.symbol,
+        instrument_id: selected.instrument_id || ''
+      }
+      if (selected.market === 'Crypto') {
+        patch.market_type = selected.market_type || this.runConfig.market_type || 'spot'
+        patch.exchange_id = selected.exchange_id || this.runConfig.exchange_id || 'binance'
+      } else {
+        patch.market_type = 'spot'
+        patch.exchange_id = ''
+        patch.trade_direction = 'long'
+        patch.leverage = 1
+      }
+      this.applyRuntimeConfigPatch(patch)
+    },
+    handleRuntimeConfigChange ({ field, value } = {}) {
+      const capabilityByField = {
+        exchange_id: 'hasExchange',
+        market_type: 'hasProduct',
+        timeframe: 'hasTimeframe',
+        trade_direction: 'hasDirection'
+      }
+      if (!field || (capabilityByField[field] && !this.strategyRuntimeContract[capabilityByField[field]])) return
+      this.applyRuntimeConfigPatch({ [field]: value }, field)
+    },
+    applyRuntimeConfigPatch (patch = {}, field = '') {
+      const next = { ...this.runConfig, ...patch }
+      if (field === 'market_category') {
+        next.market_category = String(patch[field] || 'Crypto')
+        next.market_type = next.market_category === 'Crypto' ? normalizeMarketType(next.market_type, 'Crypto') : 'spot'
+        next.exchange_id = next.market_category === 'Crypto' ? normalizeExchangeId(next.exchange_id || 'binance') : ''
+      }
+      if (field === 'exchange_id') next.exchange_id = normalizeExchangeId(patch[field])
+      if (field === 'market_type') next.market_type = normalizeMarketType(patch[field], next.market_category)
+      if (next.market_category !== 'Crypto' || next.market_type === 'spot') {
+        next.trade_direction = 'long'
+        next.leverage = 1
+      }
+      this.runConfig = next
+      this.ensureCurrentSymbolOption()
+      if (['market_category', 'exchange_id', 'market_type'].includes(field)) this.searchStrategySymbols('')
+      if (!this.scriptCodeHidden && this.currentAssetType === 'script') {
+        const updated = applyStrategyRuntimeConfigToCode(this.scriptCode, next)
+        if (updated !== this.scriptCode) this.scriptCode = updated
+      }
+      this.scriptVerified = false
+    },
     renderStrategyAiMessage (messageItem) {
       const legacyCandidateText = 'Candidate generated and validated against the current Strategy API V2 workspace contract.'
       const item = messageItem && typeof messageItem === 'object'
@@ -1440,6 +1602,7 @@ export default {
     applySource (source) {
       const metadata = this.parseObject(source.metadata)
       const runConfig = this.parseObject(metadata.last_run_config)
+      const inferredRunConfig = extractStrategyRuntimeContractFromCode(source.code || '').config
       this.currentSource = source
       this.currentAssetType = source.asset_type === 'portfolio_strategy' ? 'portfolio_strategy' : 'script'
       this.currentSourceId = this.getScriptSourceId(source)
@@ -1456,8 +1619,13 @@ export default {
       this.scriptParamSchema = this.parseObject(source.param_schema)
       this.runConfig = {
         ...this.runConfig,
-        ...runConfig
+        ...runConfig,
+        ...inferredRunConfig
       }
+      this.$nextTick(() => {
+        this.ensureCurrentSymbolOption()
+        this.searchStrategySymbols(this.runConfig.symbol)
+      })
       const universeReference = this.extractUniverseReferenceFromCode(this.scriptCode)
       if (universeReference.id && !this.runConfig.universe_id) {
         this.runConfig = {
@@ -2466,8 +2634,9 @@ export default {
 .strategy-ide-shell {
   box-sizing: border-box;
   height: calc(100vh - 64px);
-  padding: 12px;
-  background: #f5f7fb;
+  padding: 10px;
+  color: #252a34;
+  background: #f4f5f7;
   overflow: hidden;
 }
 
@@ -2487,8 +2656,8 @@ export default {
   height: auto;
   flex: 1;
   min-height: 0;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #e1e4e8;
+  border-radius: 10px;
   background: #fff;
   overflow: hidden;
 }
@@ -2511,8 +2680,20 @@ export default {
 }
 
 .script-panel ::v-deep .editor-layout--split {
-  grid-template-columns: minmax(0, 1fr) minmax(350px, 32%);
-  grid-template-rows: minmax(0, 1fr) 248px;
+  grid-template-columns: minmax(280px, 18%) minmax(520px, 1fr) minmax(340px, 29%);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.script-panel ::v-deep .editor-layout--split.editor-layout--split-no-params {
+  grid-template-columns: minmax(520px, 1fr) minmax(340px, 29%);
+}
+
+.script-panel ::v-deep .editor-layout--split-no-params .code-col {
+  grid-column: 1;
+}
+
+.script-panel ::v-deep .editor-layout--split-no-params .strategy-ai-workspace-host--primary {
+  grid-column: 2;
 }
 
 .script-panel ::v-deep .code-col,
@@ -2522,7 +2703,7 @@ export default {
 }
 
 .script-panel ::v-deep .editor-layout--split .side-col {
-  height: 248px;
+  height: 100%;
 }
 
 .script-panel ::v-deep .side-tabs {
@@ -2551,8 +2732,8 @@ export default {
   width: 100%;
   gap: 12px;
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
+  border-bottom: 1px solid #e1e4e8;
+  background: #f9fafb;
 }
 
 .toolbar-left,
@@ -2651,8 +2832,8 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #dfe5ed;
-  border-radius: 8px;
+  border: 1px solid #e1e4e8;
+  border-radius: 9px;
   background: #fff;
 }
 
@@ -2668,8 +2849,8 @@ export default {
   justify-content: space-between;
   gap: 10px;
   padding: 7px 12px;
-  border-bottom: 1px solid #eef1f5;
-  background: #fafcf9;
+  border-bottom: 1px solid #e7e9ed;
+  background: #f7f8fa;
   cursor: pointer;
 }
 
@@ -2717,9 +2898,9 @@ export default {
   min-height: 0;
   padding: 10px;
   overflow-y: auto;
-  border: 1px solid #e5e9f0;
+  border: 1px solid #e4e7eb;
   border-radius: 8px;
-  background: #fbfcfe;
+  background: #f7f8fa;
 }
 
 .strategy-ai-empty {
@@ -2852,7 +3033,7 @@ export default {
   display: flex;
   flex-direction: column;
   padding: 10px;
-  border: 1px solid #e5e9f0;
+  border: 1px solid #e1e4e8;
   border-radius: 8px;
   background: #fff;
 }
@@ -2873,53 +3054,6 @@ export default {
   font-size: 9px;
 }
 .strategy-ai-send { min-width: 96px; height: 36px; border-radius: 8px; font-weight: 700; }
-
-.strategy-side-panel { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
-.strategy-side-panel__hero {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #e5e9f0;
-  border-radius: 8px;
-  background: #f8fafc;
-}
-.strategy-side-panel__hero > .anticon { margin-top: 2px; color: var(--primary-color, #52c41a); font-size: 18px; }
-.strategy-side-panel__hero div { display: flex; flex-direction: column; gap: 4px; }
-.strategy-side-panel__hero strong { color: #25324a; font-size: 13px; }
-.strategy-side-panel__hero span { color: #7b8494; font-size: 11px; line-height: 1.55; }
-.strategy-contract-list { display: grid; gap: 8px; }
-.strategy-contract-list > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 9px 10px;
-  border: 1px solid #edf0f4;
-  border-radius: 7px;
-  background: #fff;
-}
-.strategy-contract-list span { color: #8a94a4; font-size: 10px; }
-.strategy-contract-list b { color: #354056; font-size: 11px; word-break: break-word; }
-
-.script-panel ::v-deep .editor-layout--split .side-tabs--split .ant-tabs-content {
-  min-height: 0;
-}
-
-.script-panel ::v-deep .editor-layout--split .side-tabs--split .ant-tabs-tabpane-active {
-  overflow-y: auto;
-}
-
-.script-panel ::v-deep .editor-layout--split .strategy-side-panel {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1.6fr) minmax(260px, 1fr);
-  align-items: start;
-  gap: 10px;
-  padding: 10px 12px;
-}
-
-.script-panel ::v-deep .editor-layout--split .strategy-contract-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 
 .strategy-ai-preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #718096; font-size: 12px; }
 .strategy-ai-preview-toolbar > div { display: flex; gap: 8px; }
@@ -2952,16 +3086,17 @@ export default {
 }
 
 .theme-dark {
-  background: #0f0f0f;
+  color: rgba(255, 255, 255, 0.82);
+  background: #101010;
 
   .script-panel {
-    border-color: rgba(255, 255, 255, 0.1);
-    background: #141414;
+    border-color: #2c2c2c;
+    background: #171717;
   }
 
   .ide-toolbar {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
-    background: #141414;
+    border-bottom-color: #2c2c2c;
+    background: #1b1b1b;
   }
 
   .script-select-label {
@@ -3003,27 +3138,24 @@ export default {
   }
 
   .strategy-ai-workspace,
-  .strategy-ai-composer,
-  .strategy-contract-list > div {
-    border-color: rgba(255, 255, 255, 0.1);
-    background: #181818;
+  .strategy-ai-composer {
+    border-color: #303030;
+    background: #191919;
   }
 
   .strategy-ai-header {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
-    background: #1c1c1c;
+    border-bottom-color: #303030;
+    background: #202020;
   }
 
   .strategy-ai-header__title strong,
-  .strategy-ai-empty strong,
-  .strategy-side-panel__hero strong,
-  .strategy-contract-list b {
+  .strategy-ai-empty strong {
     color: rgba(255, 255, 255, 0.88);
   }
 
   .strategy-ai-conversation {
-    border-color: rgba(255, 255, 255, 0.1);
-    background: #111;
+    border-color: #2b2b2b;
+    background: #131313;
   }
 
   .strategy-ai-message__content {
@@ -3041,11 +3173,6 @@ export default {
     border-color: rgba(255, 255, 255, 0.13);
     color: rgba(255, 255, 255, 0.62);
     background: #1f1f1f;
-  }
-
-  .strategy-side-panel__hero {
-    border-color: rgba(255, 255, 255, 0.1);
-    background: #202020;
   }
 
 }
@@ -3068,16 +3195,75 @@ export default {
   }
 
   .script-panel ::v-deep .editor-layout--split {
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 36%);
+    grid-template-columns: minmax(250px, 27%) minmax(480px, 1fr);
+    grid-template-rows: minmax(420px, 1fr) minmax(320px, auto);
+  }
+
+  .script-panel ::v-deep .editor-layout--split.editor-layout--split-no-params {
+    grid-template-columns: minmax(480px, 1fr) minmax(320px, 36%);
+    grid-template-rows: minmax(420px, 1fr);
+  }
+
+  .script-panel ::v-deep .editor-layout--split .side-col {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .script-panel ::v-deep .editor-layout--split .code-col {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .script-panel ::v-deep .editor-layout--split .strategy-ai-workspace-host--primary {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+
+  .script-panel ::v-deep .editor-layout--split-no-params .code-col {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .script-panel ::v-deep .editor-layout--split-no-params .strategy-ai-workspace-host--primary {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .strategy-ai-quick-prompts {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .script-panel ::v-deep .editor-layout--split .strategy-side-panel {
-    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.5fr);
+}
+
+@media (max-width: 768px) {
+  .strategy-ide-shell {
+    height: auto;
+    min-height: calc(100vh - 64px);
+    overflow: auto;
   }
+
+  .script-panel ::v-deep .editor-layout--split {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .script-panel ::v-deep .editor-layout--split.editor-layout--split-no-params {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .script-panel ::v-deep .editor-layout--split .side-col,
+  .script-panel ::v-deep .editor-layout--split .code-col,
+  .script-panel ::v-deep .editor-layout--split .strategy-ai-workspace-host--primary {
+    grid-column: 1;
+    min-height: 360px;
+  }
+
+  .script-panel ::v-deep .editor-layout--split .side-col { grid-row: 1; }
+  .script-panel ::v-deep .editor-layout--split .code-col { grid-row: 2; }
+  .script-panel ::v-deep .editor-layout--split .strategy-ai-workspace-host--primary { grid-row: 3; }
+  .script-panel ::v-deep .editor-layout--split-no-params .code-col { grid-row: 1; }
+  .script-panel ::v-deep .editor-layout--split-no-params .strategy-ai-workspace-host--primary { grid-row: 2; }
 }
 </style>
 

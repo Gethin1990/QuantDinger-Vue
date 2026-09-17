@@ -426,16 +426,22 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 20px;
+  gap: 16px;
+  min-height: 40px;
+  margin-bottom: 10px;
 }
 
 .ba-header-text {
-  max-width: 720px;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 16px;
+  min-width: 0;
 }
 
 .ba-title {
-  font-size: 26px;
+  flex: 0 0 auto;
+  font-size: 20px;
   font-weight: 750;
   color: #182338;
   display: flex;
@@ -444,30 +450,33 @@ export default {
   letter-spacing: -0.02em;
 
   .anticon {
-    font-size: 24px;
+    font-size: 19px;
     color: var(--primary-color, #1890ff);
   }
 }
 
 .ba-subtitle {
-  margin-top: 6px;
-  font-size: 14px;
-  line-height: 1.6;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.45;
   color: #64748b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ba-header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 .ba-health {
-  padding-right: 16px;
+  padding-right: 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-right: 1px solid #e6eaf0;
   white-space: nowrap;
 }
@@ -482,7 +491,7 @@ export default {
   align-items: center;
   gap: 7px;
   color: var(--primary-color-active, #389e0d);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -741,9 +750,10 @@ export default {
   }
 
   .ba-header {
-    align-items: flex-start;
+    align-items: center;
   }
 
+  .ba-subtitle,
   .ba-health {
     display: none;
   }
@@ -760,7 +770,12 @@ export default {
   }
 
   .ba-header {
+    align-items: stretch;
     flex-direction: column;
+  }
+
+  .ba-header-text {
+    width: 100%;
   }
 
   .ba-header-actions {

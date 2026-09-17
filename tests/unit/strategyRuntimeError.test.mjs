@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import messages from '../../src/locales/lang/strategy-live-risk.js'
+import strategyMessages from '../../src/locales/lang/strategy-v2.js'
 import { translateStrategyRuntimeError } from '../../src/utils/strategyRuntimeError.js'
 
 for (const locale of ['en-US', 'zh-CN']) {
@@ -48,3 +49,16 @@ test('keeps unknown details visible for diagnosis', () => {
 
   assert.equal(actual, 'mode unavailable (exchange_probe_failed)')
 })
+
+for (const locale of ['en-US', 'zh-CN']) {
+  test(`localizes an unsubscribed history timeframe in ${locale}`, () => {
+    const dictionary = strategyMessages[locale]
+    const actual = translateStrategyRuntimeError(
+      'strategyV2.frequencyNotSubscribed:1m',
+      key => dictionary[key] || key
+    )
+
+    assert.match(actual, /1m/)
+    assert.doesNotMatch(actual, /strategyV2\.frequencyNotSubscribed/)
+  })
+}

@@ -1,5 +1,5 @@
 <template>
-  <section class="grid-orders-panel">
+  <section class="grid-orders-panel" :class="{ 'theme-dark': isDark }">
     <header class="grid-orders-head">
       <div>
         <h3>{{ $t('strategyCenter.gridOrders.title') }}</h3>
@@ -59,7 +59,8 @@ import { getGridRestingOrders } from '@/api/strategy'
 export default {
   name: 'GridRestingOrders',
   props: {
-    strategyId: { type: Number, required: true }
+    strategyId: { type: Number, required: true },
+    isDark: { type: Boolean, default: false }
   },
   data () {
     return {
@@ -130,18 +131,37 @@ export default {
 </script>
 
 <style scoped>
-.grid-orders-panel { padding: 18px; }
+.grid-orders-panel { padding: 18px; color: #273142; }
 .grid-orders-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
-.grid-orders-head h3 { margin: 0; color: var(--text-primary, #e5e7eb); }
-.grid-orders-head p { margin: 5px 0 0; color: var(--text-secondary, #8b949e); }
+.grid-orders-head h3 { margin: 0; color: #202938; }
+.grid-orders-head p { margin: 5px 0 0; color: #697586; }
 .grid-order-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
-.grid-order-summary div { padding: 12px; border: 1px solid #27313a; border-radius: 10px; background: #101418; }
+.grid-order-summary div { padding: 12px; border: 1px solid #e1e6ed; border-radius: 8px; background: #f7f9fb; }
 .grid-order-summary span, .grid-order-summary strong { display: block; }
-.grid-order-summary span { color: #8b949e; font-size: 12px; }
-.grid-order-summary strong { margin-top: 4px; color: #e5e7eb; }
-.grid-order-summary .danger strong, code.missing { color: #ff7875; }
-code { color: #91caff; word-break: break-all; }
-.grid-orders-empty { padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 7px; color: #8b949e; }
-.grid-orders-empty strong { color: #e5e7eb; }
+.grid-order-summary span { color: #7a8594; font-size: 12px; }
+.grid-order-summary strong { margin-top: 4px; color: #202938; }
+.grid-order-summary .danger strong, code.missing { color: #f5222d; }
+code { color: #1677ff; word-break: break-all; }
+.grid-orders-empty { padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 7px; color: #7a8594; }
+.grid-orders-empty strong { color: #202938; }
+.grid-orders-panel ::v-deep .ant-table { color: #354052; background: #fff; }
+.grid-orders-panel ::v-deep .ant-table-thead > tr > th { border-color: #e6eaf0; background: #f5f7fa; color: #4b5563; }
+.grid-orders-panel ::v-deep .ant-table-tbody > tr > td { border-color: #edf0f4; background: #fff; }
+.grid-orders-panel ::v-deep .ant-table-placeholder { border-color: #edf0f4; background: #fff; color: #7a8594; }
+.grid-orders-panel.theme-dark { color: #e5e7eb; }
+.grid-orders-panel.theme-dark .grid-orders-head h3 { color: #e5e7eb; }
+.grid-orders-panel.theme-dark .grid-orders-head p { color: #8b949e; }
+.grid-orders-panel.theme-dark .grid-order-summary div { border-color: #27313a; background: #101418; }
+.grid-orders-panel.theme-dark .grid-order-summary span { color: #8b949e; }
+.grid-orders-panel.theme-dark .grid-order-summary strong { color: #e5e7eb; }
+.grid-orders-panel.theme-dark .grid-order-summary .danger strong,
+.grid-orders-panel.theme-dark code.missing { color: #ff7875; }
+.grid-orders-panel.theme-dark code { color: #91caff; }
+.grid-orders-panel.theme-dark .grid-orders-empty { color: #8b949e; }
+.grid-orders-panel.theme-dark .grid-orders-empty strong { color: #e5e7eb; }
+.grid-orders-panel.theme-dark ::v-deep .ant-table { color: #d7dbe1; background: #121416; }
+.grid-orders-panel.theme-dark ::v-deep .ant-table-thead > tr > th { border-color: #2d3239; background: #191c20; color: #aab1bc; }
+.grid-orders-panel.theme-dark ::v-deep .ant-table-tbody > tr > td { border-color: #282d33; background: #121416; }
+.grid-orders-panel.theme-dark ::v-deep .ant-table-placeholder { border-color: #282d33; background: #121416; color: #8b949e; }
 @media (max-width: 900px) { .grid-order-summary { grid-template-columns: 1fr 1fr; } }
 </style>

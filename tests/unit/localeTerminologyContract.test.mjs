@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import generatedLocaleOverrides from '../../src/locales/generated-locale-overrides.js'
+import strategyLiveRiskMessages from '../../src/locales/lang/strategy-live-risk.js'
 
 const translatedLocales = [
   'ar-SA',
@@ -34,5 +35,12 @@ test('exchange brands, symbols, currencies and timeframe tokens stay canonical',
     for (const timeframe of ['1m', '5m', '15m', '1h', '4h', '1d']) {
       assert.ok(timeframes.includes(timeframe), `${localeName}:${timeframe}`)
     }
+  }
+})
+
+test('Discord and Webhook remain canonical technical names in every supported locale', () => {
+  for (const [localeName, messages] of Object.entries(strategyLiveRiskMessages)) {
+    assert.equal(messages['trading-assistant.notify.discord'], 'Discord', localeName)
+    assert.equal(messages['trading-assistant.notify.webhook'], 'Webhook', localeName)
   }
 })

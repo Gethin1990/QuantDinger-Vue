@@ -4,7 +4,7 @@ const common = {
   'backtest-center.quickRange.6m': '6 months',
   'backtest-center.quickRange.1y': '1 year',
   'backtest-center.quickRange.2y': '2 years',
-  'backtest-center.quickRange.max': 'Max {days}d',
+  'backtest-center.quickRange.max': '{days}d',
   'backtest-center.quickRange.unavailable': '{range} exceeds the current {timeframe} limit of {maxDays} days.'
 }
 
@@ -16,7 +16,7 @@ export default {
     'backtest-center.quickRange.6m': '6个月',
     'backtest-center.quickRange.1y': '1年',
     'backtest-center.quickRange.2y': '2年',
-    'backtest-center.quickRange.max': '最大 {days} 天',
+    'backtest-center.quickRange.max': '{days} 天',
     'backtest-center.quickRange.unavailable': '{range} 超过当前 {timeframe} 单次运行 {maxDays} 天的上限。'
   },
   'zh-TW': {
@@ -25,7 +25,7 @@ export default {
     'backtest-center.quickRange.6m': '6個月',
     'backtest-center.quickRange.1y': '1年',
     'backtest-center.quickRange.2y': '2年',
-    'backtest-center.quickRange.max': '最大 {days} 天',
+    'backtest-center.quickRange.max': '{days} 天',
     'backtest-center.quickRange.unavailable': '{range} 超過目前 {timeframe} 單次執行 {maxDays} 天的上限。'
   },
   'de-DE': {
@@ -34,7 +34,7 @@ export default {
     'backtest-center.quickRange.6m': '6 Monate',
     'backtest-center.quickRange.1y': '1 Jahr',
     'backtest-center.quickRange.2y': '2 Jahre',
-    'backtest-center.quickRange.max': 'Max. {days} T.',
+    'backtest-center.quickRange.max': '{days} T.',
     'backtest-center.quickRange.unavailable': '{range} überschreitet das aktuelle {timeframe}-Limit von {maxDays} Tagen.'
   },
   'fr-FR': {
@@ -43,7 +43,7 @@ export default {
     'backtest-center.quickRange.6m': '6 mois',
     'backtest-center.quickRange.1y': '1 an',
     'backtest-center.quickRange.2y': '2 ans',
-    'backtest-center.quickRange.max': 'Max. {days} j',
+    'backtest-center.quickRange.max': '{days} j',
     'backtest-center.quickRange.unavailable': '{range} dépasse la limite actuelle de {maxDays} jours pour {timeframe}.'
   },
   'ja-JP': {
@@ -52,7 +52,7 @@ export default {
     'backtest-center.quickRange.6m': '6か月',
     'backtest-center.quickRange.1y': '1年',
     'backtest-center.quickRange.2y': '2年',
-    'backtest-center.quickRange.max': '最大{days}日',
+    'backtest-center.quickRange.max': '{days}日',
     'backtest-center.quickRange.unavailable': '{range}は現在の{timeframe}の上限{maxDays}日を超えています。'
   },
   'ko-KR': {
@@ -61,7 +61,7 @@ export default {
     'backtest-center.quickRange.6m': '6개월',
     'backtest-center.quickRange.1y': '1년',
     'backtest-center.quickRange.2y': '2년',
-    'backtest-center.quickRange.max': '최대 {days}일',
+    'backtest-center.quickRange.max': '{days}일',
     'backtest-center.quickRange.unavailable': '{range}은(는) 현재 {timeframe} 한도인 {maxDays}일을 초과합니다.'
   },
   'ru-RU': {
@@ -70,7 +70,7 @@ export default {
     'backtest-center.quickRange.6m': '6 месяцев',
     'backtest-center.quickRange.1y': '1 год',
     'backtest-center.quickRange.2y': '2 года',
-    'backtest-center.quickRange.max': 'Макс. {days} дн.',
+    'backtest-center.quickRange.max': '{days} дн.',
     'backtest-center.quickRange.unavailable': '{range} превышает текущий лимит {timeframe}: {maxDays} дней.'
   },
   'th-TH': {
@@ -79,7 +79,7 @@ export default {
     'backtest-center.quickRange.6m': '6 เดือน',
     'backtest-center.quickRange.1y': '1 ปี',
     'backtest-center.quickRange.2y': '2 ปี',
-    'backtest-center.quickRange.max': 'สูงสุด {days} วัน',
+    'backtest-center.quickRange.max': '{days} วัน',
     'backtest-center.quickRange.unavailable': '{range} เกินขีดจำกัด {timeframe} ปัจจุบันที่ {maxDays} วัน'
   },
   'vi-VN': {
@@ -88,7 +88,7 @@ export default {
     'backtest-center.quickRange.6m': '6 tháng',
     'backtest-center.quickRange.1y': '1 năm',
     'backtest-center.quickRange.2y': '2 năm',
-    'backtest-center.quickRange.max': 'Tối đa {days} ngày',
+    'backtest-center.quickRange.max': '{days} ngày',
     'backtest-center.quickRange.unavailable': '{range} vượt quá giới hạn {timeframe} hiện tại là {maxDays} ngày.'
   },
   'ar-SA': {
@@ -97,7 +97,7 @@ export default {
     'backtest-center.quickRange.6m': '6 أشهر',
     'backtest-center.quickRange.1y': 'سنة واحدة',
     'backtest-center.quickRange.2y': 'سنتان',
-    'backtest-center.quickRange.max': 'الحد الأقصى {days} يومًا',
+    'backtest-center.quickRange.max': '{days} يومًا',
     'backtest-center.quickRange.unavailable': 'يتجاوز {range} حد {timeframe} الحالي البالغ {maxDays} يومًا.'
   }
 }

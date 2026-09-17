@@ -297,25 +297,27 @@ export default {
 .strategy-center > .operations-workspace { flex: 1 1 auto; min-height: 0; }
 .sc-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 16px;
-  h1 { margin: 0; font-size: 27px; font-weight: 700; line-height: 1.25; letter-spacing: -.02em; color: #111827; }
-  p { margin: 7px 0 0; color: #667085; font-size: 14px; line-height: 1.55; }
+  gap: 16px;
+  min-height: 40px;
+  margin-bottom: 10px;
+  > div:first-child { display: flex; align-items: center; gap: 16px; min-width: 0; }
+  h1 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -.015em; color: #111827; white-space: nowrap; }
+  p { min-width: 0; margin: 0; overflow: hidden; color: #667085; font-size: 12px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 }
-.sc-title-row { display: flex; align-items: center; gap: 14px; }
+.sc-title-row { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; }
 .system-health {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   color: #3f7c57;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   i { width: 7px; height: 7px; border-radius: 50%; background: #22a95a; box-shadow: 0 0 0 4px rgba(34, 169, 90, 0.12); }
   &.is-warning { color: #b06b18; i { background: #d68a24; box-shadow: 0 0 0 4px rgba(214, 138, 36, 0.12); } }
 }
-.sc-refresh { display: flex; align-items: center; gap: 12px; color: #667085; font-size: 13px; font-variant-numeric: tabular-nums; }
+.sc-refresh { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; color: #667085; font-size: 12px; font-variant-numeric: tabular-nums; }
 .theme-dark {
   background: #080808;
   color: #e7e9ed;
@@ -325,7 +327,9 @@ export default {
 }
 @media (max-width: 720px) {
   .strategy-center { height: auto; min-height: calc(100vh - 64px); overflow: visible; padding: 12px !important; }
-  .sc-header { flex-direction: column; }
+  .sc-header { align-items: stretch; flex-direction: column; }
+  .sc-header > div:first-child { width: 100%; }
+  .sc-header p { display: none; }
   .sc-refresh { width: 100%; justify-content: space-between; }
 }
 </style>

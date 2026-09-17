@@ -154,81 +154,95 @@
           </div>
 
           <div class="section-title">{{ t('executorStrategies.section.capitalRisk') }}</div>
-          <div v-if="supportsTrailingTakeProfit" class="risk-scope-label">
-            {{ t('executorStrategies.cycleRiskTitle') }}
-            <small>{{ t('executorStrategies.cycleRiskHint') }}</small>
-          </div>
-          <div v-if="supportsTrailingTakeProfit" class="field-grid">
-            <div class="field-block">
-              <label>{{ t('executorStrategies.fixedTakeProfitPct') }}</label>
-              <a-input-number
-                v-model="takeProfitPctDisplay"
-                :min="0"
-                :max="100"
-                :step="0.1"
-                :precision="3"
-                :disabled="supportsTrailingTakeProfit && form.trailing_take_profit_enabled"
-                style="width: 100%"
-                @change="value => setRatio('take_profit_pct', value)" />
-              <small v-if="supportsTrailingTakeProfit" class="field-hint">
-                {{ t(form.trailing_take_profit_enabled ? 'executorStrategies.fixedTakeProfitDisabledHint' : 'executorStrategies.fixedTakeProfitHint') }}
-              </small>
-            </div>
-            <div class="field-block">
-              <label>{{ t('executorStrategies.hardStopPct') }}</label>
-              <a-input-number
-                v-model="hardStopPctDisplay"
-                :min="0"
-                :max="100"
-                :step="0.1"
-                :precision="3"
-                style="width: 100%"
-                @change="value => setRatio('hard_stop_pct', value)" />
-            </div>
-          </div>
-
-          <div v-if="supportsTrailingTakeProfit" class="trailing-profit-card">
-            <div class="trailing-profit-card__header">
+          <div v-if="supportsTrailingTakeProfit" class="risk-layer-card cycle-risk-card">
+            <div class="risk-layer-card__header">
               <div>
-                <strong>{{ t('executorStrategies.trailingTakeProfit') }}</strong>
-                <small>{{ t('executorStrategies.trailingTakeProfitHint') }}</small>
+                <strong>{{ t('executorStrategies.cycleRiskTitle') }}</strong>
+                <small>{{ t('executorStrategies.cycleRiskHint') }}</small>
               </div>
-              <a-switch v-model="form.trailing_take_profit_enabled" />
+              <span class="risk-scope-badge">{{ t('executorStrategies.cycleRiskScope') }}</span>
             </div>
-            <div v-if="form.trailing_take_profit_enabled" class="field-grid">
-              <div class="field-block">
-                <label>{{ t('executorStrategies.trailingActivationPct') }}</label>
+
+            <div class="profit-exit-mode">
+              <label>{{ t('executorStrategies.cycleProfitExitMode') }}</label>
+              <a-radio-group v-model="cycleProfitMode" button-style="solid" size="small">
+                <a-radio-button value="fixed">
+                  {{ t('executorStrategies.cycleProfitFixed') }}
+                </a-radio-button>
+                <a-radio-button value="trailing">
+                  {{ t('executorStrategies.cycleProfitTrailing') }}
+                </a-radio-button>
+              </a-radio-group>
+            </div>
+
+            <div class="field-grid">
+              <div v-if="cycleProfitMode === 'fixed'" class="field-block">
+                <label>{{ t('executorStrategies.fixedTakeProfitPct') }}</label>
                 <a-input-number
-                  v-model="trailingActivationPctDisplay"
-                  :min="0.01"
+                  v-model="takeProfitPctDisplay"
+                  :min="0"
                   :max="100"
                   :step="0.1"
                   :precision="3"
                   style="width: 100%"
-                  @change="value => setRatio('trailing_activation_pct', value)" />
-                <small class="field-hint">{{ t('executorStrategies.trailingActivationHint') }}</small>
+                  @change="value => setRatio('take_profit_pct', value)" />
+                <small class="field-hint">{{ t('executorStrategies.fixedTakeProfitHint') }}</small>
               </div>
               <div class="field-block">
-                <label>{{ t('executorStrategies.trailingCallbackPct') }}</label>
+                <label>{{ t('executorStrategies.hardStopPct') }}</label>
                 <a-input-number
-                  v-model="trailingCallbackPctDisplay"
-                  :min="0.01"
+                  v-model="hardStopPctDisplay"
+                  :min="0"
                   :max="100"
-                  :step="0.05"
+                  :step="0.1"
                   :precision="3"
                   style="width: 100%"
-                  @change="value => setRatio('trailing_callback_pct', value)" />
-                <small class="field-hint">{{ t('executorStrategies.trailingCallbackHint') }}</small>
+                  @change="value => setRatio('hard_stop_pct', value)" />
+                <small class="field-hint">{{ t('executorStrategies.hardStopHint') }}</small>
+              </div>
+            </div>
+
+            <div v-if="cycleProfitMode === 'trailing'" class="trailing-config">
+              <div class="trailing-config__intro">
+                <strong>{{ t('executorStrategies.trailingTakeProfit') }}</strong>
+                <small>{{ t('executorStrategies.trailingTakeProfitHint') }}</small>
+              </div>
+              <div class="field-grid">
+                <div class="field-block">
+                  <label>{{ t('executorStrategies.trailingActivationPct') }}</label>
+                  <a-input-number
+                    v-model="trailingActivationPctDisplay"
+                    :min="0.01"
+                    :max="100"
+                    :step="0.1"
+                    :precision="3"
+                    style="width: 100%"
+                    @change="value => setRatio('trailing_activation_pct', value)" />
+                  <small class="field-hint">{{ t('executorStrategies.trailingActivationHint') }}</small>
+                </div>
+                <div class="field-block">
+                  <label>{{ t('executorStrategies.trailingCallbackPct') }}</label>
+                  <a-input-number
+                    v-model="trailingCallbackPctDisplay"
+                    :min="0.01"
+                    :max="100"
+                    :step="0.05"
+                    :precision="3"
+                    style="width: 100%"
+                    @change="value => setRatio('trailing_callback_pct', value)" />
+                  <small class="field-hint">{{ t('executorStrategies.trailingCallbackHint') }}</small>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="trailing-profit-card equity-risk-card">
-            <div class="trailing-profit-card__header">
+          <div class="risk-layer-card equity-risk-card">
+            <div class="risk-layer-card__header">
               <div>
                 <strong>{{ t('executorStrategies.equityRiskTitle') }}</strong>
                 <small>{{ t('executorStrategies.equityRiskHint') }}</small>
               </div>
+              <span class="risk-scope-badge risk-scope-badge--stop">{{ t('executorStrategies.equityRiskScope') }}</span>
             </div>
             <div class="field-grid">
               <div class="field-block">
@@ -254,7 +268,7 @@
                   @change="value => setRatio('equity_stop_loss_pct', value)" />
               </div>
             </div>
-            <div class="trailing-profit-card__header equity-trailing-toggle">
+            <div class="risk-layer-card__header equity-trailing-toggle">
               <div>
                 <strong>{{ t('executorStrategies.equityTrailingTitle') }}</strong>
                 <small>{{ t('executorStrategies.equityTrailingHint') }}</small>
@@ -819,6 +833,14 @@ export default {
     supportsTrailingTakeProfit () {
       return ['dca', 'martingale', 'layered_martingale'].includes(this.form.executor_type)
     },
+    cycleProfitMode: {
+      get () {
+        return this.form.trailing_take_profit_enabled ? 'trailing' : 'fixed'
+      },
+      set (value) {
+        this.form.trailing_take_profit_enabled = value === 'trailing'
+      }
+    },
     isMartingale () {
       return ['martingale', 'layered_martingale'].includes(this.form.executor_type)
     },
@@ -901,7 +923,7 @@ export default {
     },
     canCreate () {
       const hasSymbol = Boolean(String(this.form.symbol || '').trim())
-      const hasLiveCredential = this.form.execution_mode !== 'live' || Boolean(this.selectedCredential)
+      const hasLiveCredential = this.embedded || this.form.execution_mode !== 'live' || Boolean(this.selectedCredential)
       return hasSymbol && hasLiveCredential && this.validationIssues.length === 0
     },
     validationIssues () {
@@ -923,7 +945,7 @@ export default {
         if (Number(this.form.entry_price || 0) <= 0) issues.push('entryPrice')
         if (Number(this.form.base_order_size || 0) <= 0) issues.push('baseOrder')
       }
-      if (this.form.execution_mode === 'live' && !this.selectedCredential) issues.push('credential')
+      if (!this.embedded && this.form.execution_mode === 'live' && !this.selectedCredential) issues.push('credential')
       if (this.supportsTrailingTakeProfit && this.form.trailing_take_profit_enabled) {
         const activation = Number(this.form.trailing_activation_pct || 0)
         const callback = Number(this.form.trailing_callback_pct || 0)
@@ -1632,21 +1654,6 @@ export default {
   line-height: 1.45;
 }
 
-.risk-scope-label {
-  margin: 6px 0;
-  color: #344054;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.risk-scope-label small {
-  display: block;
-  margin-top: 2px;
-  color: #667085;
-  font-size: 11px;
-  font-weight: 400;
-}
-
 .trigger-contract-card {
   display: flex;
   gap: 10px;
@@ -1675,39 +1682,99 @@ export default {
 .trigger-contract-card p { margin: 4px 0 8px; color: #667085; font-size: 11px; line-height: 1.5; }
 .trigger-contract-card__tags { display: flex; flex-wrap: wrap; gap: 4px; }
 
-.trailing-profit-card {
-  margin: 4px 0 10px;
-  padding: 10px;
-  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 32%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--primary-color, #1890ff) 7%, #fff);
+.risk-layer-card {
+  margin: 6px 0 10px;
+  padding: 12px;
+  border: 1px solid #d8dee6;
+  border-radius: 10px;
+  background: #fff;
 }
 
-.trailing-profit-card__header {
+.risk-layer-card__header {
   display: flex;
-  gap: 16px;
-  align-items: center;
+  gap: 12px;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
-.trailing-profit-card__header strong,
-.trailing-profit-card__header small {
+.risk-layer-card__header strong,
+.risk-layer-card__header small,
+.trailing-config__intro strong,
+.trailing-config__intro small {
   display: block;
 }
 
-.trailing-profit-card__header small {
-  margin-top: 2px;
+.risk-layer-card__header small,
+.trailing-config__intro small {
+  margin-top: 3px;
   color: #667085;
   font-size: 11px;
   line-height: 1.45;
 }
 
-.trailing-profit-card .field-grid {
+.risk-layer-card .field-grid {
   margin-top: 10px;
 }
 
+.risk-scope-badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 34%, transparent);
+  border-radius: 999px;
+  color: var(--primary-color, #1890ff);
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, #fff);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.risk-scope-badge--stop {
+  border-color: rgba(255, 77, 79, 0.28);
+  color: #cf1322;
+  background: #fff1f0;
+}
+
+.profit-exit-mode {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(71, 84, 103, 0.14);
+}
+
+.profit-exit-mode > label {
+  display: block;
+  margin-bottom: 6px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.profit-exit-mode /deep/ .ant-radio-group {
+  display: flex;
+  width: 100%;
+}
+
+.profit-exit-mode /deep/ .ant-radio-button-wrapper {
+  display: flex;
+  flex: 1 1 50%;
+  min-height: 32px;
+  height: auto;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.trailing-config {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
 .equity-risk-card {
-  border-color: #d8dee6;
   background: #f8fafc;
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary-color, #1890ff) 72%, transparent);
 }
@@ -2021,14 +2088,40 @@ export default {
   background: #111315;
 }
 
-.theme-dark .trailing-profit-card {
-  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 34%, #262a2f);
-  background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, #111315);
+.theme-dark .risk-layer-card {
+  border-color: #343a40;
+  background: #151719;
+}
+
+.theme-dark .risk-layer-card__header strong,
+.theme-dark .trailing-config__intro strong {
+  color: #f3f4f6;
 }
 
 .theme-dark .equity-risk-card {
-  border-color: #343a40;
   background: #111315;
+}
+
+.theme-dark .trailing-config {
+  background: #0f1113;
+}
+
+.theme-dark .profit-exit-mode {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-dark .profit-exit-mode > label {
+  color: #f3f4f6;
+}
+
+.theme-dark .risk-scope-badge {
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, #111315);
+}
+
+.theme-dark .risk-scope-badge--stop {
+  border-color: rgba(255, 120, 117, 0.32);
+  color: #ff7875;
+  background: rgba(255, 77, 79, 0.1);
 }
 
 .theme-dark .trigger-contract-card {
@@ -2050,21 +2143,14 @@ export default {
 .theme-dark .trigger-contract-card strong { color: #f3f4f6; }
 .theme-dark .trigger-contract-card p { color: #9aa4b2; }
 
-.theme-dark .risk-scope-label {
-  color: #f3f4f6;
-}
-
-.theme-dark .risk-scope-label small {
-  color: #9aa4b2;
-}
-
 .theme-dark .restart-after-stop-card {
   border-color: #614700;
   background: #2b2111;
 }
 
 .theme-dark .field-hint,
-.theme-dark .trailing-profit-card__header small,
+.theme-dark .risk-layer-card__header small,
+.theme-dark .trailing-config__intro small,
 .theme-dark .restart-after-stop-card small {
   color: #9aa4b2;
 }

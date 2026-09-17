@@ -31,7 +31,7 @@ test('backtest center visual accents follow the configured system theme color', 
   assert.doesNotMatch(source, /<a-tag v-if="manifest" color="green"/)
   assert.match(source, /primaryColor: state => state\.app\.color/)
   assert.match(source, /color: \[this\.primaryColor, '#94a3b8'\]/)
-  for (const selector of ['\\.eyebrow', '\\.step-badge', '\\.empty-orbit', '\\.empty-preview-card > \\.anticon']) {
+  for (const selector of ['\\.step-badge', '\\.empty-orbit', '\\.empty-preview-card > \\.anticon']) {
     assert.match(source, new RegExp(`${selector} \\{[^}]*var\\(--primary-color`))
   }
 })
@@ -129,8 +129,8 @@ test('portfolio drawdown chart uses initial capital and backend drawdown points'
 })
 
 test('portfolio chart reserves separate vertical space for the legend and first plot', () => {
-  assert.match(portfolioResultSource, /legend: \{ top: 6,[\s\S]*?itemGap: 16/)
-  assert.match(portfolioResultSource, /\{ left: 58, right: 56, top: 64, height: 222 \}/)
+  assert.match(portfolioResultSource, /legend: \{[\s\S]*?top: 6,[\s\S]*?itemGap: 16/)
+  assert.match(portfolioResultSource, /\{ left: 58, right: 56, top: 58, height: 184 \}/)
 })
 
 test('trade review centers the full entry-to-exit range and draws after data is ready', () => {
@@ -197,8 +197,8 @@ test('backtest quick ranges explain disabled options and remain readable in dark
   assert.match(source, /quickRange\.unavailable/)
   assert.match(source, /preset\.disabled/)
   assert.match(source, /\.theme-dark \.range-preset-wrap \/deep\/ \.ant-btn\[disabled\]/)
-  assert.match(source, /@media \(max-width: 720px\)[\s\S]*?\.range-presets \{ align-items: flex-start; flex-direction: column/)
-  for (const text of ['1个月', '6个月', '1年', '2年', '最大 {days} 天']) {
+  assert.match(source, /@media \(max-width: 720px\)[\s\S]*?\.range-presets__buttons \{ width: 100%/)
+  for (const text of ['1个月', '6个月', '1年', '2年', '{days} 天']) {
     assert.ok(backtestRangeLocaleSource.includes(text), `missing reviewed quick-range translation: ${text}`)
   }
 })

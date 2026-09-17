@@ -8636,3 +8636,201 @@ body.realdark .followup-suggestions,
   }
 }
 </style>
+
+<style scoped lang="less">
+/* Subtle visual polish without changing the existing workbench layout. */
+.copilot-workbench .rail-panel,
+.copilot-workbench .chat-panel {
+  border-radius: 10px;
+}
+
+.copilot-workbench .rail-panel {
+  padding: 12px;
+}
+
+.copilot-workbench .panel-head {
+  min-height: 30px;
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom-color: var(--qd-border-soft);
+}
+
+.copilot-workbench .panel-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.copilot-workbench .session-row,
+.copilot-workbench .watch-card,
+.copilot-workbench .monitor-card,
+.copilot-workbench .saved-prompt-library__item {
+  border-radius: 8px;
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.copilot-workbench .session-row:hover,
+.copilot-workbench .watch-card:hover,
+.copilot-workbench .saved-prompt-library__item:hover {
+  transform: translateY(-1px);
+}
+
+.copilot-workbench .session-row.active,
+.copilot-workbench .watch-card.active {
+  box-shadow: inset 2px 0 0 var(--qd-accent);
+}
+
+.copilot-workbench .watch-main {
+  min-height: 54px;
+  padding: 8px 7px 8px 10px;
+}
+
+.copilot-workbench .watch-price {
+  font-variant-numeric: tabular-nums;
+}
+
+.copilot-workbench .chat-hero {
+  border-bottom: 1px solid var(--qd-border-soft);
+}
+
+.copilot-workbench .messages {
+  position: relative;
+  isolation: isolate;
+}
+
+.copilot-workbench .messages::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--qd-accent) 9%, transparent), transparent 33%),
+    linear-gradient(color-mix(in srgb, var(--qd-accent) 3%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--qd-accent) 3%, transparent) 1px, transparent 1px);
+  background-size: auto, 44px 44px, 44px 44px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.32) 72%, transparent);
+  pointer-events: none;
+}
+
+.copilot-workbench .welcome > .anticon {
+  border: 1px solid color-mix(in srgb, var(--qd-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--qd-accent) 13%, var(--qd-panel));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--qd-accent) 16%, transparent);
+}
+
+.copilot-workbench .welcome-prompts {
+  gap: 9px;
+  max-width: 900px;
+}
+
+.copilot-workbench .welcome-prompts button.research-prompt-pill {
+  min-height: 38px !important;
+  padding: 8px 13px !important;
+  border-color: color-mix(in srgb, var(--qd-accent) 24%, var(--qd-border)) !important;
+  background: color-mix(in srgb, var(--qd-panel) 94%, transparent) !important;
+}
+
+.copilot-workbench .welcome-prompts button.research-prompt-pill:hover {
+  border-color: color-mix(in srgb, var(--qd-accent) 54%, var(--qd-border)) !important;
+  background: color-mix(in srgb, var(--qd-accent) 10%, var(--qd-panel)) !important;
+}
+
+.copilot-workbench .composer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--qd-border-soft);
+  box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.copilot-workbench .composer-context-bar {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.copilot-workbench .hero-symbol-picker ::v-deep .ant-select-selection,
+.copilot-workbench .professional-report-button,
+.copilot-workbench .session-memory-status {
+  min-height: 34px;
+  border-radius: 8px;
+}
+
+.copilot-workbench .research-mode-bar {
+  gap: 6px;
+  margin: 8px 0;
+  padding-bottom: 1px;
+}
+
+.copilot-workbench .research-mode-bar button {
+  min-height: 30px;
+  border-color: var(--qd-border-soft);
+  background: var(--qd-panel-soft);
+}
+
+.copilot-workbench .research-mode-bar button.active {
+  border-color: color-mix(in srgb, var(--qd-accent) 46%, var(--qd-border));
+  background: color-mix(in srgb, var(--qd-accent) 11%, var(--qd-panel));
+}
+
+.copilot-workbench .composer textarea {
+  border-radius: 9px;
+  background: var(--qd-panel-soft);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.copilot-workbench .composer textarea:focus {
+  border-color: color-mix(in srgb, var(--qd-accent) 58%, var(--qd-border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--qd-accent) 11%, transparent);
+}
+
+.copilot-workbench .composer-actions ::v-deep .ant-btn,
+.copilot-workbench .add-watch ::v-deep .ant-btn {
+  height: 34px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+body.dark .copilot-workbench .messages,
+body.realdark .copilot-workbench .messages,
+.theme-dark .copilot-workbench .messages {
+  background: #080908 !important;
+}
+
+body.dark .copilot-workbench .messages::before,
+body.realdark .copilot-workbench .messages::before,
+.theme-dark .copilot-workbench .messages::before {
+  background:
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--qd-accent) 12%, transparent), transparent 34%),
+    linear-gradient(rgba(82, 196, 26, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(82, 196, 26, 0.025) 1px, transparent 1px);
+  background-size: auto, 44px 44px, 44px 44px;
+}
+
+body.dark .copilot-workbench .session-row,
+body.dark .copilot-workbench .watch-card,
+body.dark .copilot-workbench .monitor-card,
+body.realdark .copilot-workbench .session-row,
+body.realdark .copilot-workbench .watch-card,
+body.realdark .copilot-workbench .monitor-card,
+.theme-dark .copilot-workbench .session-row,
+.theme-dark .copilot-workbench .watch-card,
+.theme-dark .copilot-workbench .monitor-card {
+  background: #121312 !important;
+}
+
+body.dark .copilot-workbench .composer,
+body.realdark .copilot-workbench .composer,
+.theme-dark .copilot-workbench .composer {
+  background: #0c0d0c !important;
+  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.16);
+}
+
+body.dark .copilot-workbench .composer textarea,
+body.realdark .copilot-workbench .composer textarea,
+.theme-dark .copilot-workbench .composer textarea,
+body.dark .copilot-workbench .research-mode-bar button,
+body.realdark .copilot-workbench .research-mode-bar button,
+.theme-dark .copilot-workbench .research-mode-bar button {
+  background: #111311 !important;
+}
+</style>

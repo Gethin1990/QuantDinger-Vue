@@ -74,13 +74,18 @@ test('indicator conversion prompt agrees with CTA and native protection contract
   assert.match(prompt, /Source instrument: Crypto:SOL\/USDT@spot/)
 })
 
-test('side rail exposes scalable parameters and strategy contract while verification stays in the editor header', () => {
+test('left inspector hides configuration for blank code and verification stays in the editor header', () => {
   const editor = read('src/views/strategy-ide/components/StrategyEditor.vue')
-  assert.match(editor, /activeSideTab/)
-  assert.match(editor, /slot name="strategy-contract"/)
+  const page = read('src/views/strategy-ide/index.vue')
+  assert.match(editor, /hasStrategyCode \(\)/)
+  assert.match(editor, /v-if="hasRuntimeControls && assetType === 'script'"/)
+  assert.match(editor, /hasStrategyConfiguration \(\)/)
+  assert.match(editor, /v-if="hasStrategyCode && activeParamTemplate" class="params-toolbar"/)
+  assert.doesNotMatch(editor, /slot name="strategy-contract"/)
+  assert.doesNotMatch(page, /template #strategy-contract/)
   assert.doesNotMatch(editor, /slot name="strategy-checks"/)
   assert.match(editor, /class="params-toolbar"/)
-  assert.match(editor, /grid-template-columns: repeat\(auto-fill, minmax\(230px, 1fr\)\)/)
+  assert.match(editor, /\.side-tabs--split \{[\s\S]*\.param-list \{[\s\S]*flex-direction: column;/)
   assert.match(editor, /lastVerificationState/)
   assert.match(editor, /this\.\$emit\('verified', res\.data\)/)
 })
@@ -103,20 +108,23 @@ test('strategy toolbar typography keeps related actions in matching pairs', () =
   assert.match(page, /\.robot-template-button,\n\.factor-library-button,[\s\S]*font-weight: 700;/)
 })
 
-test('desktop strategy workspace keeps code and tools aligned with a full-height AI rail', () => {
+test('desktop strategy workspace uses full-height parameter, code, and AI columns', () => {
   const editor = read('src/views/strategy-ide/components/StrategyEditor.vue')
   const page = read('src/views/strategy-ide/index.vue')
   const aiColumn = editor.indexOf('strategy-ai-workspace-host--primary')
   const codeColumn = editor.indexOf('<div class="code-col">')
-  const toolRow = editor.indexOf('<div class="side-col">')
+  const toolRow = editor.indexOf('class="side-col"')
 
   assert.ok(codeColumn > -1 && codeColumn < toolRow)
   assert.ok(toolRow > -1 && toolRow < aiColumn)
-  assert.match(editor, /grid-template-columns: minmax\(0, 1fr\) minmax\(340px, 32%\)/)
-  assert.match(editor, /grid-template-rows: minmax\(0, 1fr\) 248px/)
-  assert.match(editor, /\.strategy-ai-workspace-host--primary \{[\s\S]*grid-row-end: 3/)
-  assert.match(editor, /\.editor-layout--split \.side-col \{[\s\S]*grid-column-end: 2/)
-  assert.match(page, /grid-template-rows: minmax\(0, 1fr\) auto/)
+  assert.match(editor, /grid-template-columns: minmax\(280px, 18%\) minmax\(520px, 1fr\) minmax\(340px, 29%\)/)
+  assert.match(editor, /\.strategy-ai-workspace-host--primary \{[\s\S]*grid-column-start: 3;[\s\S]*grid-row-end: 2/)
+  assert.match(editor, /\.editor-layout--split \.code-col \{[\s\S]*grid-column-start: 2;/)
+  assert.match(editor, /\.editor-layout--split \.side-col \{[\s\S]*grid-column-start: 1;[\s\S]*height: 100%;/)
+  assert.match(editor, /editor-layout--split-no-params/)
+  assert.match(editor, /v-if="!isSplitSideMode \|\| hasStrategyConfiguration" class="side-col"/)
+  assert.match(page, /grid-template-columns: minmax\(280px, 18%\) minmax\(520px, 1fr\) minmax\(340px, 29%\)/)
+  assert.match(page, /editor-layout--split\.editor-layout--split-no-params/)
 })
 
 test('missing optional AI history route does not show a raw 404 on page entry', () => {

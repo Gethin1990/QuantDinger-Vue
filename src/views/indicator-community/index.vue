@@ -15,38 +15,21 @@
     </a-tabs>
 
     <div v-show="activeTab === 'market'" class="market-header">
-      <div class="market-header__intro">
-        <h2 class="page-title">
-          <a-icon type="shop" />
-          {{ $t('community.title') }}
-        </h2>
-        <a-radio-group
-          v-model="marketAssetType"
-          button-style="solid"
-          class="market-asset-tabs"
-          @change="handleMarketAssetTypeChange"
-        >
-          <a-radio-button value="indicator">
-            {{ $t('community.tabIndicators') }} ({{ marketAssetCounts.indicator }})
-          </a-radio-button>
-          <a-radio-button value="script_template">
-            {{ $t('community.tabScriptTemplates') }} ({{ marketAssetCounts.script_template }})
-          </a-radio-button>
-        </a-radio-group>
-      </div>
-
       <div class="market-header__workspace">
-        <a-input-search
-          v-model="filters.keyword"
-          :placeholder="$t('community.searchPlaceholder')"
-          :enter-button="$t('community.applyFilters')"
-          class="market-search"
-          allow-clear
-          @search="handleSearch"
-          @pressEnter="handleSearch"
-        />
-
         <div class="market-filter-bar">
+          <a-radio-group
+            v-model="marketAssetType"
+            button-style="solid"
+            class="market-asset-tabs"
+            @change="handleMarketAssetTypeChange"
+          >
+            <a-radio-button value="indicator">
+              {{ $t('community.tabIndicators') }} ({{ marketAssetCounts.indicator }})
+            </a-radio-button>
+            <a-radio-button value="script_template">
+              {{ $t('community.tabScriptTemplates') }} ({{ marketAssetCounts.script_template }})
+            </a-radio-button>
+          </a-radio-group>
           <a-radio-group v-model="filters.pricingType" button-style="solid" @change="handleFilterChange">
             <a-radio-button value="">{{ $t('community.all') }}</a-radio-button>
             <a-radio-button value="free">{{ $t('community.freeOnly') }}</a-radio-button>
@@ -75,6 +58,15 @@
             <a-icon type="reload" />
             {{ $t('community.resetFilters') }}
           </a-button>
+          <a-input-search
+            v-model="filters.keyword"
+            :placeholder="$t('community.searchPlaceholder')"
+            :enter-button="$t('community.applyFilters')"
+            class="market-search"
+            allow-clear
+            @search="handleSearch"
+            @pressEnter="handleSearch"
+          />
           <a-button type="link" class="market-purchases-btn" @click="showMyPurchases = true">
             <a-icon type="shopping" />
             {{ $t('community.myPurchases') }}
@@ -1292,51 +1284,21 @@ export default {
   background: #f5f5f5;
 
   .market-header {
-    display: grid;
-    grid-template-columns: minmax(220px, auto) minmax(0, 1fr);
-    grid-template-areas:
-      "intro workspace"
-      "advanced advanced";
-    align-items: start;
-    gap: 18px 28px;
     margin-bottom: 18px;
-    padding: 18px 20px;
+    padding: 14px 16px;
     background: #fff;
     border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 10px;
     box-shadow: 0 8px 28px rgba(15, 23, 42, 0.05);
 
-    &__intro {
-      display: flex;
-      grid-area: intro;
-      flex-direction: column;
-      gap: 12px;
-
-      .page-title {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-
-        .anticon {
-          margin-right: 8px;
-          color: var(--primary-color, #1890ff);
-        }
-      }
-
-      .market-asset-tabs {
-        align-self: flex-start;
-      }
-    }
-
     &__workspace {
-      display: flex;
-      grid-area: workspace;
       min-width: 0;
-      flex-direction: column;
-      gap: 12px;
 
       .market-search {
-        width: 100%;
+        width: 340px;
+        max-width: 100%;
+        margin-left: auto;
+        flex: 0 1 340px;
       }
     }
 
@@ -1358,7 +1320,7 @@ export default {
       }
 
       .market-purchases-btn {
-        margin-left: auto;
+        flex-shrink: 0;
       }
     }
 
@@ -1778,13 +1740,9 @@ export default {
   }
 
   .market-header {
-    border-color: rgba(255, 255, 255, 0.08);
-    background: #181c1b;
+    border-color: #303030;
+    background: #1f1f1f;
     box-shadow: none;
-
-    .page-title {
-      color: rgba(255, 255, 255, 0.85);
-    }
 
     .market-advanced-filters {
       border-color: rgba(255, 255, 255, 0.08);
@@ -1991,20 +1949,6 @@ export default {
 
 @media (max-width: 1200px) {
   .indicator-community-container {
-    .market-header {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-areas:
-        "intro"
-        "workspace"
-        "advanced";
-
-      &__intro {
-        align-items: center;
-        flex-direction: row;
-        justify-content: space-between;
-      }
-    }
-
     .indicator-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2022,22 +1966,18 @@ export default {
     padding: 12px;
 
     .market-header {
-      gap: 16px;
       padding: 16px;
       box-sizing: border-box;
       width: 100%;
-
-      &__intro {
-        align-items: flex-start;
-        flex-direction: column;
-      }
 
       &__workspace {
         width: 100%;
       }
 
       .market-search {
+        width: 100%;
         max-width: 100%;
+        flex-basis: 100%;
 
         ::v-deep .ant-input-group {
           display: flex;
@@ -2111,7 +2051,7 @@ export default {
 
 @media (max-width: 480px) {
   .indicator-community-container {
-    .market-header__intro .market-asset-tabs {
+    .market-header .market-asset-tabs {
       display: flex;
       width: 100%;
 

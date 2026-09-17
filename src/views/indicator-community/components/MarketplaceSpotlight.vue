@@ -258,10 +258,10 @@ export default {
   min-height: 260px;
   padding: 0;
   overflow: hidden;
-  color: #fff;
+  color: rgba(0, 0, 0, 0.88);
   text-align: left;
-  background-color: #07110f;
-  background-position: center;
+  background-color: #fff;
+  background-position: right center;
   background-size: cover;
   cursor: pointer;
 
@@ -273,7 +273,7 @@ export default {
   &__shade {
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(4, 10, 9, 0.96) 0%, rgba(4, 10, 9, 0.84) 42%, rgba(4, 10, 9, 0.2) 100%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.96) 46%, rgba(255, 255, 255, 0.68) 72%, rgba(255, 255, 255, 0.22) 100%);
   }
 
   &__content {
@@ -292,7 +292,7 @@ export default {
     align-items: center;
     gap: 6px;
     margin-bottom: 14px;
-    color: #ffd666;
+    color: #d48806;
     font-size: 13px;
     font-weight: 700;
   }
@@ -321,7 +321,7 @@ export default {
     max-width: 620px;
     margin-bottom: 14px;
     overflow: hidden;
-    color: rgba(255, 255, 255, 0.76);
+    color: rgba(0, 0, 0, 0.62);
     font-size: 14px;
     line-height: 1.65;
     -webkit-box-orient: vertical;
@@ -336,10 +336,10 @@ export default {
 
     span {
       padding: 4px 9px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(15, 23, 42, 0.1);
       border-radius: 4px;
-      color: rgba(255, 255, 255, 0.72);
-      background: rgba(255, 255, 255, 0.08);
+      color: rgba(0, 0, 0, 0.62);
+      background: rgba(255, 255, 255, 0.78);
       font-size: 12px;
     }
   }
@@ -351,9 +351,9 @@ export default {
     max-width: 620px;
     margin-top: 14px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(15, 23, 42, 0.1);
     border-radius: 6px;
-    background: rgba(4, 10, 9, 0.52);
+    background: rgba(255, 255, 255, 0.86);
     backdrop-filter: blur(6px);
   }
 
@@ -365,19 +365,19 @@ export default {
     gap: 2px;
 
     & + & {
-      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      border-left: 1px solid rgba(15, 23, 42, 0.08);
     }
 
     > span {
       overflow: hidden;
-      color: rgba(255, 255, 255, 0.56);
+      color: rgba(0, 0, 0, 0.46);
       font-size: 10px;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     > strong {
-      color: rgba(255, 255, 255, 0.92);
+      color: rgba(0, 0, 0, 0.82);
       font-size: 13px;
     }
   }
@@ -388,7 +388,7 @@ export default {
     gap: 16px;
     width: 100%;
     margin-top: auto;
-    color: rgba(255, 255, 255, 0.74);
+    color: rgba(0, 0, 0, 0.6);
     font-size: 12px;
   }
 
@@ -424,14 +424,14 @@ export default {
       overflow: hidden;
       border: 0;
       border-radius: 8px;
-      background-color: #07110f;
-      background-position: center;
+      background-color: #f5f5f5;
+      background-position: right center;
       background-size: cover;
 
       &::before {
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, rgba(4, 10, 9, 0.16) 0%, rgba(4, 10, 9, 0.9) 78%, rgba(4, 10, 9, 0.98) 100%);
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.92) 58%, rgba(255, 255, 255, 0.36) 100%);
         content: '';
       }
     }
@@ -440,7 +440,7 @@ export default {
       align-items: center;
 
       &::before {
-        background: linear-gradient(90deg, rgba(4, 10, 9, 0.98) 0%, rgba(4, 10, 9, 0.9) 54%, rgba(4, 10, 9, 0.18) 100%);
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.9) 56%, rgba(255, 255, 255, 0.24) 100%);
       }
 
       .marketplace-hot__body {
@@ -475,14 +475,14 @@ export default {
     }
 
     .marketplace-hot__topline strong {
-      color: #fff;
+      color: rgba(0, 0, 0, 0.86);
       font-size: 16px;
     }
 
     .marketplace-hot__description {
       display: -webkit-box;
       margin-top: 6px;
-      color: rgba(255, 255, 255, 0.64);
+      color: rgba(0, 0, 0, 0.56);
       line-height: 1.5;
       text-overflow: initial;
       white-space: normal;
@@ -494,25 +494,25 @@ export default {
       gap: 8px;
       margin: 14px 0 12px;
       padding: 9px 10px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(15, 23, 42, 0.1);
       border-radius: 6px;
-      background: rgba(4, 10, 9, 0.58);
+      background: rgba(255, 255, 255, 0.84);
       backdrop-filter: blur(5px);
     }
 
     .marketplace-hot__kpi > span {
-      color: rgba(255, 255, 255, 0.48);
+      color: rgba(0, 0, 0, 0.44);
       font-size: 10px;
     }
 
     .marketplace-hot__kpi > strong {
-      color: rgba(255, 255, 255, 0.9);
+      color: rgba(0, 0, 0, 0.82);
       font-size: 12px;
     }
 
     .marketplace-hot__meta {
       margin-top: 0;
-      color: rgba(255, 255, 255, 0.62);
+      color: rgba(0, 0, 0, 0.56);
     }
   }
 
@@ -683,8 +683,86 @@ export default {
   .marketplace-feature,
   .marketplace-hot {
     border-color: rgba(255, 255, 255, 0.1);
-    background-color: #181c1b;
+    background-color: #1f1f1f;
     box-shadow: none;
+  }
+
+  .marketplace-feature {
+    color: rgba(255, 255, 255, 0.92);
+
+    &__shade {
+      background: linear-gradient(90deg, rgba(18, 18, 18, 0.98) 0%, rgba(18, 18, 18, 0.9) 46%, rgba(18, 18, 18, 0.36) 100%);
+    }
+
+    &__eyebrow {
+      color: #ffd666;
+    }
+
+    &__description,
+    &__footer {
+      color: rgba(255, 255, 255, 0.68);
+    }
+
+    &__tags span {
+      border-color: rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.72);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &__kpis {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(18, 18, 18, 0.64);
+    }
+
+    &__kpi {
+      & + & {
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      > span {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      > strong {
+        color: rgba(255, 255, 255, 0.9);
+      }
+    }
+  }
+
+  .marketplace-hot--single {
+    .marketplace-hot__item {
+      background-color: #181818;
+
+      &::before {
+        background: linear-gradient(180deg, rgba(18, 18, 18, 0.18) 0%, rgba(18, 18, 18, 0.9) 78%, rgba(18, 18, 18, 0.98) 100%);
+      }
+    }
+
+    .marketplace-hot__item--visual::before {
+      background: linear-gradient(90deg, rgba(18, 18, 18, 0.98) 0%, rgba(18, 18, 18, 0.9) 56%, rgba(18, 18, 18, 0.2) 100%);
+    }
+
+    .marketplace-hot__topline strong {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .marketplace-hot__description,
+    .marketplace-hot__meta {
+      color: rgba(255, 255, 255, 0.56);
+    }
+
+    .marketplace-hot__kpis {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(18, 18, 18, 0.64);
+    }
+
+    .marketplace-hot__kpi > span {
+      color: rgba(255, 255, 255, 0.46);
+    }
+
+    .marketplace-hot__kpi > strong {
+      color: rgba(255, 255, 255, 0.88);
+    }
   }
 
   .marketplace-hot__header,

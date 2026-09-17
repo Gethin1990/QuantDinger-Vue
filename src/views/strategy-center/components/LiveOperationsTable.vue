@@ -145,7 +145,7 @@
             <strong>{{ health(selectedStrategy).latency_ms || health(selectedStrategy).loop_latency_ms || '-' }} ms</strong>
           </span>
           <span>
-            {{ $t('liveMonitor.pendingOrders') }}
+            {{ pendingWorkLabel(selectedStrategy) }}
             <strong>{{ health(selectedStrategy).pending_orders || 0 }}</strong>
           </span>
         </div>
@@ -225,6 +225,7 @@
             <grid-resting-orders
               v-if="detailTab === 'grid-orders'"
               :strategy-id="Number(selectedStrategy.id)"
+              :is-dark="dark"
             />
           </a-tab-pane>
           <a-tab-pane key="overview" :tab="$t('strategyCenter.tabs.overview')">
@@ -338,10 +339,11 @@ export default {
     },
     isGridStrategy () {
       const strategy = this.selectedStrategy || {}
+      if (this.executionMode(strategy) !== 'live') return false
       const config = strategyTradingConfig(strategy)
       const type = String(strategy.bot_type || config.bot_type || config.executor_type || '').toLowerCase()
       const template = String(strategy.template_key || config.template_key || '').toLowerCase()
-      return type === 'grid' || template.includes('robot_v2_grid')
+      return type === 'grid' || (!type && template.includes('robot_v2_grid'))
     },
     runningStrategies () {
       return this.strategies.filter(this.isRunning)
@@ -486,6 +488,11 @@ export default {
     resizeChart () { if (this.chart) this.chart.resize() },
     isRunning (strategy) { return String(strategy && strategy.status || '').toLowerCase() === 'running' },
     executionMode (strategy) { return strategyExecutionMode(strategy) },
+    pendingWorkLabel (strategy) {
+      return this.executionMode(strategy) === 'live'
+        ? this.$t('liveMonitor.pendingOrders')
+        : this.$t('strategyCenter.console.pendingSignals')
+    },
     liveExchangeName (strategy) {
       if (this.executionMode(strategy) !== 'live') return ''
       const exchangeId = strategyExchangeId(strategy)
