@@ -75,7 +75,7 @@
               </div>
             </div>
           </div>
-          <div ref="codePanelBody" class="code-panel-body" :class="{ 'is-resizing': codeAiResizing }">
+          <div ref="codePanelBody" class="code-panel-body" :class="{ 'is-resizing': codeAiResizing, 'ai-is-collapsed': !aiPanelExpanded }">
             <div class="code-editor-section" :style="{ flexBasis: `${codeAiSplitRatio}%` }">
               <div class="ide-guide-bar">
                 <div class="ide-guide-copy">
@@ -108,7 +108,7 @@
                     :loading="codeQualityLoading"
                     @click="runCodeQualityCheck"
                   ><a-icon v-if="!codeQualityLoading" type="safety-certificate" /> {{ $t('indicatorIde.codeQualityRecheck') }}</a-button>
-                  <a href="https://www.quantdinger.com/docs-zh.html#strategy-overview" target="_blank" rel="noopener noreferrer" class="ide-guide-link" @click.stop>
+                  <a href="https://www.quantdinger.com/doc/trading/INDICATOR_DEV_GUIDE.html" target="_blank" rel="noopener noreferrer" class="ide-guide-link" @click.stop>
                     {{ $t('indicatorIde.devGuide') }} <a-icon type="arrow-right" />
                   </a>
                 </div>
@@ -139,6 +139,7 @@
             </div>
 
             <div
+              v-show="aiPanelExpanded"
               class="code-ai-resizer"
               role="separator"
               aria-orientation="horizontal"
@@ -151,10 +152,10 @@
               @keydown.down.prevent="adjustCodeAiSplit(3)"
             ><span class="code-ai-resizer__grip"></span></div>
 
-            <div class="ai-workspace-section">
+            <div class="ai-workspace-section" :class="{ 'is-collapsed': !aiPanelExpanded }">
 
               <div
-                v-if="aiDebugSummary"
+                v-if="aiPanelExpanded && aiDebugSummary"
                 class="ai-debug-card"
                 :class="`ai-debug-card--${aiDebugState()}`"
               >
@@ -195,7 +196,7 @@
               </div>
 
               <!-- Indicator-bound AI collaboration workspace -->
-              <div ref="aiGeneratorPanel" class="ai-gen-panel">
+              <div ref="aiGeneratorPanel" class="ai-gen-panel" :class="{ 'is-collapsed': !aiPanelExpanded }">
                 <div class="ai-gen-header" @click="aiPanelExpanded = !aiPanelExpanded">
                   <a-icon type="robot" />
                   <span>{{ $t('indicatorIde.aiCollaborate') }}</span>
@@ -375,7 +376,7 @@
                         @dropdownVisibleChange="onWatchlistDropdownVisibleChange"
                       >
                         <a-select-option
-                          v-for="w in watchlist"
+                          v-for="w in toolbarWatchlistOptions"
                           :key="watchlistContextKey(w)"
                           :value="watchlistContextKey(w)"
                         >
@@ -539,8 +540,10 @@
                     symbol-locked
                     :market-type="market === 'Crypto' ? cryptoMarketType : 'spot'"
                     :overlay-get-container="ideQtOverlayGetContainer"
+                    @collapse="toggleQuickTradeDrawer"
                     @order-success="onQuickTradeSuccess"
                     @update:symbol="handleQuickTradeSymbolChange"
+                    @market-type-change="handleCryptoMarketTypeChange"
                   />
                 </div>
               </div>
@@ -1129,6 +1132,7 @@ export default {
       selectedIndicatorId: undefined,
       chartVisibleIndicatorIds: [],
       indicatorDropdownVisible: false,
+      indicatorsLoadedAt: 0,
       editorFullscreen: false,
       chartFullscreen: false,
       currentCode: '',
@@ -1358,6 +1362,24 @@ export default {
       }
       return list
     },
+    toolbarWatchlistOptions () {
+      const list = Array.isArray(this.watchlist) ? [...this.watchlist] : []
+      if (!this.market || !this.symbol) return list
+      const current = {
+        market: this.market,
+        symbol: this.symbol,
+        exchange_id: this.market === 'Crypto' ? this.cryptoExchangeId : '',
+        market_type: this.market === 'Crypto' ? this.cryptoMarketType : 'spot',
+        instrument_id: this.currentInstrumentId
+      }
+      const currentKey = marketContextKey(current)
+      if (list.some(item => this.watchlistContextKey(item) === currentKey)) return list
+      const sameSymbol = list.find(item => (
+        String(item && item.market || '') === String(this.market) &&
+        String(item && item.symbol || '') === String(this.symbol)
+      )) || {}
+      return [{ ...sameSymbol, ...current }, ...list]
+    },
     signalAlertSignalOptions () {
       return this.extractSignalAlertOptions(this.selectedIndicatorParamCode || this.currentCode)
     },
@@ -1507,7 +1529,11 @@ export default {
       if (typeof document !== 'undefined') document.body.classList.remove('qd-code-ai-resizing')
     },
     toggleCodeDrawer () {
+      this.indicatorDropdownVisible = false
       this.codeDrawerVisible = !this.codeDrawerVisible
+      this.$nextTick(() => {
+        this.ensureChartReady()
+      })
     },
     async loadMarketModules () {
       const options = await loadEnabledMarketOptions({ includeFeatures: ['research'] })
@@ -1726,20 +1752,27 @@ export default {
       return this.normalizePersistedChartIndicators(this.activeIndicators)
     },
 
-    async loadIndicators () {
+    async loadIndicators ({ background = false } = {}) {
       if (!this.userId) return
-      this.loadingIndicators = true
-      try {
+      if (this._indicatorLoadPromise) return this._indicatorLoadPromise
+      const showLoading = !background || !this.indicators.length
+      if (showLoading) this.loadingIndicators = true
+      this._indicatorLoadPromise = (async () => {
         const res = await request({ url: '/api/indicator/getIndicators', method: 'get', params: { userid: this.userId } })
         if (res && res.data && Array.isArray(res.data)) {
           this.indicators = res.data.map(item => ({ ...item, type: 'python' }))
+          this.indicatorsLoadedAt = Date.now()
         }
+      })()
+      try {
+        await this._indicatorLoadPromise
       } catch (e) {
         console.warn('Load indicators failed:', e)
       } finally {
-        this.loadingIndicators = false
+        this._indicatorLoadPromise = null
+        if (showLoading) this.loadingIndicators = false
         this.pruneChartVisibleIndicatorIds()
-        this.applyIndicatorRouteSelection()
+        if (!background) this.applyIndicatorRouteSelection()
       }
     },
     applyIndicatorRouteSelection () {
@@ -2442,7 +2475,14 @@ export default {
     },
     onIndicatorDropdownVisibleChange (visible) {
       this.indicatorDropdownVisible = visible
-      if (visible && !this.loadingIndicators) this.loadIndicators()
+      if (!visible || this.loadingIndicators) return
+      if (!this.indicators.length) {
+        this.loadIndicators()
+        return
+      }
+      if (Date.now() - Number(this.indicatorsLoadedAt || 0) > 30000) {
+        this.loadIndicators({ background: true })
+      }
     },
     onChartIndicatorCheckChange (rawId, checked) {
       const id = Number(rawId)
@@ -3627,7 +3667,7 @@ export default {
         return
       }
       if (val) {
-        const row = (this.watchlist || []).find(
+        const row = this.toolbarWatchlistOptions.find(
           w => w && w.market && w.symbol && this.watchlistContextKey(w) === val
         )
         if (row) {
@@ -3674,11 +3714,23 @@ export default {
     handleCryptoExchangeChange (value) {
       this.cryptoExchangeId = this.normalizeCryptoExchange(value)
       this.currentInstrumentId = ''
+      this.selectedWatchlistKey = marketContextKey({
+        market: this.market,
+        symbol: this.symbol,
+        exchange_id: this.cryptoExchangeId,
+        market_type: this.cryptoMarketType
+      })
       this.persistCryptoMarketSource()
     },
     handleCryptoMarketTypeChange (value) {
       this.cryptoMarketType = normalizeMarketType(value, 'Crypto')
       this.currentInstrumentId = ''
+      this.selectedWatchlistKey = marketContextKey({
+        market: this.market,
+        symbol: this.symbol,
+        exchange_id: this.cryptoExchangeId,
+        market_type: this.cryptoMarketType
+      })
       this.persistCryptoMarketSource()
     },
 
@@ -4564,6 +4616,10 @@ body.dark .ide-signal-alert-modal-wrap {
   min-height: 0;
   overflow: hidden;
   &.is-resizing { user-select: none; }
+  &.ai-is-collapsed .code-editor-section {
+    flex: 1 1 auto !important;
+    max-height: none;
+  }
 }
 .code-editor-section {
   flex: 0 0 auto;
@@ -5043,6 +5099,11 @@ body.dark .ide-signal-alert-modal-wrap {
   min-height: 240px;
   overflow: hidden;
   background: #fafbfc;
+  &.is-collapsed {
+    flex: 0 0 42px;
+    min-height: 42px;
+    max-height: 42px;
+  }
 }
 
 // ===== Code Editor Scrollbar =====
@@ -5073,26 +5134,45 @@ body.dark .ide-signal-alert-modal-wrap {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  background: #f8fafc;
+  &.is-collapsed {
+    flex: 0 0 42px;
+    min-height: 42px;
+  }
 }
 .ai-gen-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
+  gap: 8px;
+  min-height: 42px;
+  padding: 7px 12px;
   font-size: 12px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
   cursor: pointer;
   user-select: none;
   transition: background 0.15s;
   &:hover { background: #f5f7fa; }
+  > .anticon:first-child {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #fff;
+    background: linear-gradient(135deg, #52c41a, #389e0d);
+    box-shadow: 0 4px 10px rgba(82, 196, 26, 0.2);
+  }
 }
 .ai-gen-body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 8px 10px 10px;
+  padding: 10px 12px 12px;
   overflow: hidden;
   background: #fafbfc;
 }
@@ -5117,9 +5197,10 @@ body.dark .ide-signal-alert-modal-wrap {
   padding: 10px;
   overflow-y: auto;
   resize: none;
-  border: 1px solid #e5e9f0;
-  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   background: #fff;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.02);
   scrollbar-width: thin;
 }
 .ai-workspace-loading,
@@ -5128,19 +5209,29 @@ body.dark .ide-signal-alert-modal-wrap {
   min-height: 112px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 7px;
   color: #8491a5;
-  text-align: center;
+  text-align: left;
   font-size: 11px;
 }
 .ai-conversation-empty > .anticon,
-.ai-workspace-blocked > .anticon { font-size: 22px; color: var(--primary-color, #52c41a); }
+.ai-workspace-blocked > .anticon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 17px;
+  color: var(--primary-color, #52c41a);
+  background: rgba(82, 196, 26, 0.1);
+}
 .ai-conversation-empty strong { color: #25324a; font-size: 12px; }
-.ai-quick-prompts { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 4px; }
+.ai-quick-prompts { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin-top: 6px; }
 .ai-quick-prompts button {
-  padding: 3px 7px;
+  padding: 4px 8px;
   border: 1px solid #dce3ec;
   border-radius: 999px;
   color: #526079;
@@ -5234,20 +5325,31 @@ body.dark .ide-signal-alert-modal-wrap {
 .ai-message-candidate--warning .ai-message-candidate__status { color: #d46b08; }
 .ai-candidate-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .ai-candidate-actions .ant-btn { font-size: 10px; padding: 0 7px; }
-.ai-composer { margin-top: 8px; }
+.ai-composer {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #dbe3ed;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
 .ai-composer ::v-deep .ai-prompt-input textarea {
   min-height: 76px;
   max-height: 150px;
   padding: 8px 10px;
   resize: vertical;
   line-height: 1.45;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
 }
 .ai-composer-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: 3px;
+  padding: 0 2px;
 }
 .ai-composer-shortcut {
   min-width: 0;
@@ -5258,10 +5360,10 @@ body.dark .ide-signal-alert-modal-wrap {
 .ai-composer-send {
   width: auto;
   min-width: 116px;
-  height: 40px;
-  padding: 0 24px;
-  border-radius: 9px;
-  font-size: 13px;
+  height: 32px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 700;
   box-shadow: 0 2px 7px rgba(82, 196, 26, 0.22);
 }
@@ -5635,7 +5737,7 @@ body.dark .ide-signal-alert-modal-wrap {
 
 .ide-quick-bottom {
   width: 100%;
-  flex: 0 0 clamp(320px, 34vh, 430px);
+  flex: 0 0 clamp(360px, 39vh, 470px);
   display: flex;
   flex-direction: column;
   border-top: 1px solid #e8e8e8;
@@ -5650,6 +5752,7 @@ body.dark .ide-signal-alert-modal-wrap {
 }
 .ide-quick-panel-head {
   width: 100%;
+  min-height: 40px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -5730,7 +5833,7 @@ body.dark .ide-signal-alert-modal-wrap {
   ::v-deep .quick-trade-embedded {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
+    overflow-y: hidden;
     overflow-x: hidden;
   }
   ::v-deep .qt-embedded-split--cols {
@@ -6166,8 +6269,8 @@ body.dark .ide-signal-alert-modal-wrap {
     color: rgba(255, 255, 255, 0.65);
   }
   .ide-left { background: #181818; border-right-color: #303030; }
-  .ai-gen-panel { border-top-color: #303030; }
-  .ai-gen-header { color: rgba(255,255,255,0.82); &:hover { background: #202020; } }
+  .ai-gen-panel { border-top-color: #303030; background: #171717; }
+  .ai-gen-header { color: rgba(255,255,255,0.82); background: #1a1a1a; border-bottom-color: #303030; &:hover { background: #202020; } }
   .ai-gen-body { background: #171717; }
   .ai-memory-badge { color: #95de64; background: rgba(82,196,26,0.12); border-color: rgba(82,196,26,0.28); }
   .ai-conversation { background: #1f1f1f; border-color: #363636; }
@@ -6177,7 +6280,8 @@ body.dark .ide-signal-alert-modal-wrap {
   .ai-message--user .ai-message__content { color: #b7eb8f; background: rgba(82,196,26,0.11); border-color: rgba(82,196,26,0.28); }
   .ai-message-candidate { background: rgba(82,196,26,0.09); border-color: rgba(82,196,26,0.34); }
   .ai-message-candidate--warning { background: rgba(250,140,22,0.09); border-color: rgba(250,140,22,0.34); }
-  .ai-composer ::v-deep textarea { color: rgba(255,255,255,0.82); background: #222; border-color: #434343; }
+  .ai-composer { background: #1f1f1f; border-color: #3a3a3a; box-shadow: none; }
+  .ai-composer ::v-deep textarea { color: rgba(255,255,255,0.82); background: transparent; border-color: transparent; }
   .ide-chart-fs-root {
     background: #141414;
     border-bottom-color: #303030;
