@@ -373,7 +373,8 @@ import {
 import {
   applyStrategyRuntimeConfigToCode,
   extractScriptParamsFromCode,
-  extractStrategyRuntimeContractFromCode
+  extractStrategyRuntimeContractFromCode,
+  sanitizeRuntimeConfigForSource
 } from '@/views/strategy-ide/components/scriptTemplateCatalog'
 import { CRYPTO_EXCHANGE_IDS, normalizeExchangeId, normalizeMarketType } from '@/utils/marketContext'
 import {
@@ -984,6 +985,7 @@ export default {
         }
         const metadata = this.sourceMetadata
         const description = this.sourceDetail.description || metadata.description || ''
+        const lastRunConfig = sanitizeRuntimeConfigForSource(this.parseObject(metadata.last_run_config), code)
         const res = await updateScriptSource(Number(this.model.scriptSourceId), {
           name: this.sourceDetail.name || this.sourceDetail.title || this.sourceDetail.strategy_name || '',
           description,
@@ -996,7 +998,7 @@ export default {
             ...metadata,
             description,
             last_run_config: {
-              ...this.parseObject(metadata.last_run_config),
+              ...lastRunConfig,
               ...this.runtimeDraft
             },
             script_template_params: { ...this.sourceParameterValues },

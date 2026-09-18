@@ -7,6 +7,8 @@ import {
   extractStrategyRuntimeConfigFromCode,
   extractStrategyRuntimeContractFromCode,
   formatStrategyInstrument,
+  sanitizeRuntimeConfigForSource,
+  strategyCodeOwnsExecutionConfig,
   strategyCodeUsesExplicitExchange
 } from '../../src/views/strategy-ide/components/scriptTemplateCatalog.js'
 import {
@@ -174,6 +176,33 @@ def initialize(context):
   assert.match(updated, /TIMEFRAME = "4H"/)
   assert.match(updated, /set_universe\(\[INSTRUMENT\]\)/)
   assert.match(updated, /subscribe\(frequency=TIMEFRAME\)/)
+})
+
+test('v7 grid source removes stale executor metadata while preserving deployment defaults', () => {
+  const code = `INSTRUMENT = 'Crypto:ETH/USDT@spot'
+GRID_TEMPLATE_VERSION = 7
+CELL_LOWER = [0.9]
+CELL_UPPER = [1.1]
+`
+  const previous = {
+    initial_capital: 1000,
+    exchange_id: 'binance',
+    notification_channels: ['browser'],
+    strategy_family: 'robot',
+    executor_type: 'grid',
+    executor_config: { grid_count: 100 },
+    executor_preview: { grid_count: 100 },
+    bot_type: 'grid',
+    bot_params: { gridCount: 100, lowerPrice: 2000, upperPrice: 3000 }
+  }
+
+  assert.equal(strategyCodeOwnsExecutionConfig(code), true)
+  assert.deepEqual(sanitizeRuntimeConfigForSource(previous, code), {
+    initial_capital: 1000,
+    exchange_id: 'binance',
+    notification_channels: ['browser']
+  })
+  assert.deepEqual(sanitizeRuntimeConfigForSource(previous, 'GRID_TEMPLATE_VERSION = 6'), previous)
 })
 
 test('strategy setup spans primary controls and refreshes the watchlist when opened', () => {
