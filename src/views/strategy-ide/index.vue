@@ -532,6 +532,7 @@
       :asset-type="currentAssetType"
       :selected-universe-id="selectedUniverseId"
       @use="handleUniverseUse"
+      @deleted="handleUniverseDeleted"
       @close="showUniverseLibrary = false"
     />
 
@@ -949,6 +950,7 @@ export default {
         'switchWorkspaceTitle',
         'switchWorkspaceContent',
         'universeApplied',
+        'universeDeleted',
         'robotTemplates',
         'robotTemplatesDesc',
         'robotGenerated'
@@ -1724,6 +1726,19 @@ export default {
       this.applyUniverseReferenceToCode(item)
       this.showUniverseLibrary = false
       this.$message.success(this.text.universeApplied.replace('{name}', item.name || item.code || ''))
+    },
+    handleUniverseDeleted (item) {
+      if (!item || Number(item.id) !== Number(this.selectedUniverseId)) return
+      this.runConfig = {
+        ...this.runConfig,
+        universe_id: null,
+        universe_code: '',
+        universe_name: ''
+      }
+      if (!this.scriptCodeHidden) {
+        this.scriptCode = String(this.scriptCode || '').replace(/^\s*context\.set_universe\((?:pool=["'][^"']+["']|index=["']INDEX:[^"']+["'])\)\s*\r?\n?/mi, '')
+      }
+      this.$message.info(this.text.universeDeleted.replace('{name}', item.name || item.code || ''))
     },
     async applyGeneratedRobot (generated) {
       if (!generated || !generated.code) return

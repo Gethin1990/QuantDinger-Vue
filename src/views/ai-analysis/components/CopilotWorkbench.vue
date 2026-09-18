@@ -704,6 +704,8 @@ import storage from 'store'
 import { ACCESS_TOKEN } from '@/store/mutation-types'
 import { loadEnabledMarketOptions, firstMarketValue } from '@/utils/marketModules'
 import { resolveMarketBiasLabelKey, resolveTradeActionLabelKey } from '@/utils/fastAnalysisPresentation'
+import * as echarts from 'echarts'
+import { buildResearchChartOption, parseResearchChartBlock } from '@/utils/researchCharts.mjs'
 import ProfessionalAnalysisReport from './ProfessionalAnalysisReport.vue'
 import {
   mergeWatchlistSuggestions,
@@ -1312,6 +1314,15 @@ export default {
     }
   },
   mounted () {
+    this._markdownCharts = new Map()
+    this._markdownChartObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(entries => {
+        entries.forEach(entry => {
+          const chart = echarts.getInstanceByDom(entry.target)
+          if (chart) chart.resize()
+        })
+      })
     this.loadMarketModules()
     this.seedSymbolOptions()
     this.loadBilling()
@@ -1326,9 +1337,16 @@ export default {
     this.applyIncomingCopilotPrompt()
     this.$nextTick(this.resizeComposer)
   },
+  updated () {
+    this.scheduleMarkdownCharts()
+  },
   beforeDestroy () {
     if (this.symbolSearchTimer) clearTimeout(this.symbolSearchTimer)
     if (this.addWatchSearchTimer) clearTimeout(this.addWatchSearchTimer)
+    if (this._markdownChartFrame) cancelAnimationFrame(this._markdownChartFrame)
+    if (this._markdownChartObserver) this._markdownChartObserver.disconnect()
+    if (this._markdownCharts) this._markdownCharts.forEach(chart => chart.dispose())
+    this._markdownCharts = null
   },
   methods: {
     applyIncomingCopilotPrompt () {
@@ -4468,6 +4486,18 @@ export default {
       const withTokens = source.replace(/```([\w+-]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
         const idx = blocks.length
         const label = lang || 'text'
+        const chartLabels = {
+          series: this.$t('aiAssetAnalysis.copilot.chartSeries'),
+          line: this.$t('aiAssetAnalysis.copilot.chartLine'),
+          bar: this.$t('aiAssetAnalysis.copilot.chartBar')
+        }
+        const chartSpec = parseResearchChartBlock(label, code, chartLabels)
+        if (chartSpec) {
+          const payload = encodeURIComponent(JSON.stringify(chartSpec))
+          const ariaLabel = this.escapeHtml(this.$t('aiAssetAnalysis.copilot.statisticalChart'))
+          blocks.push(`<figure class="qd-research-chart" data-qd-chart="${payload}" aria-label="${ariaLabel}"><div class="qd-research-chart__canvas"></div></figure>`)
+          return `\n@@CODE_BLOCK_${idx}@@\n`
+        }
         blocks.push(
           `<div class="qd-code-block">` +
           `<div class="qd-code-head"><span>${this.escapeHtml(label)}</span><button type="button" class="qd-copy-code" data-code="${encodeURIComponent(code)}">Copy</button></div>` +
@@ -4582,6 +4612,61 @@ export default {
       closeParagraph()
       closeList()
       return out.join('')
+    },
+    scheduleMarkdownCharts () {
+      if (typeof window === 'undefined' || !this.$refs.messages) return
+      if (this._markdownChartFrame) cancelAnimationFrame(this._markdownChartFrame)
+      this._markdownChartFrame = requestAnimationFrame(() => {
+        this._markdownChartFrame = 0
+        this.renderMarkdownCharts()
+      })
+    },
+    markdownChartPalette () {
+      const styles = window.getComputedStyle(this.$el)
+      const read = (name, fallback) => styles.getPropertyValue(name).trim() || fallback
+      const accent = read('--qd-accent', read('--primary-color', '#1677ff'))
+      return {
+        accent,
+        text: read('--qd-text', '#334155'),
+        muted: read('--qd-text-muted', '#64748b'),
+        border: read('--qd-border-soft', 'rgba(148, 163, 184, 0.28)'),
+        tooltip: read('--qd-panel', '#ffffff'),
+        colors: [accent, '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#64748b', '#ec4899']
+      }
+    },
+    renderMarkdownCharts () {
+      const root = this.$refs.messages
+      if (!root || typeof window === 'undefined') return
+      if (!this._markdownCharts) this._markdownCharts = new Map()
+      const nodes = Array.from(root.querySelectorAll('[data-qd-chart]'))
+      const activeNodes = new Set(nodes)
+      this._markdownCharts.forEach((chart, node) => {
+        if (activeNodes.has(node) && document.documentElement.contains(node)) return
+        if (this._markdownChartObserver) this._markdownChartObserver.unobserve(chart.getDom())
+        chart.dispose()
+        this._markdownCharts.delete(node)
+      })
+      const palette = this.markdownChartPalette()
+      const paletteKey = [palette.accent, palette.text, palette.tooltip].join('|')
+      nodes.forEach(node => {
+        const payload = node.getAttribute('data-qd-chart') || ''
+        const renderKey = `${payload}|${paletteKey}`
+        if (node.getAttribute('data-qd-chart-rendered') === renderKey) return
+        const previous = this._markdownCharts.get(node)
+        if (previous) previous.dispose()
+        const canvas = node.querySelector('.qd-research-chart__canvas')
+        if (!canvas) return
+        try {
+          const spec = JSON.parse(decodeURIComponent(payload))
+          const chart = echarts.init(canvas, null, { renderer: 'canvas' })
+          chart.setOption(buildResearchChartOption(spec, palette), true)
+          node.setAttribute('data-qd-chart-rendered', renderKey)
+          this._markdownCharts.set(node, chart)
+          if (this._markdownChartObserver) this._markdownChartObserver.observe(canvas)
+        } catch (_) {
+          node.classList.add('qd-research-chart--invalid')
+        }
+      })
     },
     async handleMessageContentClick (event) {
       const btn = event.target && event.target.closest ? event.target.closest('.qd-copy-code') : null
@@ -5870,6 +5955,29 @@ export default {
   border-bottom: 0;
 }
 
+.message-content ::v-deep .qd-research-chart {
+  width: ~"min(760px, 100%)";
+  margin: 12px 0 16px;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid var(--qd-border-soft);
+  border-radius: 10px;
+  background: var(--qd-panel);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.message-content ::v-deep .qd-research-chart__canvas {
+  width: 100%;
+  height: 320px;
+  min-height: 240px;
+}
+
+.message-content ::v-deep .qd-research-chart--invalid {
+  min-height: 88px;
+  border-style: dashed;
+  background: var(--qd-panel-soft);
+}
+
 .message-content ::v-deep a {
   color: var(--qd-accent);
   text-decoration: none;
@@ -5941,6 +6049,20 @@ export default {
   color: #e2e8f0;
   line-height: 1.58;
   white-space: pre;
+}
+
+@media (max-width: 760px) {
+  .message-content ::v-deep .qd-research-chart {
+    width: 100%;
+    margin-right: 0;
+    margin-left: 0;
+    padding: 4px;
+  }
+
+  .message-content ::v-deep .qd-research-chart__canvas {
+    height: 260px;
+    min-height: 220px;
+  }
 }
 
 .message-meta {
