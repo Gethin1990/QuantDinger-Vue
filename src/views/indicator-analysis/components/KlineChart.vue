@@ -274,12 +274,15 @@ export default {
     let chartResizeRafId = null
     let volEnsureRafId = null
     let volPaneEnsured = false
+    let volPaneId = null
+    const volumeVisible = ref(true)
     const VOL_PANE_OPTIONS = { height: 112, minHeight: 64, dragEnabled: true }
     const syncVolumePaneLayout = () => {
       if (!chartRef.value) return
+      if (!volumeVisible.value) return
       if (!volPaneEnsured && typeof chartRef.value.createIndicator === 'function') {
         try {
-          chartRef.value.createIndicator('VOL', false, VOL_PANE_OPTIONS)
+          volPaneId = chartRef.value.createIndicator('VOL', false, VOL_PANE_OPTIONS) || null
         } catch (e) {
         }
         volPaneEnsured = true
@@ -297,6 +300,26 @@ export default {
         volEnsureRafId = null
         syncVolumePaneLayout()
       })
+    }
+    const toggleVolumePane = () => {
+      volumeVisible.value = !volumeVisible.value
+      if (volumeVisible.value) {
+        volPaneEnsured = false
+        scheduleSyncVolumePaneLayout()
+        return
+      }
+      if (!chartRef.value || typeof chartRef.value.removeIndicator !== 'function') return
+      try {
+        if (volPaneId) chartRef.value.removeIndicator(volPaneId, 'VOL')
+        else chartRef.value.removeIndicator('VOL')
+      } catch (e) {
+      }
+      volPaneId = null
+      volPaneEnsured = false
+      try {
+        chartRef.value.resize()
+      } catch (e) {
+      }
     }
 
     const wmCanvasRef = ref(null)
@@ -562,6 +585,14 @@ export default {
 
     const indicatorButtons = ref([
       {
+        id: 'vol',
+        name: 'Volume',
+        shortName: 'VOL',
+        type: 'builtin-volume',
+        defaultParams: {},
+        paramSchema: []
+      },
+      {
         id: 'sma',
         name: 'SMA',
         shortName: 'SMA',
@@ -811,6 +842,7 @@ export default {
     })
 
     const isIndicatorActive = (indicatorId) => {
+      if (indicatorId === 'vol') return volumeVisible.value
       return props.activeIndicators.some(ind => ind.id === indicatorId)
     }
 
@@ -918,6 +950,10 @@ export default {
 
     const handleIndicatorButtonClick = (indicator) => {
       if (!indicator || !indicator.id) return
+      if (indicator.id === 'vol') {
+        toggleVolumePane()
+        return
+      }
       const fallbackColor = getIndicatorColor(activePresetIndicators.value.length)
       const nextParams = pickNextDefaultParams(indicator, activePresetIndicators.value)
       emit('indicator-toggle', {
@@ -2962,6 +2998,7 @@ registerOverlay({
         chartRef.value = null
       }
       volPaneEnsured = false
+      volPaneId = null
 
       try {
         const container = document.getElementById('kline-chart-container')
@@ -5166,6 +5203,7 @@ registerOverlay({
         chartRef.value = null
       }
       volPaneEnsured = false
+      volPaneId = null
       window.removeEventListener('resize', handleResize)
     })
 
@@ -5200,6 +5238,7 @@ registerOverlay({
       executePythonStrategy,
       parsePythonStrategy,
       indicatorButtons,
+      volumeVisible,
       activePresetIndicators,
       handleIndicatorButtonClick,
       isIndicatorActive,

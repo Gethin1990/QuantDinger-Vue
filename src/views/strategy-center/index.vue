@@ -18,6 +18,7 @@
     </header>
 
     <live-operations-table
+      ref="operationsTable"
       :strategies="strategies"
       :loading="loading"
       :load-error="loadError"
@@ -66,7 +67,8 @@ export default {
       editorMode: '',
       editorStrategyId: null,
       editorInstanceKey: 0,
-      editorRouteSignature: ''
+      editorRouteSignature: '',
+      strategyLoadPromise: null
     }
   },
   computed: {
@@ -105,20 +107,31 @@ export default {
       if (Array.isArray(res.data)) return res.data
       return []
     },
-    async loadStrategies () {
-      if (this.loading) return
+    async loadStrategies ({ force = false } = {}) {
+      if (this.loading && this.strategyLoadPromise) {
+        if (!force) return this.strategyLoadPromise
+        await this.strategyLoadPromise
+      }
       this.loading = true
       this.loadError = false
-      try {
-        const res = await getStrategyList()
-        if (!res || res.code !== 1) throw new Error('STRATEGY_LIST_LOAD_FAILED')
-        this.strategies = this.parseList(res)
-        this.refreshedAt = new Date()
-      } catch (error) {
-        this.loadError = true
-      } finally {
-        this.loading = false
-      }
+      const request = getStrategyList()
+      const loadPromise = (async () => {
+        try {
+          const res = await request
+          if (!res || res.code !== 1) throw new Error('STRATEGY_LIST_LOAD_FAILED')
+          this.strategies = this.parseList(res)
+          this.refreshedAt = new Date()
+        } catch (error) {
+          this.loadError = true
+        } finally {
+          if (this.strategyLoadPromise === loadPromise) {
+            this.strategyLoadPromise = null
+            this.loading = false
+          }
+        }
+      })()
+      this.strategyLoadPromise = loadPromise
+      return loadPromise
     },
     async handleStart (strategy) {
       if (!strategy || !strategy.id || this.controlLoadingId) return
@@ -205,9 +218,17 @@ export default {
       this.editorRouteSignature = ''
       this.clearEditorRouteState()
     },
-    async handleEditorSaved () {
+    async handleEditorSaved (saved = {}) {
+      const savedId = Number(saved.id || this.editorStrategyId || 0)
       this.closeLiveEditor()
-      await this.loadStrategies()
+      await this.loadStrategies({ force: true })
+      if (!savedId) return
+      await this.$nextTick()
+      const savedStrategy = this.strategies.find(item => Number(item.id) === savedId)
+      const operationsTable = this.$refs.operationsTable
+      if (savedStrategy && operationsTable && typeof operationsTable.selectStrategy === 'function') {
+        operationsTable.selectStrategy(savedStrategy)
+      }
     },
     clearEditorRouteState () {
       if (!this.$route.query.mode) return
@@ -276,25 +297,27 @@ export default {
 .strategy-center > .operations-workspace { flex: 1 1 auto; min-height: 0; }
 .sc-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 16px;
-  h1 { margin: 0; font-size: 27px; font-weight: 700; line-height: 1.25; letter-spacing: -.02em; color: #111827; }
-  p { margin: 7px 0 0; color: #667085; font-size: 14px; line-height: 1.55; }
+  gap: 16px;
+  min-height: 40px;
+  margin-bottom: 10px;
+  > div:first-child { display: flex; align-items: center; gap: 16px; min-width: 0; }
+  h1 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -.015em; color: #111827; white-space: nowrap; }
+  p { min-width: 0; margin: 0; overflow: hidden; color: #667085; font-size: 12px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 }
-.sc-title-row { display: flex; align-items: center; gap: 14px; }
+.sc-title-row { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; }
 .system-health {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   color: #3f7c57;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   i { width: 7px; height: 7px; border-radius: 50%; background: #22a95a; box-shadow: 0 0 0 4px rgba(34, 169, 90, 0.12); }
   &.is-warning { color: #b06b18; i { background: #d68a24; box-shadow: 0 0 0 4px rgba(214, 138, 36, 0.12); } }
 }
-.sc-refresh { display: flex; align-items: center; gap: 12px; color: #667085; font-size: 13px; font-variant-numeric: tabular-nums; }
+.sc-refresh { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; color: #667085; font-size: 12px; font-variant-numeric: tabular-nums; }
 .theme-dark {
   background: #080808;
   color: #e7e9ed;
@@ -304,7 +327,9 @@ export default {
 }
 @media (max-width: 720px) {
   .strategy-center { height: auto; min-height: calc(100vh - 64px); overflow: visible; padding: 12px !important; }
-  .sc-header { flex-direction: column; }
+  .sc-header { align-items: stretch; flex-direction: column; }
+  .sc-header > div:first-child { width: 100%; }
+  .sc-header p { display: none; }
   .sc-refresh { width: 100%; justify-content: space-between; }
 }
 </style>

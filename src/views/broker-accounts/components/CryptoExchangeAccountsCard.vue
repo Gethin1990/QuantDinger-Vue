@@ -44,6 +44,20 @@
                 <span v-if="item.api_key_hint" class="crypto-item-hint">{{ item.api_key_hint }}</span>
                 <span v-if="item.created_at" class="crypto-item-time">{{ formatTime(item.created_at) }}</span>
               </div>
+              <div class="crypto-item-attributes">
+                <div class="crypto-item-attribute">
+                  <span class="crypto-item-attribute-label">{{ $t('brokerAccounts.cryptoSection.environmentLabel') }}</span>
+                  <a-tag :class="['credential-tag', 'credential-tag--' + credentialEnvironment(item)]">
+                    {{ $t(credentialEnvironmentKey(item)) }}
+                  </a-tag>
+                </div>
+                <div class="crypto-item-attribute">
+                  <span class="crypto-item-attribute-label">{{ $t('brokerAccounts.cryptoSection.scopeLabel') }}</span>
+                  <a-tag class="credential-tag credential-tag--scope">
+                    {{ $t(credentialScopeKey(item)) }}
+                  </a-tag>
+                </div>
+              </div>
             </div>
           </div>
           <div class="crypto-item-footer">
@@ -195,6 +209,11 @@ import { getAccountSnapshot } from '@/api/strategy'
 import ExchangeAccountModal from '@/components/ExchangeAccountModal/ExchangeAccountModal.vue'
 import RenameCredentialModal from '@/components/RenameCredentialModal/RenameCredentialModal.vue'
 import { filterCryptoExchangeCredentials, getExchangeDisplayName } from '@/utils/exchangeCredential'
+import {
+  credentialEnvironmentKey as getCredentialEnvironmentKey,
+  credentialScopeKey as getCredentialScopeKey,
+  normalizeCredentialEnvironment
+} from '@/utils/exchangeCredentialPresentation'
 import moment from 'moment'
 
 const DISPLAY_NAMES = {
@@ -335,6 +354,15 @@ export default {
       const hint = item && item.api_key_hint
       if (hint) return hint
       return this.$t('brokerAccounts.cryptoSection.unnamed')
+    },
+    credentialEnvironment (item) {
+      return normalizeCredentialEnvironment(item)
+    },
+    credentialEnvironmentKey (item) {
+      return getCredentialEnvironmentKey(item)
+    },
+    credentialScopeKey (item) {
+      return getCredentialScopeKey(item)
     },
     exchangeInitial (id) {
       const name = this.exchangeDisplayName(id)
@@ -644,6 +672,74 @@ export default {
 }
 .crypto-item-time { color: #bfbfbf; font-size: 11px; }
 .crypto-card.theme-dark .crypto-item-time { color: rgba(255, 255, 255, 0.4); }
+.crypto-item-attributes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 10px;
+}
+.crypto-item-attribute {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.crypto-item-attribute-label {
+  color: #8c8c8c;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.credential-tag {
+  margin: 0;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.credential-tag--live {
+  border-color: #b7eb8f;
+  background: #f6ffed;
+  color: #389e0d;
+}
+.credential-tag--demo {
+  border-color: #ffd591;
+  background: #fff7e6;
+  color: #d46b08;
+}
+.credential-tag--testnet {
+  border-color: #91d5ff;
+  background: #e6f7ff;
+  color: #096dd9;
+}
+.credential-tag--scope {
+  border-color: #d9d9d9;
+  background: #fafafa;
+  color: #434343;
+}
+.crypto-card.theme-dark {
+  .crypto-item-attribute-label { color: rgba(255, 255, 255, 0.48); }
+  .credential-tag--live {
+    border-color: rgba(82, 196, 26, 0.45);
+    background: rgba(82, 196, 26, 0.13);
+    color: #95de64;
+  }
+  .credential-tag--demo {
+    border-color: rgba(250, 173, 20, 0.45);
+    background: rgba(250, 173, 20, 0.13);
+    color: #ffc53d;
+  }
+  .credential-tag--testnet {
+    border-color: rgba(24, 144, 255, 0.45);
+    background: rgba(24, 144, 255, 0.14);
+    color: #69c0ff;
+  }
+  .credential-tag--scope {
+    border-color: #434343;
+    background: #242424;
+    color: rgba(255, 255, 255, 0.78);
+  }
+}
 .crypto-item-footer {
   display: flex;
   flex-wrap: wrap;

@@ -94,6 +94,9 @@ test('code and AI areas share one accessible draggable vertical split', () => {
   assert.match(viewSource, /startCodeAiResize \(event\)[\s\S]*?Math\.max\(28, Math\.min\(76, raw\)\)/)
   assert.match(viewSource, /@keydown\.up\.prevent="adjustCodeAiSplit\(-3\)"/)
   assert.match(viewSource, /@dblclick="resetCodeAiSplit"/)
+  assert.match(viewSource, /class="code-panel-body" :class="\{[^}]*'ai-is-collapsed': !aiPanelExpanded/)
+  assert.match(viewSource, /v-show="aiPanelExpanded"[\s\S]*?class="code-ai-resizer"/)
+  assert.match(viewSource, /\.ai-workspace-section[\s\S]*?&\.is-collapsed \{[\s\S]*?flex: 0 0 42px;/)
 })
 
 test('code quality action and result live in the editor guide bar', () => {
@@ -101,6 +104,8 @@ test('code quality action and result live in the editor guide bar', () => {
   assert.match(guideBlock, /code-quality-top-status/)
   assert.match(guideBlock, /@click="runCodeQualityCheck"/)
   assert.match(guideBlock, /indicatorIde\.devGuide/)
+  assert.match(guideBlock, /https:\/\/www\.quantdinger\.com\/doc\/trading\/INDICATOR_DEV_GUIDE\.html/)
+  assert.doesNotMatch(guideBlock, /docs-zh\.html#strategy-overview/)
   assert.doesNotMatch(viewSource, /class="code-quality-panel"/)
 })
 
@@ -133,7 +138,7 @@ test('indicator quick trade opens as a task-ordered dock below the K-line', () =
   assert.match(viewSource, /\.ide-quick-bottom--collapsed\s*\{[\s\S]*?flex-basis: 40px;/)
   assert.match(viewSource, /<quick-trade-panel[\s\S]*?embedded-dock/)
   assert.match(viewSource, /\.ide-chart-fs-row\s*\{[\s\S]*?flex-direction: column;/)
-  assert.match(viewSource, /\.ide-quick-bottom\s*\{[\s\S]*?flex: 0 0 clamp\(320px, 34vh, 430px\);/)
+  assert.match(viewSource, /\.ide-quick-bottom\s*\{[\s\S]*?flex: 0 0 clamp\(360px, 39vh, 470px\);/)
   assert.match(quickTradeSource, /embeddedDock: \{ type: Boolean, default: false \}/)
   assert.match(quickTradeSource, /<div v-if="!embeddedDock" class="qt-symbol-bar">/)
   assert.match(quickTradeSource, /\.quick-trade-embedded\.qt-embedded-ide\.qt-embedded-dock\s*\{[\s\S]*?grid-template-columns: minmax\(260px, 0\.9fr\) minmax\(300px, 1\.05fr\) minmax\(340px, 1\.25fr\);/)

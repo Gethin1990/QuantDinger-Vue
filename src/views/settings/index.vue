@@ -302,18 +302,22 @@
               <a-alert v-if="catalogLatest" showIcon :type="catalogStatusType" :message="catalogStatusLabel" :description="catalogStatusDescription" />
               <a-spin :spinning="catalogLoading">
                 <a-row :gutter="16" class="catalog-stats">
-                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.activeRecords')" :value="catalogMetric('active')" /></a-col>
-                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.uniqueSymbols')" :value="catalogMetric('symbols')" /></a-col>
-                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.equityContracts')" :value="catalogMetric('equities')" /></a-col>
-                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.rwaContracts')" :value="catalogMetric('rwa')" /></a-col>
+                  <a-col :xs="12" :md="12"><a-statistic :title="$t('settings.marketCatalog.activeRecords')" :value="catalogMetric('active')" /></a-col>
+                  <a-col :xs="12" :md="12"><a-statistic :title="$t('settings.marketCatalog.uniqueSymbols')" :value="catalogMetric('symbols')" /></a-col>
+                </a-row>
+                <a-row :gutter="16" class="catalog-stats catalog-product-stats">
+                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.ordinarySpot')" :value="catalogMetric('ordinary_spot')" /></a-col>
+                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.tokenizedEquity')" :value="catalogMetric('tokenized_equity')" /></a-col>
+                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.directEquity')" :value="catalogMetric('direct_equity')" /></a-col>
+                  <a-col :xs="12" :md="6"><a-statistic :title="$t('settings.marketCatalog.stockPerpetual')" :value="catalogMetric('stock_perpetual')" /></a-col>
                 </a-row>
                 <div class="catalog-section-title">{{ $t('settings.marketCatalog.venueCoverage') }}</div>
                 <div class="catalog-table-wrap">
                   <table class="catalog-table">
-                    <thead><tr><th>{{ $t('settings.marketCatalog.exchange') }}</th><th>{{ $t('settings.marketCatalog.spot') }}</th><th>{{ $t('settings.marketCatalog.swap') }}</th><th>{{ $t('settings.marketCatalog.syncResult') }}</th></tr></thead>
+                    <thead><tr><th>{{ $t('settings.marketCatalog.exchange') }}</th><th>{{ $t('settings.marketCatalog.ordinarySpot') }}</th><th>{{ $t('settings.marketCatalog.tokenizedEquity') }}</th><th>{{ $t('settings.marketCatalog.directEquity') }}</th><th>{{ $t('settings.marketCatalog.stockPerpetual') }}</th><th>{{ $t('settings.marketCatalog.syncResult') }}</th></tr></thead>
                     <tbody>
                       <tr v-for="venue in catalogVenueRows" :key="venue.exchange">
-                        <td>{{ venue.label }}</td><td>{{ venue.spot }}</td><td>{{ venue.swap }}</td>
+                        <td>{{ venue.label }}</td><td>{{ venue.ordinarySpot }}</td><td>{{ venue.tokenizedEquity }}</td><td>{{ venue.directEquity }}</td><td>{{ venue.stockPerpetual }}</td>
                         <td><a-tag :color="venue.statusColor">{{ venue.statusLabel }}</a-tag></td>
                       </tr>
                     </tbody>
@@ -1031,8 +1035,13 @@ export default {
       const coverage = {}
       for (const row of ((this.catalogOverview && this.catalogOverview.venues) || [])) {
         const key = String(row.exchange || '').toLowerCase()
-        if (!coverage[key]) coverage[key] = { spot: 0, swap: 0 }
-        coverage[key][row.market_type] = Number(row.active || 0)
+        if (!coverage[key]) {
+          coverage[key] = { ordinarySpot: 0, tokenizedEquity: 0, directEquity: 0, stockPerpetual: 0 }
+        }
+        coverage[key].ordinarySpot += Number(row.ordinary_spot || 0)
+        coverage[key].tokenizedEquity += Number(row.tokenized_equity || 0)
+        coverage[key].directEquity += Number(row.direct_equity || 0)
+        coverage[key].stockPerpetual += Number(row.stock_perpetual || 0)
       }
       const contexts = ((this.catalogLatest && this.catalogLatest.result && this.catalogLatest.result.contexts) || [])
       return Object.keys(labels).map(exchange => {
@@ -1047,8 +1056,10 @@ export default {
         return {
           exchange,
           label: labels[exchange],
-          spot: Number((coverage[exchange] && coverage[exchange].spot) || 0).toLocaleString(),
-          swap: Number((coverage[exchange] && coverage[exchange].swap) || 0).toLocaleString(),
+          ordinarySpot: Number((coverage[exchange] && coverage[exchange].ordinarySpot) || 0).toLocaleString(),
+          tokenizedEquity: Number((coverage[exchange] && coverage[exchange].tokenizedEquity) || 0).toLocaleString(),
+          directEquity: Number((coverage[exchange] && coverage[exchange].directEquity) || 0).toLocaleString(),
+          stockPerpetual: Number((coverage[exchange] && coverage[exchange].stockPerpetual) || 0).toLocaleString(),
           statusColor: colors[status],
           statusLabel: this.$t(`settings.marketCatalog.status.${status}`)
         }

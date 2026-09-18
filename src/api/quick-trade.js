@@ -44,3 +44,12 @@ export function closeQuickTradePosition (data) {
     data
   })
 }
+
+/** Cancel an active quick trade order */
+export function cancelQuickTradeOrder (data) {
+  return request({
+    url: '/api/quick-trade/cancel-order',
+    method: 'post',
+    data
+  })
+}

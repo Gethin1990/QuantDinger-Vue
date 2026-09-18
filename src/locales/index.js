@@ -18,6 +18,7 @@ import reviewedUiOverrides from './reviewed-ui-overrides'
 import professionalReportOverrides from './professional-report-overrides'
 import backtestRangeOverrides from './backtest-range-overrides'
 import settingsResearchOverrides from './settings-research-overrides'
+import strategyBuilderOverrides from './strategy-builder-overrides'
 
 Vue.use(VueI18n)
 
@@ -40,7 +41,8 @@ const messages = {
     ...(reviewedUiOverrides[defaultLang] || {}),
     ...(professionalReportOverrides[defaultLang] || {}),
     ...(backtestRangeOverrides[defaultLang] || {}),
-    ...(settingsResearchOverrides[defaultLang] || {})
+    ...(settingsResearchOverrides[defaultLang] || {}),
+    ...(strategyBuilderOverrides[defaultLang] || {})
   }
 }
 
@@ -122,7 +124,8 @@ function mergeLocaleOverrides (lang) {
     ...(reviewedUiOverrides[lang] || {}),
     ...(professionalReportOverrides[lang] || {}),
     ...(backtestRangeOverrides[lang] || {}),
-    ...(settingsResearchOverrides[lang] || {})
+    ...(settingsResearchOverrides[lang] || {}),
+    ...(strategyBuilderOverrides[lang] || {})
   }
   i18n.setLocaleMessage(lang, {
     ...(i18n.getLocaleMessage(lang) || {}),
@@ -147,6 +150,8 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(copilotOverrides[lang] || {}),
       ...(profileSecurityMessages[lang] || {}),
       ...(brokerAccountWorkspaceMessages[lang] || {}),
+      ...(strategyV2Messages[lang] || {}),
+      ...(fundamentalSyncMessages[lang] || {}),
       ...(strategyLiveRiskMessages[lang] || {}),
       ...(robotBuilderMessages[lang] || {}),
       ...(strategyTradeRecordMessages[lang] || {}),
@@ -156,7 +161,8 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(reviewedUiOverrides[lang] || {}),
       ...(professionalReportOverrides[lang] || {}),
       ...(backtestRangeOverrides[lang] || {}),
-      ...(settingsResearchOverrides[lang] || {})
+      ...(settingsResearchOverrides[lang] || {}),
+      ...(strategyBuilderOverrides[lang] || {})
     })
     i18n.setLocaleMessage(lang, locale)
     loadedLanguages.push(lang)

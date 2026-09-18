@@ -26,6 +26,7 @@
 import { broker } from '@/api/broker'
 
 function num (v) {
+  if (v === null || v === undefined || v === '') return null
   const n = Number(v)
   return isFinite(n) ? n : null
 }
@@ -41,6 +42,7 @@ export default {
   name: 'BrokerAccountCard',
   props: {
     brokerId: { type: String, required: true },
+    credentialId: { type: Number, default: null },
     isDarkTheme: { type: Boolean, default: false }
   },
   data () {
@@ -60,25 +62,24 @@ export default {
       if (!this.info) return []
       const i = this.info
       const ccy = i.currency || i.account_currency || 'USD'
-      const positionCount = this.resolvePositionCount(i, this.positions)
       if (this.brokerId === 'alpaca') {
         return [
-          { key: 'equity', label: this.$t('brokerAccounts.kpi.equity'), value: money(i.equity || i.portfolio_value || i.summary?.Equity?.value, ccy) },
-          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash || i.summary?.Cash?.value, ccy) },
-          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.summary?.BuyingPower?.value, ccy), tone: 'accent' },
-          { key: 'positions', label: this.$t('brokerAccounts.kpi.positionsCount'), value: positionCount == null ? '--' : String(positionCount) },
-          { key: 'daytrades', label: this.$t('brokerAccounts.kpi.dayTrades'), value: String(i.daytrade_count || i.summary?.DayTradeCount?.value || '--') },
-          { key: 'status', label: this.$t('brokerAccounts.kpi.accountStatus'), value: String(i.status || i.summary?.Status?.value?.replace('AccountStatus.', '') || 'ACTIVE'), tone: 'positive' }
+          { key: 'equity', label: this.$t('brokerAccounts.kpi.equity'), value: money(i.equity != null ? i.equity : i.portfolio_value, ccy) },
+          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash, ccy) },
+          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power, ccy), tone: 'accent' },
+          { key: 'positions', label: this.$t('brokerAccounts.kpi.positionsCount'), value: i.position_count != null ? String(i.position_count) : '--' },
+          { key: 'fills', label: this.$t('brokerAccounts.kpi.recentFills'), value: i.recent_filled_order_count != null ? String(i.recent_filled_order_count) : '--', sub: this.$t('brokerAccounts.kpi.recentFillsHint', { limit: i.recent_order_limit || 100 }) },
+          { key: 'status', label: this.$t('brokerAccounts.kpi.accountStatus'), value: String(i.status || '--'), tone: i.status === 'ACTIVE' ? 'positive' : '' }
         ]
       }
       if (this.brokerId === 'ibkr') {
         return [
-          { key: 'nav', label: this.$t('brokerAccounts.kpi.netLiq'), value: money(i.net_liquidation || i.summary?.NetLiquidation?.value, ccy) },
-          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.total_cash_value || i.summary?.TotalCashValue?.value, ccy) },
-          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.summary?.BuyingPower?.value, ccy), tone: 'accent' },
-          { key: 'init', label: this.$t('brokerAccounts.kpi.initMargin'), value: money(i.init_margin_req || i.summary?.InitMarginReq?.value, ccy) },
-          { key: 'maint', label: this.$t('brokerAccounts.kpi.maintMargin'), value: money(i.maint_margin_req || i.summary?.MaintMarginReq?.value, ccy) },
-          { key: 'account', label: this.$t('brokerAccounts.kpi.account'), value: String(i.account || i.summary?.AccountCode || '--') }
+          { key: 'nav', label: this.$t('brokerAccounts.kpi.netLiq'), value: money(i.net_liquidation || i.NetLiquidation || i.summary?.NetLiquidation?.value, ccy) },
+          { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.total_cash_value || i.TotalCashValue || i.summary?.TotalCashValue?.value, ccy) },
+          { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power || i.BuyingPower || i.summary?.BuyingPower?.value, ccy), tone: 'accent' },
+          { key: 'init', label: this.$t('brokerAccounts.kpi.initMargin'), value: money(i.init_margin_req || i.InitMarginReq || i.summary?.InitMarginReq?.value, ccy) },
+          { key: 'maint', label: this.$t('brokerAccounts.kpi.maintMargin'), value: money(i.maint_margin_req || i.MaintMarginReq || i.summary?.MaintMarginReq?.value, ccy) },
+          { key: 'account', label: this.$t('brokerAccounts.kpi.account'), value: String(i.account || i.AccountCode || i.summary?.AccountCode || '--') }
         ]
       }
       return []
@@ -101,55 +102,14 @@ export default {
       this.loading = true
       this.error = null
       try {
-        const [accountRes, positionsRes] = await Promise.allSettled([
-          broker[this.brokerId].account(),
-          broker[this.brokerId].positions()
-        ])
-
-        // Handle account response
-        if (accountRes.status === 'rejected') {
-          const reason = accountRes.reason
-          this.error = (reason && (reason.response && reason.response.data && reason.response.data.error || reason.message)) || 'Account request failed'
-          this.info = null
-        } else {
-          const raw = accountRes.value || {}
-          const payload = raw.data || raw
-          // IBKR returns { success, data: { account, summary } }
-          // The summary dict has { NetLiquidation: { value, currency }, ... }
-          // Flatten it so the metrics computed prop can read both:
-          //   i.summary.NetLiquidation.value  AND  i.net_liquidation (top-level)
-          let accountInner = payload
-          // If payload has nested "data" (double-wrapped), unwrap once more
-          if (payload && payload.data && typeof payload.data === 'object' && !payload.connected) {
-            accountInner = payload.data
-          }
-          // For IBKR: flatten summary tags into top-level snake_case keys
-          if (accountInner && accountInner.summary && typeof accountInner.summary === 'object') {
-            const flat = { ...accountInner }
-            for (const [tag, val] of Object.entries(accountInner.summary)) {
-              // e.g. NetLiquidation → net_liquidation
-              const snakeKey = tag.replace(/([A-Z])/g, (m, off) => (off ? '_' : '') + m.toLowerCase())
-              flat[snakeKey] = typeof val === 'object' ? val.value : val
-            }
-            flat.currency = flat.currency || (accountInner.summary.NetLiquidation && accountInner.summary.NetLiquidation.currency) || 'USD'
-            accountInner = flat
-          }
-          this.info = accountInner && Object.keys(accountInner).length ? accountInner : null
-        }
-
-        const positionsPayload = positionsRes.status === 'fulfilled'
-          ? ((positionsRes.value && (positionsRes.value.data || positionsRes.value)) || {})
-          : {}
-        const list = Array.isArray(positionsPayload)
-          ? positionsPayload
-          : (Array.isArray(positionsPayload.data)
-              ? positionsPayload.data
-              : (positionsPayload.positions || []))
-        this.positions = Array.isArray(list) ? list : []
-      } catch (e) {
+        const res = await broker[this.brokerId].account(this.credentialId ? { credential_id: this.credentialId } : {})
+        if (res && res.success === false) throw new Error('brokerAccounts.accountLoadFailed')
+        const payload = (res && (res.data || res)) || {}
+        const inner = payload.data && typeof payload.data === 'object' ? payload.data : payload
+        this.info = inner && Object.keys(inner).length ? inner : null
+      } catch (_) {
         this.info = null
-        this.error = (e && e.message) || 'Failed to load account'
-        this.positions = []
+        this.$message.error(this.$t('brokerAccounts.accountLoadFailed'))
       } finally {
         this.loading = false
       }

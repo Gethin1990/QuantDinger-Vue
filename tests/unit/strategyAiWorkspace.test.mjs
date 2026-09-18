@@ -57,13 +57,35 @@ test('indicator conversion declares machine-enforced source instrument and timef
   assert.match(page, /Never replace them with USStock:SPY/)
 })
 
-test('side rail exposes scalable parameters and strategy contract while verification stays in the editor header', () => {
+test('indicator conversion prompt agrees with CTA and native protection contracts', () => {
+  const page = read('src/views/strategy-ide/index.vue')
+  const body = page.split('    buildIndicatorConversionPrompt () {')[1].split('\n    async confirmIndicatorToStrategy')[0].replace(/},\s*$/, '')
+  const prompt = new Function(body).call({
+    indicatorConvertContext: { name: 'EMA', code: 'output = {}', params: {} },
+    indicatorConvertInstruction: 'Add risk controls',
+    resolveIndicatorConversionContext: () => ({ instrument: 'Crypto:SOL/USDT@spot', timeframe: '1d' }),
+    text: {}
+  })
+  assert.match(prompt, /single-instrument CTA; do not use on_rebalance/)
+  assert.doesNotMatch(prompt, /scheduled callbacks, or on_rebalance/)
+  assert.match(prompt, /Ratios use decimals: 0.03 means 3%/)
+  assert.match(prompt, /set_default_protection inside an executable handler/)
+  assert.match(prompt, /server-provided Strategy API V2 system contract/)
+  assert.match(prompt, /Source instrument: Crypto:SOL\/USDT@spot/)
+})
+
+test('left inspector hides configuration for blank code and verification stays in the editor header', () => {
   const editor = read('src/views/strategy-ide/components/StrategyEditor.vue')
-  assert.match(editor, /activeSideTab/)
-  assert.match(editor, /slot name="strategy-contract"/)
+  const page = read('src/views/strategy-ide/index.vue')
+  assert.match(editor, /hasStrategyCode \(\)/)
+  assert.match(editor, /v-if="hasRuntimeControls && assetType === 'script'"/)
+  assert.match(editor, /hasStrategyConfiguration \(\)/)
+  assert.match(editor, /v-if="hasStrategyCode && activeParamTemplate" class="params-toolbar"/)
+  assert.doesNotMatch(editor, /slot name="strategy-contract"/)
+  assert.doesNotMatch(page, /template #strategy-contract/)
   assert.doesNotMatch(editor, /slot name="strategy-checks"/)
   assert.match(editor, /class="params-toolbar"/)
-  assert.match(editor, /grid-template-columns: repeat\(auto-fill, minmax\(230px, 1fr\)\)/)
+  assert.match(editor, /\.side-tabs--split \{[\s\S]*\.param-list \{[\s\S]*flex-direction: column;/)
   assert.match(editor, /lastVerificationState/)
   assert.match(editor, /this\.\$emit\('verified', res\.data\)/)
 })
@@ -86,20 +108,23 @@ test('strategy toolbar typography keeps related actions in matching pairs', () =
   assert.match(page, /\.robot-template-button,\n\.factor-library-button,[\s\S]*font-weight: 700;/)
 })
 
-test('desktop strategy workspace keeps code and tools aligned with a full-height AI rail', () => {
+test('desktop strategy workspace uses full-height parameter, code, and AI columns', () => {
   const editor = read('src/views/strategy-ide/components/StrategyEditor.vue')
   const page = read('src/views/strategy-ide/index.vue')
   const aiColumn = editor.indexOf('strategy-ai-workspace-host--primary')
   const codeColumn = editor.indexOf('<div class="code-col">')
-  const toolRow = editor.indexOf('<div class="side-col">')
+  const toolRow = editor.indexOf('class="side-col"')
 
   assert.ok(codeColumn > -1 && codeColumn < toolRow)
   assert.ok(toolRow > -1 && toolRow < aiColumn)
-  assert.match(editor, /grid-template-columns: minmax\(0, 1fr\) minmax\(340px, 32%\)/)
-  assert.match(editor, /grid-template-rows: minmax\(0, 1fr\) 248px/)
-  assert.match(editor, /\.strategy-ai-workspace-host--primary \{[\s\S]*grid-row-end: 3/)
-  assert.match(editor, /\.editor-layout--split \.side-col \{[\s\S]*grid-column-end: 2/)
-  assert.match(page, /grid-template-rows: minmax\(0, 1fr\) auto/)
+  assert.match(editor, /grid-template-columns: minmax\(280px, 18%\) minmax\(520px, 1fr\) minmax\(340px, 29%\)/)
+  assert.match(editor, /\.strategy-ai-workspace-host--primary \{[\s\S]*grid-column-start: 3;[\s\S]*grid-row-end: 2/)
+  assert.match(editor, /\.editor-layout--split \.code-col \{[\s\S]*grid-column-start: 2;/)
+  assert.match(editor, /\.editor-layout--split \.side-col \{[\s\S]*grid-column-start: 1;[\s\S]*height: 100%;/)
+  assert.match(editor, /editor-layout--split-no-params/)
+  assert.match(editor, /v-if="!isSplitSideMode \|\| hasStrategyConfiguration" class="side-col"/)
+  assert.match(page, /grid-template-columns: minmax\(280px, 18%\) minmax\(520px, 1fr\) minmax\(340px, 29%\)/)
+  assert.match(page, /editor-layout--split\.editor-layout--split-no-params/)
 })
 
 test('missing optional AI history route does not show a raw 404 on page entry', () => {
@@ -153,4 +178,28 @@ test('strategy AI generation failures surface and localize the nested validation
     assert.ok(strategyV2Messages[locale]['strategyV2.aiFactorParameterUnsupported'])
     assert.ok(strategyV2Messages[locale]['strategyV2.aiFactorParameterInvalid'])
   }
+})
+
+test('indicator conversion displays the underlying localized validation failure', async () => {
+  const page = read('src/views/strategy-ide/index.vue')
+  const localizeBody = page.split('    localizeStrategyAiError (error) {')[1].split('\n    toggleStrategyAiPanel')[0].replace(/},\s*$/, '')
+  const convertBody = page.split('    async confirmIndicatorToStrategy () {')[1].split('\n    extractAiGeneratedCode')[0].replace(/},\s*$/, '')
+  const failure = { response: { data: { msg: 'strategyV2.generationInvalid', data: { error: 'strategyV2.aiPersistentStateRequired' } } } }
+  const vm = {
+    indicatorConvertContext: { indicatorId: '1', code: 'indicator source' },
+    indicatorConvertInstruction: 'Add a stop loss',
+    resolveIndicatorConversionContext: () => ({ instrument: 'Crypto:SOL/USDT@spot', timeframe: '1d' }),
+    buildIndicatorConversionPrompt: () => 'Conversion template',
+    $t: key => strategyV2Messages['zh-CN'][key] || key,
+    aiWorkspaceText: { sendFailed: 'fallback' },
+    localizeStrategyAiError: new Function('error', localizeBody)
+  }
+  const convert = new Function('aiGenerateStrategy', `return async function () { ${convertBody} }`)(async payload => {
+    assert.equal(payload.context.conversionRequest, 'Add a stop loss')
+    throw failure
+  })
+  await convert.call(vm)
+  assert.equal(vm.indicatorConvertError, strategyV2Messages['zh-CN']['strategyV2.aiPersistentStateRequired'])
+  assert.ok(vm.indicatorConvertError)
+  assert.equal(vm.indicatorConvertLoading, false)
 })
