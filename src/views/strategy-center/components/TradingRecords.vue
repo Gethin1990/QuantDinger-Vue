@@ -289,6 +289,9 @@ export default {
     formatPriceDeviation,
     formatReportedPnl (report) {
       if (!report || report.status === 'not_applicable') return '--'
+      if (report.status === 'not_applicable_spot') {
+        return this.$t('trading-assistant.execution.spotPnlNotApplicable')
+      }
       if (report.status === 'reported') {
         return formatTradeMoney(report.amount, true).replace('$', '') + ' ' + report.currency
       }
