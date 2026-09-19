@@ -508,23 +508,45 @@
                 class="ide-quick-bottom ide-quick-bottom--chart-fs"
                 :class="{ 'ide-quick-bottom--collapsed': !quickTradeDrawerVisible }"
               >
-                <button
-                  type="button"
-                  class="ide-quick-panel-head"
-                  :aria-expanded="quickTradeDrawerVisible ? 'true' : 'false'"
-                  @click="toggleQuickTradeDrawer"
-                >
-                  <div class="ide-quick-panel-head-copy">
-                    <span class="ide-quick-panel-head-title">
-                      <a-icon type="thunderbolt" theme="filled" class="ide-quick-panel-head-icon" />
-                      {{ $t('quickTrade.title') }}
+                <div class="ide-quick-panel-head">
+                  <button
+                    type="button"
+                    class="ide-quick-panel-head-main"
+                    :aria-expanded="quickTradeDrawerVisible ? 'true' : 'false'"
+                    @click="toggleQuickTradeDrawer"
+                  >
+                    <span class="ide-quick-panel-head-copy">
+                      <span class="ide-quick-panel-head-title">
+                        <a-icon type="thunderbolt" theme="filled" class="ide-quick-panel-head-icon" />
+                        {{ $t('quickTrade.title') }}
+                      </span>
+                      <span class="ide-quick-panel-head-meta">{{ qtSymbol }} · {{ market === 'Crypto' ? cryptoMarketType.toUpperCase() : 'SPOT' }}</span>
                     </span>
-                    <span class="ide-quick-panel-head-meta">{{ qtSymbol }} · {{ market === 'Crypto' ? cryptoMarketType.toUpperCase() : 'SPOT' }}</span>
-                  </div>
-                  <span class="ide-quick-panel-toggle" :title="quickTradeDrawerVisible ? $t('indicatorIde.hideQuickTrade') : $t('indicatorIde.showQuickTrade')">
+                  </button>
+                  <a-tooltip :title="$t('aiDecisionFilter.quickTradeHint')" placement="topRight">
+                    <div
+                      class="ide-quick-ai-filter"
+                      :class="{ 'is-enabled': quickTradeAiDecisionFilter }"
+                    >
+                      <a-icon type="safety" />
+                      <span>{{ $t('aiDecisionFilter.title') }}</span>
+                      <a-switch
+                        v-model="quickTradeAiDecisionFilter"
+                        :aria-label="$t('aiDecisionFilter.title')"
+                        size="small"
+                      />
+                    </div>
+                  </a-tooltip>
+                  <button
+                    type="button"
+                    class="ide-quick-panel-toggle"
+                    :title="quickTradeDrawerVisible ? $t('indicatorIde.hideQuickTrade') : $t('indicatorIde.showQuickTrade')"
+                    :aria-label="quickTradeDrawerVisible ? $t('indicatorIde.hideQuickTrade') : $t('indicatorIde.showQuickTrade')"
+                    @click="toggleQuickTradeDrawer"
+                  >
                     <a-icon :type="quickTradeDrawerVisible ? 'down' : 'up'" />
-                  </span>
-                </button>
+                  </button>
+                </div>
                 <div v-if="quickTradeDrawerVisible" class="ide-quick-panel-body">
                   <quick-trade-panel
                     key="ide-embedded-qt"
@@ -537,6 +559,7 @@
                     :preset-price="qtPrice"
                     source="indicator"
                     :market="market"
+                    :ai-decision-filter-enabled="quickTradeAiDecisionFilter"
                     symbol-locked
                     :market-type="market === 'Crypto' ? cryptoMarketType : 'spot'"
                     :overlay-get-container="ideQtOverlayGetContainer"
@@ -1157,6 +1180,7 @@ export default {
       activeIndicators: [],
       chartIndicatorRunning: true,
       quickTradeDrawerVisible: true,
+      quickTradeAiDecisionFilter: false,
       paramDrawerVisible: false,
       indicatorParamOverrides: {},
       indicatorParamDraft: {},
@@ -5758,23 +5782,33 @@ body.dark .ide-signal-alert-modal-wrap {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 0 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  border-left: 0;
-  border-right: 0;
-  border-top: 0;
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
   transition: background 160ms ease;
-  &:hover {
-    background: linear-gradient(180deg, #f8fff3 0%, #edf8e8 100%);
+}
+.ide-quick-panel-head-main {
+  min-width: 0;
+  min-height: 39px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  &:hover .ide-quick-panel-head-title {
+    color: @primary-color;
   }
   &:focus-visible {
     outline: 2px solid fade(@primary-color, 55%);
-    outline-offset: -2px;
+    outline-offset: 2px;
   }
 }
 .ide-quick-panel-head-copy {
@@ -5804,6 +5838,30 @@ body.dark .ide-signal-alert-modal-wrap {
   font-size: 16px;
   color: @primary-color;
 }
+.ide-quick-ai-filter {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .72);
+  transition: border-color .18s ease, color .18s ease, background .18s ease;
+  > .anticon { color: #94a3b8; }
+  &:hover,
+  &:focus-within { border-color: fade(@primary-color, 55%); }
+  &.is-enabled {
+    color: #15803d;
+    border-color: rgba(34, 197, 94, .34);
+    background: rgba(34, 197, 94, .08);
+    > .anticon { color: #16a34a; }
+  }
+}
 .ide-quick-panel-toggle {
   width: 28px;
   height: 24px;
@@ -5812,8 +5870,17 @@ body.dark .ide-signal-alert-modal-wrap {
   justify-content: center;
   flex: 0 0 auto;
   border-radius: 6px;
+  border: 0;
   color: #64748b;
   background: rgba(15, 23, 42, 0.05);
+  cursor: pointer;
+  &:focus-visible {
+    outline: 2px solid fade(@primary-color, 55%);
+    outline-offset: 2px;
+  }
+}
+@media (max-width: 760px) {
+  .ide-quick-ai-filter > span:not(.ant-switch) { display: none; }
 }
 .ide-quick-panel-body {
   flex: 1;
@@ -6313,10 +6380,8 @@ body.dark .ide-signal-alert-modal-wrap {
   .ide-quick-panel-head {
     background: linear-gradient(180deg, #1f1f1f 0%, #1a1a1a 100%);
     border-bottom-color: #303030;
-    &:hover {
-      background: linear-gradient(180deg, #252b22 0%, #1d221b 100%);
-    }
   }
+  .ide-quick-panel-head-main:hover .ide-quick-panel-head-title { color: var(--primary-color, #52c41a); }
   .ide-quick-panel-head-title {
     color: rgba(255, 255, 255, 0.92);
   }
@@ -6325,6 +6390,20 @@ body.dark .ide-signal-alert-modal-wrap {
   }
   .ide-quick-panel-head-icon {
     color: var(--primary-color, #1890ff);
+  }
+  .ide-quick-ai-filter {
+    color: rgba(255, 255, 255, .62);
+    background: rgba(255, 255, 255, .05);
+    border-color: #3a3a3a;
+    > .anticon { color: rgba(255, 255, 255, .48); }
+    &:hover,
+    &:focus-within { border-color: rgba(82, 196, 26, .55); }
+    &.is-enabled {
+      color: #95de64;
+      background: rgba(82, 196, 26, .1);
+      border-color: rgba(82, 196, 26, .38);
+      > .anticon { color: #73d13d; }
+    }
   }
   .ide-quick-panel-toggle {
     color: rgba(255, 255, 255, 0.7);

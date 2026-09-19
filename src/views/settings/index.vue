@@ -1082,8 +1082,9 @@ export default {
     aiSections () {
       const providerSelection = this.aiItems.filter(item => item.key === 'LLM_PROVIDER')
       const providerItems = this.aiItems.filter(item => item.group === this.currentLlmProvider)
+      const jevItems = this.aiItems.filter(item => String(item.key || '').startsWith('JEV_'))
       const commonItems = this.aiItems.filter(item => {
-        if (item.key === 'LLM_PROVIDER' || item.group || this.isSearchSetting(item)) return false
+        if (item.key === 'LLM_PROVIDER' || item.group || String(item.key || '').startsWith('JEV_') || this.isSearchSetting(item)) return false
         return true
       })
       return [
@@ -1100,6 +1101,14 @@ export default {
           badge: this.currentLlmProviderLabel,
           badgeColor: 'geekblue',
           items: providerItems
+        },
+        {
+          key: 'jev',
+          title: this.$t('aiDecisionFilter.title'),
+          description: this.$t('settings.desc.JEV_API_KEY'),
+          badge: 'JEV',
+          badgeColor: 'cyan',
+          items: jevItems
         },
         {
           key: 'common',

@@ -13,6 +13,7 @@ import robotBuilderMessages from './lang/robot-builder-overrides'
 import billingPaymentMessages from './billing-payment-overrides'
 import adminOrderMessages from './admin-order-overrides'
 import strategyTradeRecordMessages from './lang/strategy-trade-records'
+import aiDecisionFilterMessages from './ai-decision-filter-overrides'
 import generatedLocaleOverrides from './generated-locale-overrides'
 import uxOverrides from './ux-overrides'
 import copilotCallsiteOverrides from './copilot-callsite-overrides'
@@ -39,6 +40,7 @@ const messages = {
     ...(billingPaymentMessages[defaultLang] || {}),
     ...(adminOrderMessages[defaultLang] || {}),
     ...(strategyTradeRecordMessages[defaultLang] || {}),
+    ...(aiDecisionFilterMessages[defaultLang] || {}),
     ...(uxOverrides[defaultLang] || {}),
     ...(copilotCallsiteOverrides[defaultLang] || {}),
     ...(generatedLocaleOverrides[defaultLang] || {}),
@@ -124,6 +126,7 @@ function mergeLocaleOverrides (lang) {
     ...(billingPaymentMessages[lang] || {}),
     ...(adminOrderMessages[lang] || {}),
     ...(strategyTradeRecordMessages[lang] || {}),
+    ...(aiDecisionFilterMessages[lang] || {}),
     ...(uxOverrides[lang] || {}),
     ...(copilotCallsiteOverrides[lang] || {}),
     ...(generatedLocaleOverrides[lang] || {}),
@@ -163,6 +166,7 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(billingPaymentMessages[lang] || {}),
       ...(adminOrderMessages[lang] || {}),
       ...(strategyTradeRecordMessages[lang] || {}),
+      ...(aiDecisionFilterMessages[lang] || {}),
       ...(uxOverrides[lang] || {}),
       ...(copilotCallsiteOverrides[lang] || {}),
       ...(generatedLocaleOverrides[lang] || {}),

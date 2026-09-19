@@ -325,7 +325,11 @@
                   <strong>{{ $t('aiDecisionFilter.title') }}</strong>
                   <p>{{ $t(supportsAiDecisionFilter ? 'aiDecisionFilter.strategyHint' : 'aiDecisionFilter.unsupportedStrategy') }}</p>
                 </div>
-                <a-switch v-model="model.aiDecisionFilter" :disabled="!supportsAiDecisionFilter" />
+                <a-switch
+                  v-model="model.aiDecisionFilter"
+                  :aria-label="$t('aiDecisionFilter.title')"
+                  :disabled="!supportsAiDecisionFilter"
+                />
               </div>
             </div>
           </transition>
@@ -410,6 +414,40 @@ const DIRECTION_MODE_ALIASES = {
   bidirectional: 'both'
 }
 const DIRECTION_MODES = new Set(['long_only', 'short_only', 'one_way', 'both', 'neutral'])
+const AI_FILTER_UNSUPPORTED_AUTOMATIONS = new Set(['grid', 'dca', 'martingale', 'layered_martingale'])
+const normalizeAutomationType = value => String(value || '').trim().toLowerCase().replace(/-/g, '_')
+const sourceUsesUnsupportedAutomation = (source = {}, manifest = {}) => {
+  const sourceMetadata = source.metadata && typeof source.metadata === 'object' ? source.metadata : {}
+  const manifestMetadata = manifest.metadata && typeof manifest.metadata === 'object' ? manifest.metadata : {}
+  const candidates = [
+    manifest.bot_type,
+    manifest.executor_type,
+    manifestMetadata.bot_type,
+    manifestMetadata.executor_type,
+    manifestMetadata.strategy_family,
+    source.bot_type,
+    source.executor_type,
+    sourceMetadata.bot_type,
+    sourceMetadata.executor_type,
+    sourceMetadata.strategy_family
+  ].map(normalizeAutomationType)
+  if (candidates.some(value => AI_FILTER_UNSUPPORTED_AUTOMATIONS.has(value))) return true
+
+  const template = normalizeAutomationType(source.template_key || sourceMetadata.template_key)
+  if (Array.from(AI_FILTER_UNSUPPORTED_AUTOMATIONS).some(value => template.includes(value))) return true
+
+  const code = String(source.code || '')
+  const markerGroups = [
+    ['GRID_TEMPLATE_VERSION', 'CELL_LOWER', 'CELL_UPPER', 'CELL_ROLES', 'MAX_OPEN_ENTRY_ORDERS'],
+    ['DCA_TEMPLATE_VERSION', 'DCA_INTERVAL_MINUTES', 'DCA_MAX_ORDERS', 'DCA_TOTAL_BUDGET_PCT', 'def _reconcile_purchase(']
+  ]
+  if (markerGroups.some(markers => markers.every(marker => code.includes(marker)))) return true
+
+  const realtimeRobotMarkers = ['ROBOT_TEMPLATE_VERSION', "ENTRY_TRIGGER_MODE = 'realtime_price'", 'PRICE_LEVELS', 'def on_price_tick(']
+  const martingaleGenerator = code.includes('Strategy API V2 martingale robot generated') ||
+    code.includes('Strategy API V2 layered martingale robot generated')
+  return martingaleGenerator && realtimeRobotMarkers.every(marker => code.includes(marker))
+}
 const normalizeDirectionMode = value => {
   const normalized = String(value || '').trim().toLowerCase().replace(/-/g, '_')
   const result = DIRECTION_MODE_ALIASES[normalized] || normalized
@@ -610,12 +648,10 @@ export default {
       return this.parseObject(this.sourceDetail.metadata)
     },
     supportsAiDecisionFilter () {
-      const metadata = this.sourceMetadata
-      const runtime = this.parseObject(metadata.last_run_config)
-      const type = String(
-        runtime.bot_type || runtime.executor_type || metadata.bot_type || metadata.executor_type || ''
-      ).trim().toLowerCase()
-      return !['grid', 'dca', 'martingale', 'layered_martingale'].includes(type)
+      return !sourceUsesUnsupportedAutomation(
+        { ...this.sourceDetail, metadata: this.sourceMetadata },
+        { ...this.strategyManifest, metadata: this.parseObject(this.strategyManifest.metadata) }
+      )
     },
     sourceRuntimeContract () {
       return extractStrategyRuntimeContractFromCode(this.sourceDetail.code || '')
@@ -1242,7 +1278,9 @@ export default {
 
 <style lang="less">
 .live-strategy-editor-wrap {
-  .ai-decision-filter-card { display: flex; align-items: center; gap: 14px; padding: 15px 16px; border: 1px solid #d9e6f5; border-radius: 9px; background: #f7fbff; }
+  .ai-decision-filter-card { display: flex; align-items: center; gap: 14px; padding: 15px 16px; border: 1px solid #d9e6f5; border-radius: 9px; background: #f7fbff; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+  .ai-decision-filter-card:hover,
+  .ai-decision-filter-card:focus-within { border-color: color-mix(in srgb, var(--primary-color, #1677ff) 48%, #d9e6f5); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #1677ff) 10%, transparent); }
   .ai-decision-filter-card.is-disabled { opacity: .65; }
   .ai-decision-filter-card__icon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #e6f4ff; color: #1677ff; font-size: 17px; }
   .ai-decision-filter-card__copy { flex: 1; min-width: 0; }
@@ -1427,6 +1465,12 @@ export default {
     .notification-card:hover { border-color: color-mix(in srgb, var(--primary-color, #faad14) 55%, #34383f); }
     .execution-mode-card.is-selected,
     .notification-card.is-selected { border-color: var(--primary-color, #faad14); background: color-mix(in srgb, var(--primary-color, #faad14) 12%, #191c20); }
+    .ai-decision-filter-card { border-color: #29465d; background: #111820; }
+    .ai-decision-filter-card:hover,
+    .ai-decision-filter-card:focus-within { border-color: color-mix(in srgb, var(--primary-color, #52c41a) 48%, #29465d); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #52c41a) 12%, transparent); }
+    .ai-decision-filter-card__icon { background: color-mix(in srgb, var(--primary-color, #52c41a) 16%, #111820); color: var(--primary-color, #52c41a); }
+    .ai-decision-filter-card__copy strong { color: #eef0f3; }
+    .ai-decision-filter-card__copy p { color: #98a1ac; }
     .live-risk-card { border-color: #594b27; background: #221f17; }
     .live-risk-card.is-confirmed { border-color: #29543a; background: #17231b; }
     .live-risk-card__icon { background: #382f18; }
@@ -1492,6 +1536,9 @@ export default {
     .execution-panel__status { display: none; }
     .full-radio-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .full-radio-group .ant-radio-button-wrapper { width: auto; }
+    .ai-decision-filter-card { align-items: flex-start; flex-wrap: wrap; }
+    .ai-decision-filter-card__copy { flex-basis: calc(100% - 50px); }
+    .ai-decision-filter-card .ant-switch { margin-inline-start: 50px; }
   }
 }
 </style>

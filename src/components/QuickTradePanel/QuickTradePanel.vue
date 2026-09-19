@@ -346,12 +346,16 @@
               <div class="qt-hint-text qt-tpsl-record-hint">{{ $t('quickTrade.tpslRecordOnlyHint') }}</div>
             </div>
 
-            <div class="qt-ai-filter-row">
+            <div v-if="!embeddedDock" class="qt-ai-filter-row">
               <div>
                 <strong><a-icon type="safety" /> {{ $t('aiDecisionFilter.title') }}</strong>
                 <span>{{ $t('aiDecisionFilter.quickTradeHint') }}</span>
               </div>
-              <a-switch v-model="aiDecisionFilter" size="small" />
+              <a-switch
+                v-model="aiDecisionFilter"
+                :aria-label="$t('aiDecisionFilter.title')"
+                size="small"
+              />
             </div>
 
             <!-- Submit Buttons -->
@@ -568,6 +572,7 @@ export default {
     embedded: { type: Boolean, default: false },
     embeddedIde: { type: Boolean, default: false },
     embeddedDock: { type: Boolean, default: false },
+    aiDecisionFilterEnabled: { type: Boolean, default: false },
     overlayGetContainer: { type: Function, default: null }
   },
   data () {
@@ -593,7 +598,7 @@ export default {
       marginMode: 'cross',
       tpPrice: null,
       slPrice: null,
-      aiDecisionFilter: false,
+      aiDecisionFilter: this.aiDecisionFilterEnabled,
       // state
       submitting: false,
       submittingSide: '',
@@ -793,6 +798,9 @@ export default {
     }
   },
   watch: {
+    aiDecisionFilterEnabled (val) {
+      this.aiDecisionFilter = Boolean(val)
+    },
     visible (val) {
       if (this.embedded) {
         if (val) {
@@ -3158,6 +3166,12 @@ export default {
   border: 1px solid rgba(24, 144, 255, .22);
   border-radius: 8px;
   background: rgba(24, 144, 255, .06);
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+  &:hover,
+  &:focus-within {
+    border-color: color-mix(in srgb, var(--primary-color, #1890ff) 52%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #1890ff) 10%, transparent);
+  }
   strong, span { display: block; }
   strong { font-size: 13px; }
   span { margin-top: 2px; color: #8c8c8c; font-size: 11px; }
@@ -3369,6 +3383,17 @@ export default {
     }
     ::v-deep .ant-select-selection__placeholder {
       color: #666;
+    }
+  }
+  .qt-ai-filter-row {
+    border-color: #29465d;
+    background: #111820;
+    strong { color: rgba(255, 255, 255, .88); }
+    span { color: rgba(255, 255, 255, .56); }
+    &:hover,
+    &:focus-within {
+      border-color: color-mix(in srgb, var(--primary-color, #52c41a) 48%, #29465d);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #52c41a) 12%, transparent);
     }
   }
   .qt-symbol-option {

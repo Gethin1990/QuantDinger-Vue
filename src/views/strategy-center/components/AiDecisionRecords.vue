@@ -7,15 +7,15 @@
       </div>
       <a-button icon="reload" :loading="loading" @click="load">{{ $t('common.refresh') }}</a-button>
     </div>
-    <a-spin :spinning="loading">
+    <a-spin :spinning="loading" aria-live="polite">
       <a-empty v-if="!rows.length" :description="$t('aiDecisionFilter.noRecords')" />
       <a-timeline v-else>
         <a-timeline-item v-for="row in rows" :key="row.decision_uid" :color="decisionColor(row)">
           <div class="ai-decision-record">
             <div class="ai-decision-record__top">
               <a-tag :color="decisionColor(row)">{{ decisionLabel(row) }}</a-tag>
-              <strong>{{ row.action }} · {{ row.symbol }}</strong>
-              <span>{{ formatTime(row.created_at) }}</span>
+              <strong>{{ actionLabel(row.action) }} · {{ row.symbol }}</strong>
+              <time :datetime="row.created_at || null">{{ formatTime(row.created_at) }}</time>
             </div>
             <div class="ai-decision-record__meta">
               <span>{{ $t('aiDecisionFilter.provider') }}: {{ row.provider || '-' }}</span>
@@ -74,6 +74,21 @@ export default {
         : row.decision === 'pass' ? 'aiDecisionFilter.decisionPass' : 'aiDecisionFilter.decisionSkipped'
       return this.$t(key)
     },
+    actionLabel (action) {
+      const normalized = String(action || '').toLowerCase()
+      const keys = {
+        open_long: 'dashboard.signalType.openLong',
+        add_long: 'dashboard.signalType.addLong',
+        open_short: 'dashboard.signalType.openShort',
+        add_short: 'dashboard.signalType.addShort',
+        buy: 'quickTrade.buy',
+        sell: 'quickTrade.sell'
+      }
+      const key = keys[normalized]
+      if (!key) return action || '-'
+      const translated = this.$t(key)
+      return translated === key ? (action || '-') : translated
+    },
     formatConfidence (value) {
       return `${(Number(value || 0) * 100).toFixed(1)}%`
     },
@@ -126,16 +141,31 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.ai-decision-records { min-height: 260px; padding: 18px 20px; }
-.ai-decision-records__head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; }
-.ai-decision-records__head h3 { margin: 0; font-size: 16px; }
-.ai-decision-records__head p { margin: 5px 0 0; color: #8c8c8c; }
-.ai-decision-record { padding: 0 0 8px; }
-.ai-decision-record__top { display: flex; align-items: center; gap: 9px; }
-.ai-decision-record__top span:last-child { margin-left: auto; color: #8c8c8c; font-size: 12px; }
-.ai-decision-record__meta { display: flex; flex-wrap: wrap; gap: 12px; margin: 7px 0; color: #8c8c8c; font-size: 12px; }
+.ai-decision-records { min-height: 260px; padding: 18px 20px; color: #18202c; }
+.ai-decision-records__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.ai-decision-records__head h3 { margin: 0; color: inherit; font-size: 16px; }
+.ai-decision-records__head p { max-width: 680px; margin: 5px 0 0; color: #667085; line-height: 1.55; }
+.ai-decision-record { padding: 12px 14px; border: 1px solid #e8ebf0; border-radius: 9px; background: #fff; }
+.ai-decision-record__top { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.ai-decision-record__top time { margin-inline-start: auto; color: #667085; font-size: 12px; white-space: nowrap; }
+.ai-decision-record__meta { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; color: #667085; font-size: 12px; }
 .ai-decision-record__checks { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-.ai-decision-record p { margin: 4px 0 0; }
-.ai-decision-record__fallback { color: #d48806; font-size: 12px; }
-.theme-dark { color: #e5e7eb; }
+.ai-decision-record__checks .ant-tag { margin: 0; white-space: normal; }
+.ai-decision-record p { margin: 5px 0 0; line-height: 1.55; overflow-wrap: anywhere; }
+.ai-decision-record__fallback { color: #ad6800; font-size: 12px; }
+.theme-dark { color: #eef0f3; }
+.theme-dark .ai-decision-records__head p,
+.theme-dark .ai-decision-record__top time,
+.theme-dark .ai-decision-record__meta { color: #98a1ac; }
+.theme-dark .ai-decision-record { border-color: #30343a; background: #15181b; }
+.theme-dark .ai-decision-record__checks .ant-tag { color: #cfd4da; border-color: #43484f; background: #22262b; }
+.theme-dark .ai-decision-record__fallback { color: #ffc53d; }
+.theme-dark /deep/ .ant-empty-description { color: #98a1ac; }
+
+@media (max-width: 640px) {
+  .ai-decision-records { padding: 15px 12px; }
+  .ai-decision-records__head { align-items: stretch; flex-direction: column; }
+  .ai-decision-records__head .ant-btn { align-self: flex-start; }
+  .ai-decision-record__top time { width: 100%; margin-inline-start: 0; }
+}
 </style>
