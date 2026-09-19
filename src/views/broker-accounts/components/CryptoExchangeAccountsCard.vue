@@ -104,10 +104,10 @@
       <a-spin :spinning="snapshotLoading">
         <a-alert
           v-if="snapshotErrors.length"
-          type="error"
+          :type="snapshotPartial ? 'warning' : 'error'"
           show-icon
           class="snapshot-error-alert"
-          :message="$t('trading-assistant.positions.snapshotFetchErrors')"
+          :message="snapshotPartial ? $t('trading-assistant.positions.snapshotPartial') : $t('trading-assistant.positions.snapshotFetchErrors')"
         >
           <template slot="description">
             <ul class="snapshot-error-list">
@@ -145,7 +145,7 @@
             />
             <a-empty
               v-else
-              :description="snapshotErrors.length ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noSwapPositions')"
+              :description="snapshotScopeFailed('swapPositions') ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noSwapPositions')"
             />
           </a-tab-pane>
           <a-tab-pane key="spot" :tab="spotTabLabel">
@@ -160,7 +160,7 @@
             />
             <a-empty
               v-else
-              :description="snapshotErrors.length ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noSpotPositions')"
+              :description="snapshotScopeFailed('spotPositions') ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noSpotPositions')"
             />
           </a-tab-pane>
           <a-tab-pane key="orders" :tab="ordersTabLabel">
@@ -177,7 +177,7 @@
                 />
                 <a-empty
                   v-else
-                  :description="snapshotErrors.length ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noOpenOrders')"
+                  :description="snapshotScopeFailed('spotOrders') ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noOpenOrders')"
                 />
               </a-tab-pane>
               <a-tab-pane key="swap" :tab="swapOrdersTabLabel">
@@ -192,7 +192,7 @@
                 />
                 <a-empty
                   v-else
-                  :description="snapshotErrors.length ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noOpenOrders')"
+                  :description="snapshotScopeFailed('swapOrders') ? $t('trading-assistant.positions.fetchFailedShort') : $t('trading-assistant.positions.noOpenOrders')"
                 />
               </a-tab-pane>
             </a-tabs>
@@ -258,6 +258,7 @@ export default {
       orderRows: [],
       snapshotFetchedAt: null,
       snapshotErrors: [],
+      snapshotWarningCodes: [],
       snapshotPartial: false
     }
   },
@@ -336,6 +337,16 @@ export default {
     this.loadCredentials()
   },
   methods: {
+    snapshotScopeFailed (scope) {
+      const spotCode = 'brokerAccounts.snapshotSpotOrdersFailed'
+      const swapCode = 'brokerAccounts.snapshotSwapOrdersFailed'
+      const specificCodes = new Set([spotCode, swapCode])
+      const codes = this.snapshotWarningCodes || []
+      if (codes.some(code => !specificCodes.has(code))) return codes.length > 0
+      if (scope === 'spotOrders') return codes.includes(spotCode)
+      if (scope === 'swapOrders') return codes.includes(swapCode)
+      return false
+    },
     emitSummary () {
       this.$emit('summary-change', {
         items: this.items.map(item => ({
@@ -478,6 +489,7 @@ export default {
       this.orderRows = []
       this.snapshotFetchedAt = null
       this.snapshotErrors = []
+      this.snapshotWarningCodes = []
       this.snapshotPartial = false
       try {
         const res = await getAccountSnapshot({ credential_id: item.id })
@@ -487,24 +499,27 @@ export default {
         this.orderRows = this.mapOrderRows(data.open_orders || [])
         this.snapshotOrderActiveTab = this.spotOrderRows.length ? 'spot' : 'swap'
         this.snapshotFetchedAt = data.fetched_at || null
-        this.snapshotPartial = !!data.partial
         const warnings = Array.isArray(data.warnings) ? data.warnings.filter(Boolean) : []
-        if (data.error) {
-          this.snapshotErrors = [data.error, ...warnings.filter(w => w !== data.error)]
-        } else {
-          this.snapshotErrors = warnings
-        }
+        this.snapshotWarningCodes = data.error
+          ? [data.error, ...warnings.filter(w => w !== data.error)]
+          : warnings
+        this.snapshotPartial = !!data.partial || this.snapshotWarningCodes.some(code => [
+          'brokerAccounts.snapshotSpotOrdersFailed',
+          'brokerAccounts.snapshotSwapOrdersFailed'
+        ].includes(code))
+        this.snapshotErrors = [...this.snapshotWarningCodes]
         this.snapshotErrors = this.snapshotErrors.map(message => this.$te(message) ? this.$t(message) : message)
         if (this.snapshotErrors.length) {
-          if (!this.swapRows.length && !this.spotRows.length && !this.orderRows.length) {
-            this.$message.error(this.snapshotErrors[0])
-          } else {
+          if (this.snapshotPartial) {
             this.$message.warning(this.snapshotErrors[0])
+          } else {
+            this.$message.error(this.snapshotErrors[0])
           }
         } else if (res && res.code !== 1 && res.msg) {
           this.$message.warning(res.msg)
         }
       } catch (e) {
+        this.snapshotWarningCodes = ['trading-assistant.positions.snapshotFailed']
         this.snapshotErrors = [this.$t('trading-assistant.positions.snapshotFailed')]
         this.$message.error(this.$t('trading-assistant.positions.snapshotFailed'))
       } finally {
