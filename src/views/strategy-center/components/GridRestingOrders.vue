@@ -13,7 +13,7 @@
       type="error"
       show-icon
       :message="$t('strategyCenter.gridOrders.syncFailed')"
-      :description="summary.sync_error"
+      :description="syncErrorDescription"
     />
     <div class="grid-order-summary">
       <div><span>{{ $t('strategyCenter.gridOrders.open') }}</span><strong>{{ summary.total || orders.length }}</strong></div>
@@ -71,6 +71,11 @@ export default {
     }
   },
   computed: {
+    syncErrorDescription () {
+      const code = String(this.summary.sync_error || '')
+      const known = ['grid_runner_not_available', 'grid_exchange_client_unavailable', 'grid_exchange_audit_rate_limited', 'grid_exchange_orders_unverified']
+      return known.includes(code) ? this.$t(`strategyCenter.gridOrders.errors.${code}`) : code
+    },
     columns () {
       return [
         { title: this.$t('strategyCenter.gridOrders.cell'), dataIndex: 'cell_index', width: 72 },

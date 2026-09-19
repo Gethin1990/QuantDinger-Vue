@@ -142,7 +142,7 @@
           </span>
           <span>
             {{ $t('strategyCenter.console.latency') }}
-            <strong>{{ health(selectedStrategy).latency_ms || health(selectedStrategy).loop_latency_ms || '-' }} ms</strong>
+            <strong>{{ runtimeLatency(selectedStrategy) }} ms</strong>
           </span>
           <span>
             {{ pendingWorkLabel(selectedStrategy) }}
@@ -341,9 +341,13 @@ export default {
       const strategy = this.selectedStrategy || {}
       if (this.executionMode(strategy) !== 'live') return false
       const config = strategyTradingConfig(strategy)
-      const type = String(strategy.bot_type || config.bot_type || config.executor_type || '').toLowerCase()
+      const type = String(strategy.resolved_bot_type || strategy.bot_type || config.bot_type || config.executor_type || '').toLowerCase().replace(/-/g, '_')
       const template = String(strategy.template_key || config.template_key || '').toLowerCase()
-      return type === 'grid' || (!type && template.includes('robot_v2_grid'))
+      const params = config.bot_params && typeof config.bot_params === 'object' ? config.bot_params : {}
+      const parameterKeys = Object.keys(params).map(key => String(key).toLowerCase().replace(/_/g, ''))
+      const hasGridParameters = ['gridcount', 'lowerprice', 'upperprice'].every(key => parameterKeys.includes(key))
+      const triggerMode = String(this.health(strategy).trigger_mode || '').toLowerCase()
+      return type === 'grid' || hasGridParameters || template.includes('robot_v2_grid') || triggerMode === 'exchange_resting_orders'
     },
     runningStrategies () {
       return this.strategies.filter(this.isRunning)
@@ -544,6 +548,11 @@ export default {
     },
     formatLivePnl (value) { return this.isLiveFinancial ? this.formatPnl(value) : '—' },
     formatLivePercent (value, signed = true) { return this.isLiveFinancial ? this.formatPercent(value, signed) : '—' },
+    runtimeLatency (strategy) {
+      const health = this.health(strategy)
+      const value = health.latency_ms ?? health.loop_latency_ms
+      return value == null || value === '' || !Number.isFinite(Number(value)) ? '-' : Number(value)
+    },
     formatTime (value) {
       if (!value) return '-'
       const numeric = typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value).trim()) ? Number(value) : null

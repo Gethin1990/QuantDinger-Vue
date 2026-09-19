@@ -9,6 +9,13 @@ const locale = {
   'strategyRuntime.spotBalanceUnavailable': 'The available spot balance could not be verified. No sell order was submitted. Refresh the account balance and try again.',
   'strategyRuntime.spotBalanceInsufficient': 'No sellable spot balance is available, or the quantity is below the trading minimum. Check frozen balances and pending orders before retrying.',
   'strategyRuntime.spotCloseQuantityInvalid': 'The spot sell quantity or its precision adjustment is invalid. No order was submitted.',
+  'strategyRuntime.gridStartupRollbackClientFailed': 'The initial grid position could not be rolled back because the exchange connection failed. Manual review is required.',
+  'strategyRuntime.gridStartupRollbackFailed': 'The initial grid position could not be fully closed. Manual review is required.',
+  'strategyRuntime.gridStartupRollbackPartial': 'The initial grid position was only partially closed. Manual review is required.',
+  'strategyRuntime.gridStartupRollbackCompleted': 'The initial grid position was closed because exchange resting coverage could not be established.',
+  'strategyRuntime.gridStartupCoverageFailed': 'Grid startup stopped because no exchange resting coverage was established.',
+  'strategyRuntime.gridStartupCoverageFailedRolledBack': 'Grid startup stopped because no exchange resting coverage was established. The initial position was closed.',
+  'strategyRuntime.gridStartupCoverageFailedRollbackFailed': 'Grid startup stopped because no exchange resting coverage was established, and the initial position could not be fully closed. Manual review is required.',
   'strategyCenter.positionOwnership.alpacaRiskDescription': 'For each Alpaca snapshot, holdings above the combined strategy allocation are treated as user-owned surplus. Each strategy exit is capped by its own inventory and reserves other strategy allocations. External orders and manual trades change the next snapshot, and opposite entries remain blocked when they would offset an existing account position.',
   'strategyCenter.positionOwnership.alpacaHelp': 'No manual ownership registration is required. Active orders must finish or be cancelled before another strategy order is submitted. Account shortfalls block new entries; exits remain capped by available strategy inventory. The crypto 10 USD tolerance does not apply to stocks.',
   'strategyCenter.positionOwnership.alpacaQuoteDifference': 'Approximately {value} USD',
@@ -141,12 +148,16 @@ const locale = {
   'accountRisk.proposedPriceMissing': 'The opening order has no usable reference price, so it was blocked.'
   , 'strategyCenter.gridOrders.tab': 'Exchange orders'
   , 'strategyCenter.gridOrders.title': 'Exchange resting grid orders'
-  , 'strategyCenter.gridOrders.description': 'Orders are reconciled against the exchange; an exchange order ID is the placement proof.'
+  , 'strategyCenter.gridOrders.description': 'Tracked orders are queried on the exchange; the confirmed count includes only orders currently reported as open or partially filled.'
   , 'strategyCenter.gridOrders.reconcile': 'Reconcile now'
   , 'strategyCenter.gridOrders.syncFailed': 'Exchange reconciliation failed'
+  , 'strategyCenter.gridOrders.errors.grid_runner_not_available': 'The grid runtime is not available for verification.'
+  , 'strategyCenter.gridOrders.errors.grid_exchange_client_unavailable': 'The exchange client could not be created for verification.'
+  , 'strategyCenter.gridOrders.errors.grid_exchange_audit_rate_limited': 'The verification request limit was reached before every tracked order could be checked.'
+  , 'strategyCenter.gridOrders.errors.grid_exchange_orders_unverified': 'One or more tracked orders could not be confirmed on the exchange.'
   , 'strategyCenter.gridOrders.open': 'Tracked open orders'
   , 'strategyCenter.gridOrders.verified': 'Verified on exchange'
-  , 'strategyCenter.gridOrders.unverified': 'Missing exchange ID'
+  , 'strategyCenter.gridOrders.unverified': 'Not confirmed active'
   , 'strategyCenter.gridOrders.lastSync': 'Last reconciliation'
   , 'strategyCenter.gridOrders.cell': 'Cell'
   , 'strategyCenter.gridOrders.purpose': 'Purpose'
@@ -174,6 +185,13 @@ const zhCN = {
   'strategyRuntime.spotBalanceUnavailable': '无法确认现货可用余额，未提交卖单。请刷新账户余额后重试。',
   'strategyRuntime.spotBalanceInsufficient': '现货可卖余额为零，或数量低于交易最小要求。请检查冻结余额和未完成订单后重试。',
   'strategyRuntime.spotCloseQuantityInvalid': '现货卖出数量或精度调整结果无效，未提交订单。',
+  'strategyRuntime.gridStartupRollbackClientFailed': '交易所连接失败，无法回滚网格初始仓位，请人工核查。',
+  'strategyRuntime.gridStartupRollbackFailed': '网格初始仓位未能完全平仓，请人工核查。',
+  'strategyRuntime.gridStartupRollbackPartial': '网格初始仓位仅部分平仓，请人工核查。',
+  'strategyRuntime.gridStartupRollbackCompleted': '因未能建立交易所常驻挂单，系统已平掉本次新增的网格初始仓位。',
+  'strategyRuntime.gridStartupCoverageFailed': '未能建立交易所常驻挂单，网格启动已停止。',
+  'strategyRuntime.gridStartupCoverageFailedRolledBack': '未能建立交易所常驻挂单，网格启动已停止，并已平掉本次新增的初始仓位。',
+  'strategyRuntime.gridStartupCoverageFailedRollbackFailed': '未能建立交易所常驻挂单，网格启动已停止；初始仓位未能完全平掉，请人工核查。',
   'strategyCenter.positionOwnership.alpacaRiskDescription': '每次读取 Alpaca 快照时，账户持仓超过关联策略合计的部分会作为用户自有余量。每个策略平仓只使用自己的仓位，并为其他策略预留其账本数量。外部挂单或手动交易会改变下一次快照；可能抵消账户反方向持仓的开仓仍会被拦截。',
   'strategyCenter.positionOwnership.alpacaHelp': '用户原有仓位无需手动登记。有未完成订单时，需要等待成交核对或处理订单后再提交策略订单。账户持仓不足会限制新开仓，平仓仍以策略实际可用数量为上限；加密货币 10U 容差不适用于股票。',
   'strategyCenter.positionOwnership.alpacaQuoteDifference': '约 {value} 美元',
@@ -305,12 +323,16 @@ const zhCN = {
   'accountRisk.proposedPriceMissing': '开仓订单缺少可用参考价格，已阻止提交。'
   , 'strategyCenter.gridOrders.tab': '交易所挂单'
   , 'strategyCenter.gridOrders.title': '交易所常驻网格挂单'
-  , 'strategyCenter.gridOrders.description': '挂单会与交易所回读核验；交易所订单号是挂单成功的凭证。'
+  , 'strategyCenter.gridOrders.description': '系统会逐笔回查交易所；“交易所已确认”只统计当前仍为挂单中或部分成交的订单。'
   , 'strategyCenter.gridOrders.reconcile': '立即核验'
   , 'strategyCenter.gridOrders.syncFailed': '交易所挂单核验失败'
+  , 'strategyCenter.gridOrders.errors.grid_runner_not_available': '当前网格运行实例不可用，暂时无法核验挂单。'
+  , 'strategyCenter.gridOrders.errors.grid_exchange_client_unavailable': '无法创建交易所连接，暂时无法核验挂单。'
+  , 'strategyCenter.gridOrders.errors.grid_exchange_audit_rate_limited': '本次核验触发请求频率限制，未能检查全部挂单。'
+  , 'strategyCenter.gridOrders.errors.grid_exchange_orders_unverified': '部分本地跟踪订单未能从交易所确认。'
   , 'strategyCenter.gridOrders.open': '跟踪中挂单'
   , 'strategyCenter.gridOrders.verified': '交易所已确认'
-  , 'strategyCenter.gridOrders.unverified': '缺少交易所订单号'
+  , 'strategyCenter.gridOrders.unverified': '未确认仍在挂单'
   , 'strategyCenter.gridOrders.lastSync': '最近核验'
   , 'strategyCenter.gridOrders.cell': '网格'
   , 'strategyCenter.gridOrders.purpose': '用途'
