@@ -318,6 +318,15 @@
                   </template>
                 </div>
               </div>
+
+              <div class="ai-decision-filter-card" :class="{ 'is-disabled': !supportsAiDecisionFilter }">
+                <span class="ai-decision-filter-card__icon"><a-icon type="safety" /></span>
+                <div class="ai-decision-filter-card__copy">
+                  <strong>{{ $t('aiDecisionFilter.title') }}</strong>
+                  <p>{{ $t(supportsAiDecisionFilter ? 'aiDecisionFilter.strategyHint' : 'aiDecisionFilter.unsupportedStrategy') }}</p>
+                </div>
+                <a-switch v-model="model.aiDecisionFilter" :disabled="!supportsAiDecisionFilter" />
+              </div>
             </div>
           </transition>
 
@@ -600,6 +609,14 @@ export default {
     sourceMetadata () {
       return this.parseObject(this.sourceDetail.metadata)
     },
+    supportsAiDecisionFilter () {
+      const metadata = this.sourceMetadata
+      const runtime = this.parseObject(metadata.last_run_config)
+      const type = String(
+        runtime.bot_type || runtime.executor_type || metadata.bot_type || metadata.executor_type || ''
+      ).trim().toLowerCase()
+      return !['grid', 'dca', 'martingale', 'layered_martingale'].includes(type)
+    },
     sourceRuntimeContract () {
       return extractStrategyRuntimeContractFromCode(this.sourceDetail.code || '')
     },
@@ -685,6 +702,7 @@ export default {
         directionMode: '',
         disclaimer: false,
         notifyChannels: [...DEFAULT_CHANNELS],
+        aiDecisionFilter: false,
         templateParams: {}
       }
     },
@@ -811,6 +829,7 @@ export default {
         directionMode: normalizeDirectionMode(config.direction_mode || config.position_side),
         disclaimer: strategy.execution_mode === 'live',
         notifyChannels: (strategy.notification_config && strategy.notification_config.channels) || [...DEFAULT_CHANNELS],
+        aiDecisionFilter: Boolean(config.ai_decision_filter),
         templateParams: { ...this.parseObject(config.params) }
       }
       await this.loadSourceDetail(this.model.scriptSourceId, false)
@@ -833,6 +852,7 @@ export default {
         this.model.executionMode = 'signal'
         this.model.disclaimer = false
       }
+      if (!this.supportsAiDecisionFilter) this.model.aiDecisionFilter = false
       if (
         this.model.credentialId &&
         !this.compatibleCredentials.some(item => String(item.id) === String(this.model.credentialId))
@@ -1195,7 +1215,8 @@ export default {
           positionSide: this.requiresDirectionMode ? directionModePositionSide(this.effectiveDirectionMode) : undefined,
           params: { ...this.model.templateParams },
           notificationChannels: [...this.model.notifyChannels],
-          notificationTargets: notificationTargets(this.notificationSettings)
+          notificationTargets: notificationTargets(this.notificationSettings),
+          aiDecisionFilter: Boolean(this.model.aiDecisionFilter && this.supportsAiDecisionFilter)
         }
         const res = this.isEdit
           ? await updateStrategy(this.strategyId, payload)
@@ -1221,6 +1242,12 @@ export default {
 
 <style lang="less">
 .live-strategy-editor-wrap {
+  .ai-decision-filter-card { display: flex; align-items: center; gap: 14px; padding: 15px 16px; border: 1px solid #d9e6f5; border-radius: 9px; background: #f7fbff; }
+  .ai-decision-filter-card.is-disabled { opacity: .65; }
+  .ai-decision-filter-card__icon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #e6f4ff; color: #1677ff; font-size: 17px; }
+  .ai-decision-filter-card__copy { flex: 1; min-width: 0; }
+  .ai-decision-filter-card__copy strong { color: #18202c; }
+  .ai-decision-filter-card__copy p { margin: 3px 0 0; color: #667085; font-size: 12px; line-height: 1.5; }
   .ant-modal { top: 4vh; height: 92vh; padding-bottom: 0; }
   .ant-modal-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; border-radius: 12px; box-shadow: 0 24px 70px rgba(15, 23, 42, .22); }
   .ant-modal-header { padding: 19px 26px; border-bottom-color: #e8ebf0; }

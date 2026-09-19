@@ -264,6 +264,13 @@
               :bot-type="selectedStrategy.bot_type || ''"
             />
           </a-tab-pane>
+          <a-tab-pane v-if="aiDecisionFilterEnabled" key="ai-decisions" :tab="$t('aiDecisionFilter.tab')">
+            <ai-decision-records
+              v-if="detailTab === 'ai-decisions'"
+              :strategy-id="Number(selectedStrategy.id)"
+              :is-dark="dark"
+            />
+          </a-tab-pane>
           <a-tab-pane key="review" :tab="$t('trading-assistant.tabs.aiReview')">
             <strategy-review-report
               v-if="detailTab === 'review'"
@@ -291,6 +298,7 @@ import TradingRecords from './TradingRecords.vue'
 import StrategyReviewReport from './StrategyReviewReport.vue'
 import StrategyLogs from './StrategyLogs.vue'
 import GridRestingOrders from './GridRestingOrders.vue'
+import AiDecisionRecords from './AiDecisionRecords.vue'
 import { getExchangeDisplayName } from '@/utils/exchangeCredential'
 import {
   normalizeTimestampMilliseconds,
@@ -306,7 +314,7 @@ import {
 
 export default {
   name: 'LiveOperationsTable',
-  components: { PositionRecords, TradingRecords, StrategyReviewReport, StrategyLogs, GridRestingOrders },
+  components: { PositionRecords, TradingRecords, StrategyReviewReport, StrategyLogs, GridRestingOrders, AiDecisionRecords },
   props: {
     strategies: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
@@ -348,6 +356,9 @@ export default {
       const hasGridParameters = ['gridcount', 'lowerprice', 'upperprice'].every(key => parameterKeys.includes(key))
       const triggerMode = String(this.health(strategy).trigger_mode || '').toLowerCase()
       return type === 'grid' || hasGridParameters || template.includes('robot_v2_grid') || triggerMode === 'exchange_resting_orders'
+    },
+    aiDecisionFilterEnabled () {
+      return Boolean(strategyTradingConfig(this.selectedStrategy || {}).ai_decision_filter)
     },
     runningStrategies () {
       return this.strategies.filter(this.isRunning)

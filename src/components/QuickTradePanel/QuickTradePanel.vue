@@ -346,6 +346,14 @@
               <div class="qt-hint-text qt-tpsl-record-hint">{{ $t('quickTrade.tpslRecordOnlyHint') }}</div>
             </div>
 
+            <div class="qt-ai-filter-row">
+              <div>
+                <strong><a-icon type="safety" /> {{ $t('aiDecisionFilter.title') }}</strong>
+                <span>{{ $t('aiDecisionFilter.quickTradeHint') }}</span>
+              </div>
+              <a-switch v-model="aiDecisionFilter" size="small" />
+            </div>
+
             <!-- Submit Buttons -->
             <div class="qt-submit-section qt-submit-section--embedded-left">
               <a-button
@@ -472,7 +480,7 @@
                   <span class="qt-trade-symbol">{{ t.symbol }}</span>
                   <span v-if="t.price" class="qt-trade-price">${{ formatPrice(t.price) }}</span>
                   <span class="qt-trade-amount">${{ formatPrice(t.display_amount) }}</span>
-                  <a-tag :color="t.status === 'filled' ? '#52c41a' : t.status === 'failed' ? '#f5222d' : '#faad14'" size="small">{{ t.status }}</a-tag>
+                  <a-tag :color="t.status === 'filled' ? '#52c41a' : ['failed', 'ai_rejected'].includes(t.status) ? '#f5222d' : '#faad14'" size="small">{{ t.status }}</a-tag>
                   <a-button
                     v-if="activeDockTab === 'openOrders' && canCancelTrade(t)"
                     type="link"
@@ -510,7 +518,7 @@
                       <span class="qt-trade-amount">${{ formatPrice(t.amount) }}</span>
                     </div>
                     <div class="qt-trade-meta">
-                      <a-tag :color="t.status === 'filled' ? '#52c41a' : t.status === 'failed' ? '#f5222d' : '#faad14'" size="small">
+                      <a-tag :color="t.status === 'filled' ? '#52c41a' : ['failed', 'ai_rejected'].includes(t.status) ? '#f5222d' : '#faad14'" size="small">
                         {{ t.status }}
                       </a-tag>
                       <span class="qt-trade-time">{{ formatTime(t.created_at) }}</span>
@@ -585,6 +593,7 @@ export default {
       marginMode: 'cross',
       tpPrice: null,
       slPrice: null,
+      aiDecisionFilter: false,
       // state
       submitting: false,
       submittingSide: '',
@@ -1508,7 +1517,8 @@ export default {
           margin_mode: this.isSwapMode ? this.marginMode : undefined,
           tp_price: useProtectionPrices ? (this.tpPrice || 0) : 0,
           sl_price: useProtectionPrices ? (this.slPrice || 0) : 0,
-          source: this.source
+          source: this.source,
+          ai_decision_filter: this.aiDecisionFilter
         }
         const res = await placeQuickOrder(payload)
         if (res.code === 1) {
@@ -1522,6 +1532,14 @@ export default {
           // Load position with retry mechanism (exchange may need time to update)
           await this.loadPositionWithRetry()
         } else {
+          if (res.ai_rejected) {
+            const decision = (res.data && res.data.ai_decision) || {}
+            this.$notification.warning({
+              message: this.$t('aiDecisionFilter.rejected'),
+              description: this.aiDecisionReason(decision)
+            })
+            return
+          }
           const hint = res.error_hint ? this.$t(res.error_hint) : ''
           this.$notification.error({
             message: this.$t('quickTrade.orderFailed'),
@@ -1565,7 +1583,9 @@ export default {
         marketType: 'USStock',
         orderType: this.orderType,
         price: this.orderType === 'limit' ? price : undefined,
-        source: this.source
+        reference_price: price,
+        source: this.source,
+        ai_decision_filter: this.aiDecisionFilter
       }
       const res = await broker.alpaca.placeOrder(payload)
       if (this.apiSuccess(res)) {
@@ -1575,11 +1595,28 @@ export default {
         await this.loadPositionWithRetry()
       } else {
         const data = this.apiPayload(res)
+        if (res && res.ai_rejected) {
+          const decision = (data && data.ai_decision) || {}
+          this.$notification.warning({
+            message: this.$t('aiDecisionFilter.rejected'),
+            description: this.aiDecisionReason(decision)
+          })
+          return
+        }
         this.$notification.error({
           message: this.$t('quickTrade.orderFailed'),
           description: data.msg || data.message || ''
         })
       }
+    },
+    aiDecisionReason (decision) {
+      const reason = String((decision && decision.reason) || '')
+      const exactKey = `aiDecisionFilter.reason.${reason}`
+      const exact = this.$t(exactKey)
+      if (exact !== exactKey) return exact
+      const baseKey = `aiDecisionFilter.reason.${reason.split(':')[0]}`
+      const translated = this.$t(baseKey)
+      return translated === baseKey ? (reason || this.$t('aiDecisionFilter.rejectedHint')) : translated
     },
     async handleClosePosition (pos) {
       if (!pos || !this.selectedCredentialId || !this.currentSymbol) return
@@ -3109,6 +3146,21 @@ export default {
     &:hover { background: #ff4d4f !important; }
     &:active { background: #cf1322 !important; }
   }
+}
+
+.qt-ai-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 20px;
+  padding: 10px 12px;
+  border: 1px solid rgba(24, 144, 255, .22);
+  border-radius: 8px;
+  background: rgba(24, 144, 255, .06);
+  strong, span { display: block; }
+  strong { font-size: 13px; }
+  span { margin-top: 2px; color: #8c8c8c; font-size: 11px; }
 }
 
 .qt-stock-mode-card {

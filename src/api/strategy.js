@@ -20,6 +20,7 @@ const api = {
   reviewReport: '/api/strategies/review-report',
   reviewReportHistory: '/api/strategies/review-report/history',
   logs: '/api/strategies/logs',
+  aiDecisions: '/api/strategies/ai-decisions',
   gridRestingOrders: '/api/strategies/grid-resting-orders',
   executorTemplates: '/api/strategies/executors/templates',
   executorPreview: '/api/strategies/executors/preview',
@@ -113,6 +114,14 @@ export function getStrategyTrades (id, lang) {
     url: api.trades,
     method: 'get',
     params
+  })
+}
+
+export function getStrategyAiDecisions (id, limit = 100) {
+  return request({
+    url: api.aiDecisions,
+    method: 'get',
+    params: { id, limit }
   })
 }
 
