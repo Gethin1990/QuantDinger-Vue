@@ -17,7 +17,7 @@
     />
     <div class="grid-order-summary">
       <div><span>{{ $t('strategyCenter.gridOrders.open') }}</span><strong>{{ summary.total || orders.length }}</strong></div>
-      <div><span>{{ $t('strategyCenter.gridOrders.verified') }}</span><strong>{{ summary.verified_exchange_orders || 0 }}</strong></div>
+      <div><span>{{ $t('strategyCenter.gridOrders.verified') }}</span><strong>{{ summary.exchange_audit_completed ? (summary.verified_exchange_orders || 0) : '-' }}</strong></div>
       <div :class="{ danger: Number(summary.unverified_orders || 0) > 0 }"><span>{{ $t('strategyCenter.gridOrders.unverified') }}</span><strong>{{ summary.unverified_orders || 0 }}</strong></div>
       <div><span>{{ $t('strategyCenter.gridOrders.lastSync') }}</span><strong>{{ formatTime(summary.last_reconciled_at) }}</strong></div>
     </div>
@@ -35,7 +35,7 @@
         <a-tag :color="String(row.side).toLowerCase() === 'buy' ? 'green' : 'red'">{{ row.side || '-' }}</a-tag>
       </template>
       <template slot="status" slot-scope="value">
-        <a-tag :color="statusColor(value)">{{ value || '-' }}</a-tag>
+        <a-tag :color="statusColor(value)">{{ $t(`strategyCenter.gridOrders.exchangeStatus.${value || 'unverified'}`) }}</a-tag>
       </template>
       <template slot="number" slot-scope="value">{{ formatNumber(value) }}</template>
       <template slot="exchangeOrderId" slot-scope="value">
@@ -67,13 +67,14 @@ export default {
       orders: [],
       summary: {},
       loading: false,
-      timer: null
+      timer: null,
+      requestId: 0
     }
   },
   computed: {
     syncErrorDescription () {
       const code = String(this.summary.sync_error || '')
-      const known = ['grid_runner_not_available', 'grid_exchange_client_unavailable', 'grid_exchange_audit_rate_limited', 'grid_exchange_orders_unverified']
+      const known = ['grid_runner_not_available', 'grid_exchange_client_unavailable', 'grid_exchange_audit_rate_limited', 'grid_exchange_orders_unverified', 'grid_exchange_snapshot_failed']
       return known.includes(code) ? this.$t(`strategyCenter.gridOrders.errors.${code}`) : code
     },
     columns () {
@@ -81,10 +82,10 @@ export default {
         { title: this.$t('strategyCenter.gridOrders.cell'), dataIndex: 'cell_index', width: 72 },
         { title: this.$t('strategyCenter.gridOrders.purpose'), dataIndex: 'purpose_label', width: 130 },
         { title: this.$t('strategyCenter.gridOrders.side'), dataIndex: 'side', scopedSlots: { customRender: 'side' }, width: 80 },
-        { title: this.$t('strategyCenter.gridOrders.price'), dataIndex: 'price', scopedSlots: { customRender: 'number' }, width: 120 },
-        { title: this.$t('strategyCenter.gridOrders.quantity'), dataIndex: 'quantity', scopedSlots: { customRender: 'number' }, width: 130 },
-        { title: this.$t('strategyCenter.gridOrders.filled'), dataIndex: 'filled_quantity', scopedSlots: { customRender: 'number' }, width: 120 },
-        { title: this.$t('strategyCenter.gridOrders.status'), dataIndex: 'status', scopedSlots: { customRender: 'status' }, width: 100 },
+        { title: this.$t('strategyCenter.gridOrders.price'), dataIndex: 'exchange_price', scopedSlots: { customRender: 'number' }, width: 120 },
+        { title: this.$t('strategyCenter.gridOrders.quantity'), dataIndex: 'exchange_quantity', scopedSlots: { customRender: 'number' }, width: 130 },
+        { title: this.$t('strategyCenter.gridOrders.filled'), dataIndex: 'exchange_filled_quantity', scopedSlots: { customRender: 'number' }, width: 120 },
+        { title: this.$t('strategyCenter.gridOrders.status'), dataIndex: 'exchange_status', scopedSlots: { customRender: 'status' }, width: 140 },
         { title: this.$t('strategyCenter.gridOrders.exchangeOrderId'), dataIndex: 'exchange_order_id', scopedSlots: { customRender: 'exchangeOrderId' }, width: 210 },
         { title: this.$t('strategyCenter.gridOrders.updatedAt'), dataIndex: 'updated_at', scopedSlots: { customRender: 'updatedAt' }, width: 170 }
       ]
@@ -93,36 +94,54 @@ export default {
   watch: {
     strategyId: {
       immediate: true,
-      handler () { this.load(true) }
+      handler () {
+        this.requestId++
+        this.loading = false
+        this.orders = []
+        this.summary = {}
+        this.load(true)
+      }
     }
   },
   mounted () {
-    this.timer = setInterval(() => this.load(false), 15000)
+    this.timer = setInterval(() => this.load(true), 15000)
   },
   beforeDestroy () {
     if (this.timer) clearInterval(this.timer)
+    this.requestId++
   },
   methods: {
     async load (sync) {
       if (!this.strategyId || this.loading) return
+      const requestId = ++this.requestId
+      const strategyId = this.strategyId
       this.loading = true
       try {
-        const response = await getGridRestingOrders(this.strategyId, { status: '', limit: 200, sync })
+        const response = await getGridRestingOrders(strategyId, { status: '', limit: 500, sync })
+        if (requestId !== this.requestId) return
+        if (!response || response.code !== 1) throw new Error('grid_order_fetch_failed')
         const data = response && response.data || {}
         this.orders = data.orders || data.items || []
         this.summary = data.summary || {}
+      } catch (error) {
+        if (requestId !== this.requestId) return
+        this.orders = this.orders.map(order => ({ ...order, exchange_status: 'unverified', exchange_price: null, exchange_quantity: null, exchange_filled_quantity: null }))
+        this.summary = { total: this.orders.length, unverified_orders: this.orders.length, sync_requested: true, sync_ok: false, sync_error: 'grid_exchange_snapshot_failed' }
       } finally {
-        this.loading = false
+        if (requestId === this.requestId) this.loading = false
       }
     },
     statusColor (value) {
       const status = String(value || '').toLowerCase()
       if (status === 'filled') return 'green'
       if (status === 'partial') return 'orange'
+      if (status === 'unverified') return 'orange'
+      if (status === 'not_open') return 'red'
       if (['cancelled', 'rejected', 'failed'].includes(status)) return 'red'
       return 'blue'
     },
     formatNumber (value) {
+      if (value === null || value === undefined || value === '') return '-'
       const number = Number(value)
       return Number.isFinite(number) ? number.toLocaleString(undefined, { maximumFractionDigits: 12 }) : '-'
     },
