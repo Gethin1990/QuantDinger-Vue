@@ -72,6 +72,16 @@ const settingsKeys = [
   'settings.desc.JEV_MIN_CONFIDENCE'
 ]
 
+const experienceKeys = [
+  'aiDecisionFilter.viewConfidenceDetails',
+  'aiDecisionFilter.executionNotSubmitted',
+  'aiDecisionFilter.executionReleased',
+  'aiDecisionFilter.executionFailOpen',
+  'aiDecisionFilter.selectedProbability',
+  'quickTrade.tradeRecords',
+  'quickTrade.noTradeRecords'
+]
+
 function assign (keys, values) {
   return keys.reduce((messages, key, index) => {
     messages[key] = values[index]
@@ -387,16 +397,34 @@ const viVN = locale(
   ]
 )
 
+const experience = {
+  'en-US': ['Confidence details', 'Not sent to exchange', 'Released to order pipeline', 'Allowed by fallback policy', 'Selected probability', 'Trade Records', 'No trade records'],
+  'zh-CN': ['置信度详情', '未提交交易所', '已放行至下单流程', '按降级策略放行', '选项概率', '交易记录', '暂无交易记录'],
+  'zh-TW': ['置信度詳情', '未送往交易所', '已放行至下單流程', '依降級策略放行', '選項機率', '交易記錄', '暫無交易記錄'],
+  'ja-JP': ['信頼度の詳細', '取引所へ未送信', '注文処理へ送信済み', 'フォールバック方針で許可', '選択確率', '取引記録', '取引記録はありません'],
+  'ko-KR': ['신뢰도 세부 정보', '거래소로 전송되지 않음', '주문 절차로 전달됨', '대체 정책에 따라 허용', '선택 확률', '거래 기록', '거래 기록이 없습니다'],
+  'de-DE': ['Konfidenzdetails', 'Nicht an die Börse gesendet', 'An den Orderprozess freigegeben', 'Durch Fallback-Regel zugelassen', 'Auswahlwahrscheinlichkeit', 'Handelsprotokoll', 'Keine Handelsdaten'],
+  'fr-FR': ['Détails de confiance', 'Non envoyé à la plateforme', "Transmis au flux d'ordre", 'Autorisé par la règle de repli', 'Probabilité choisie', 'Historique des transactions', 'Aucune transaction'],
+  'ru-RU': ['Детали уверенности', 'Не отправлено на биржу', 'Передано в контур исполнения', 'Разрешено резервной политикой', 'Вероятность выбора', 'История сделок', 'Нет записей о сделках'],
+  'ar-SA': ['تفاصيل الثقة', 'لم يُرسل إلى المنصة', 'تم تمريره إلى مسار الأوامر', 'مسموح وفق سياسة التراجع', 'احتمال الخيار', 'سجل التداول', 'لا توجد سجلات تداول'],
+  'th-TH': ['รายละเอียดความมั่นใจ', 'ไม่ได้ส่งไปยังตลาด', 'ส่งต่อไปยังกระบวนการสั่งซื้อแล้ว', 'อนุญาตตามนโยบายสำรอง', 'ความน่าจะเป็นที่เลือก', 'บันทึกการซื้อขาย', 'ไม่มีบันทึกการซื้อขาย'],
+  'vi-VN': ['Chi tiết độ tin cậy', 'Chưa gửi tới sàn', 'Đã chuyển sang quy trình đặt lệnh', 'Được cho phép theo chính sách dự phòng', 'Xác suất lựa chọn', 'Lịch sử giao dịch', 'Chưa có lịch sử giao dịch']
+}
+
+function withExperience (localeCode, messages) {
+  return { ...messages, ...assign(experienceKeys, experience[localeCode]) }
+}
+
 export default {
-  'ar-SA': arSA,
-  'de-DE': deDE,
-  'en-US': enUS,
-  'fr-FR': frFR,
-  'ja-JP': jaJP,
-  'ko-KR': koKR,
-  'ru-RU': ruRU,
-  'th-TH': thTH,
-  'vi-VN': viVN,
-  'zh-CN': zhCN,
-  'zh-TW': zhTW
+  'ar-SA': withExperience('ar-SA', arSA),
+  'de-DE': withExperience('de-DE', deDE),
+  'en-US': withExperience('en-US', enUS),
+  'fr-FR': withExperience('fr-FR', frFR),
+  'ja-JP': withExperience('ja-JP', jaJP),
+  'ko-KR': withExperience('ko-KR', koKR),
+  'ru-RU': withExperience('ru-RU', ruRU),
+  'th-TH': withExperience('th-TH', thTH),
+  'vi-VN': withExperience('vi-VN', viVN),
+  'zh-CN': withExperience('zh-CN', zhCN),
+  'zh-TW': withExperience('zh-TW', zhTW)
 }

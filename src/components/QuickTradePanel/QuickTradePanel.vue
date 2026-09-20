@@ -473,8 +473,21 @@
             </div>
           </div>
 
-          <!-- Recent Trades -->
-          <div v-if="embeddedDock && activeDockTab !== 'positions'" class="qt-history-section qt-dock-history">
+          <div v-if="embeddedDock && activeDockTab === 'aiDecisions'" class="qt-history-section qt-dock-history qt-ai-decision-history">
+            <ai-decision-records
+              source-type="quick_trade"
+              :source-id="selectedCredentialId"
+              :symbol="currentSymbol"
+              :market-type="aiDecisionMarketType"
+              :refresh-key="aiDecisionRefreshKey"
+              :is-dark="isDark"
+              compact
+              @loaded="onAiDecisionsLoaded"
+            />
+          </div>
+
+          <!-- Trade Records -->
+          <div v-if="embeddedDock && ['openOrders', 'tradeRecords'].includes(activeDockTab)" class="qt-history-section qt-dock-history">
             <div v-if="dockTradeRows.length" class="qt-trade-list">
               <div class="qt-trade-item qt-trade-item--dock" v-for="t in dockTradeRows" :key="t.id">
                 <div class="qt-trade-main">
@@ -499,7 +512,7 @@
             </div>
             <div v-else class="qt-position-empty">
               <a-icon type="inbox" class="qt-empty-icon" />
-              <span class="qt-empty-desc">{{ $t('quickTrade.noOrders') }}</span>
+              <span class="qt-empty-desc">{{ dockEmptyText }}</span>
             </div>
           </div>
 
@@ -550,6 +563,7 @@ import { mapState } from 'vuex'
 import { listExchangeCredentials } from '@/api/credentials'
 import { formatExchangeCredentialLabel, isQuickTradeExchangeCredential } from '@/utils/exchangeCredential'
 import ExchangeAccountModal from '@/components/ExchangeAccountModal/ExchangeAccountModal.vue'
+import AiDecisionRecords from '@/views/strategy-center/components/AiDecisionRecords.vue'
 import { placeQuickOrder, getQuickTradeBalance, getQuickTradePosition, getQuickTradeHistory, closeQuickTradePosition, cancelQuickTradeOrder } from '@/api/quick-trade'
 import { searchSymbols, getWatchlist } from '@/api/market'
 import { getUserInfo } from '@/api/login'
@@ -559,7 +573,7 @@ import { broker } from '@/api/broker'
 
 export default {
   name: 'QuickTradePanel',
-  components: { ExchangeAccountModal },
+  components: { ExchangeAccountModal, AiDecisionRecords },
   props: {
     visible: { type: Boolean, default: false },
     symbol: { type: String, default: '' },
@@ -606,6 +620,8 @@ export default {
       currentPrice: 0,
       currentPositions: [],
       recentTrades: [],
+      aiDecisionCount: 0,
+      aiDecisionRefreshKey: 0,
       historyCollapsed: true,
       activeDockTab: 'positions',
       dockRefreshing: false,
@@ -683,6 +699,9 @@ export default {
     effectiveMarketType () {
       return this.isStockMarket ? 'spot' : this.tradeMode
     },
+    aiDecisionMarketType () {
+      return this.isStockMarket ? 'USStock' : this.effectiveMarketType
+    },
     swapBalanceAvailable () {
       const leg = this.balance && this.balance.swap
       if (leg && leg.available != null) return parseFloat(leg.available) || 0
@@ -725,21 +744,19 @@ export default {
       const activeStatuses = new Set(['new', 'open', 'pending', 'submitted', 'partially_filled', 'partially-filled', 'accepted', 'cancel_pending'])
       return this.scopedTradeRows.filter(item => activeStatuses.has(String(item.status || '').toLowerCase()))
     },
-    filledTradeRows () {
-      const filledStatuses = new Set(['filled', 'closed', 'done', 'completed'])
-      return this.scopedTradeRows.filter(item => filledStatuses.has(String(item.status || '').toLowerCase()))
-    },
     dockTradeRows () {
       if (this.activeDockTab === 'openOrders') return this.openOrderRows
-      if (this.activeDockTab === 'tradeHistory') return this.filledTradeRows
       return this.scopedTradeRows
+    },
+    dockEmptyText () {
+      return this.$t(this.activeDockTab === 'openOrders' ? 'quickTrade.noOrders' : 'quickTrade.noTradeRecords')
     },
     dockTabItems () {
       return [
         { key: 'positions', label: this.$t('quickTrade.currentPosition'), count: this.currentPositions.length },
         { key: 'openOrders', label: this.$t('quickTrade.openOrders'), count: this.openOrderRows.length },
-        { key: 'orderHistory', label: this.$t('quickTrade.orderHistory'), count: this.scopedTradeRows.length },
-        { key: 'tradeHistory', label: this.$t('quickTrade.tradeHistory'), count: this.filledTradeRows.length }
+        { key: 'tradeRecords', label: this.$t('quickTrade.tradeRecords'), count: this.scopedTradeRows.length },
+        { key: 'aiDecisions', label: this.$t('aiDecisionFilter.tab'), count: this.aiDecisionCount }
       ]
     },
     balanceErrorMessage () {
@@ -1498,6 +1515,7 @@ export default {
           this.loadPosition(),
           this.loadHistory()
         ])
+        this.aiDecisionRefreshKey += 1
       } finally {
         this.dockRefreshing = false
       }
@@ -1562,6 +1580,7 @@ export default {
           description: hint || rd.msg || e.message || ''
         })
       } finally {
+        if (this.aiDecisionFilter) this.aiDecisionRefreshKey += 1
         this.submitting = false
         this.submittingSide = ''
       }
@@ -1625,6 +1644,9 @@ export default {
       const baseKey = `aiDecisionFilter.reason.${reason.split(':')[0]}`
       const translated = this.$t(baseKey)
       return translated === baseKey ? (reason || this.$t('aiDecisionFilter.rejectedHint')) : translated
+    },
+    onAiDecisionsLoaded (rows) {
+      this.aiDecisionCount = Array.isArray(rows) ? rows.length : 0
     },
     async handleClosePosition (pos) {
       if (!pos || !this.selectedCredentialId || !this.currentSymbol) return
@@ -1862,6 +1884,7 @@ export default {
 
   .qt-position-section { padding: 0 0 10px; }
   .qt-history-section { padding: 0 0 10px; }
+  .qt-ai-decision-history { overflow: auto; }
 
   .qt-direction-toggle .qt-dir-btn { padding: 8px; font-size: 13px; border-radius: 6px; }
   .qt-quick-amounts { margin-top: 6px; margin-bottom: 2px; }
