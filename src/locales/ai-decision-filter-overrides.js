@@ -78,6 +78,12 @@ const experienceKeys = [
   'aiDecisionFilter.executionReleased',
   'aiDecisionFilter.executionFailOpen',
   'aiDecisionFilter.selectedProbability',
+  'aiDecisionFilter.fallbackConfidence',
+  'aiDecisionFilter.fallbackAuthentication',
+  'aiDecisionFilter.fallbackTimeout',
+  'aiDecisionFilter.fallbackInvalidResponse',
+  'aiDecisionFilter.fallbackRechecked',
+  'aiDecisionFilter.fallbackTechnical',
   'quickTrade.tradeRecords',
   'quickTrade.noTradeRecords'
 ]
@@ -398,17 +404,17 @@ const viVN = locale(
 )
 
 const experience = {
-  'en-US': ['Confidence details', 'Not sent to exchange', 'Released to order pipeline', 'Allowed by fallback policy', 'Selected probability', 'Trade Records', 'No trade records'],
-  'zh-CN': ['置信度详情', '未提交交易所', '已放行至下单流程', '按降级策略放行', '选项概率', '交易记录', '暂无交易记录'],
-  'zh-TW': ['置信度詳情', '未送往交易所', '已放行至下單流程', '依降級策略放行', '選項機率', '交易記錄', '暫無交易記錄'],
-  'ja-JP': ['信頼度の詳細', '取引所へ未送信', '注文処理へ送信済み', 'フォールバック方針で許可', '選択確率', '取引記録', '取引記録はありません'],
-  'ko-KR': ['신뢰도 세부 정보', '거래소로 전송되지 않음', '주문 절차로 전달됨', '대체 정책에 따라 허용', '선택 확률', '거래 기록', '거래 기록이 없습니다'],
-  'de-DE': ['Konfidenzdetails', 'Nicht an die Börse gesendet', 'An den Orderprozess freigegeben', 'Durch Fallback-Regel zugelassen', 'Auswahlwahrscheinlichkeit', 'Handelsprotokoll', 'Keine Handelsdaten'],
-  'fr-FR': ['Détails de confiance', 'Non envoyé à la plateforme', "Transmis au flux d'ordre", 'Autorisé par la règle de repli', 'Probabilité choisie', 'Historique des transactions', 'Aucune transaction'],
-  'ru-RU': ['Детали уверенности', 'Не отправлено на биржу', 'Передано в контур исполнения', 'Разрешено резервной политикой', 'Вероятность выбора', 'История сделок', 'Нет записей о сделках'],
-  'ar-SA': ['تفاصيل الثقة', 'لم يُرسل إلى المنصة', 'تم تمريره إلى مسار الأوامر', 'مسموح وفق سياسة التراجع', 'احتمال الخيار', 'سجل التداول', 'لا توجد سجلات تداول'],
-  'th-TH': ['รายละเอียดความมั่นใจ', 'ไม่ได้ส่งไปยังตลาด', 'ส่งต่อไปยังกระบวนการสั่งซื้อแล้ว', 'อนุญาตตามนโยบายสำรอง', 'ความน่าจะเป็นที่เลือก', 'บันทึกการซื้อขาย', 'ไม่มีบันทึกการซื้อขาย'],
-  'vi-VN': ['Chi tiết độ tin cậy', 'Chưa gửi tới sàn', 'Đã chuyển sang quy trình đặt lệnh', 'Được cho phép theo chính sách dự phòng', 'Xác suất lựa chọn', 'Lịch sử giao dịch', 'Chưa có lịch sử giao dịch']
+  'en-US': ['Confidence details', 'Not sent to exchange', 'Released to order pipeline', 'Allowed by fallback policy', 'Selected probability', 'JEV confidence was below the configured threshold, so the LLM rechecked this decision.', 'JEV authentication failed. Check the saved API key and account access.', 'JEV exceeded the configured timeout, so the LLM rechecked this decision.', 'JEV returned an invalid or incomplete structured response, so the LLM rechecked this decision.', 'JEV did not produce a directly usable result, so the LLM rechecked this decision.', 'Technical reason', 'Trade Records', 'No trade records'],
+  'zh-CN': ['置信度详情', '未提交交易所', '已放行至下单流程', '按降级策略放行', '选项概率', 'JEV 置信度低于当前阈值，本次已交由系统大模型复核。', 'JEV 鉴权失败，请检查已保存的 API 密钥和账户权限。', 'JEV 超过了配置的超时时间，本次已交由系统大模型复核。', 'JEV 返回的结构化结果无效或不完整，本次已交由系统大模型复核。', 'JEV 未产生可直接采纳的结果，本次已交由系统大模型复核。', '技术原因', '交易记录', '暂无交易记录'],
+  'zh-TW': ['置信度詳情', '未送往交易所', '已放行至下單流程', '依降級策略放行', '選項機率', 'JEV 置信度低於目前門檻，本次已交由系統大模型複核。', 'JEV 驗證失敗，請檢查已儲存的 API 金鑰與帳戶權限。', 'JEV 超過設定的逾時時間，本次已交由系統大模型複核。', 'JEV 回傳的結構化結果無效或不完整，本次已交由系統大模型複核。', 'JEV 未產生可直接採用的結果，本次已交由系統大模型複核。', '技術原因', '交易記錄', '暫無交易記錄'],
+  'ja-JP': ['信頼度の詳細', '取引所へ未送信', '注文処理へ送信済み', 'フォールバック方針で許可', '選択確率', 'JEVの信頼度が設定値を下回ったため、LLMが再確認しました。', 'JEV認証に失敗しました。保存済みAPIキーと権限を確認してください。', 'JEVが設定タイムアウトを超えたため、LLMが再確認しました。', 'JEVの構造化応答が無効または不完全なため、LLMが再確認しました。', 'JEVから直接採用できる結果が得られなかったため、LLMが再確認しました。', '技術的な理由', '取引記録', '取引記録はありません'],
+  'ko-KR': ['신뢰도 세부 정보', '거래소로 전송되지 않음', '주문 절차로 전달됨', '대체 정책에 따라 허용', '선택 확률', 'JEV 신뢰도가 설정 임계값보다 낮아 LLM이 다시 검토했습니다.', 'JEV 인증에 실패했습니다. 저장된 API 키와 권한을 확인하세요.', 'JEV가 설정된 제한 시간을 초과해 LLM이 다시 검토했습니다.', 'JEV 구조화 응답이 유효하지 않거나 불완전하여 LLM이 다시 검토했습니다.', 'JEV가 직접 사용할 수 있는 결과를 만들지 못해 LLM이 다시 검토했습니다.', '기술적 사유', '거래 기록', '거래 기록이 없습니다'],
+  'de-DE': ['Konfidenzdetails', 'Nicht an die Börse gesendet', 'An den Orderprozess freigegeben', 'Durch Fallback-Regel zugelassen', 'Auswahlwahrscheinlichkeit', 'Die JEV-Konfidenz lag unter dem Grenzwert; das LLM prüfte erneut.', 'JEV-Authentifizierung fehlgeschlagen. API-Schlüssel und Berechtigungen prüfen.', 'JEV überschritt das Zeitlimit; das LLM prüfte erneut.', 'JEV lieferte eine ungültige oder unvollständige strukturierte Antwort; das LLM prüfte erneut.', 'JEV lieferte kein direkt nutzbares Ergebnis; das LLM prüfte erneut.', 'Technischer Grund', 'Handelsprotokoll', 'Keine Handelsdaten'],
+  'fr-FR': ['Détails de confiance', 'Non envoyé à la plateforme', "Transmis au flux d'ordre", 'Autorisé par la règle de repli', 'Probabilité choisie', 'La confiance JEV était sous le seuil configuré ; le LLM a revérifié la décision.', "L’authentification JEV a échoué. Vérifiez la clé API et les droits du compte.", 'JEV a dépassé le délai configuré ; le LLM a revérifié la décision.', 'JEV a renvoyé une réponse structurée invalide ou incomplète ; le LLM a revérifié la décision.', 'JEV n’a pas produit de résultat directement exploitable ; le LLM a revérifié la décision.', 'Raison technique', 'Historique des transactions', 'Aucune transaction'],
+  'ru-RU': ['Детали уверенности', 'Не отправлено на биржу', 'Передано в контур исполнения', 'Разрешено резервной политикой', 'Вероятность выбора', 'Уверенность JEV была ниже порога, поэтому LLM перепроверила решение.', 'Ошибка аутентификации JEV. Проверьте API-ключ и права аккаунта.', 'JEV превысил тайм-аут, поэтому LLM перепроверила решение.', 'JEV вернул некорректный или неполный структурированный ответ, поэтому LLM перепроверила решение.', 'JEV не выдал пригодный для прямого использования результат, поэтому LLM перепроверила решение.', 'Техническая причина', 'История сделок', 'Нет записей о сделках'],
+  'ar-SA': ['تفاصيل الثقة', 'لم يُرسل إلى المنصة', 'تم تمريره إلى مسار الأوامر', 'مسموح وفق سياسة التراجع', 'احتمال الخيار', 'كانت ثقة JEV دون الحد المحدد، لذا أعاد نموذج اللغة التحقق من القرار.', 'فشلت مصادقة JEV. تحقق من مفتاح API وصلاحيات الحساب.', 'تجاوز JEV المهلة المحددة، لذا أعاد نموذج اللغة التحقق من القرار.', 'أعاد JEV استجابة منظمة غير صالحة أو غير مكتملة، لذا أعاد نموذج اللغة التحقق.', 'لم ينتج JEV نتيجة قابلة للاستخدام مباشرة، لذا أعاد نموذج اللغة التحقق.', 'السبب التقني', 'سجل التداول', 'لا توجد سجلات تداول'],
+  'th-TH': ['รายละเอียดความมั่นใจ', 'ไม่ได้ส่งไปยังตลาด', 'ส่งต่อไปยังกระบวนการสั่งซื้อแล้ว', 'อนุญาตตามนโยบายสำรอง', 'ความน่าจะเป็นที่เลือก', 'ความมั่นใจของ JEV ต่ำกว่าเกณฑ์ที่กำหนด จึงให้ LLM ตรวจสอบอีกครั้ง', 'การยืนยันตัวตน JEV ล้มเหลว โปรดตรวจสอบคีย์ API และสิทธิ์บัญชี', 'JEV ใช้เวลาเกินกำหนด จึงให้ LLM ตรวจสอบอีกครั้ง', 'JEV ส่งผลลัพธ์แบบมีโครงสร้างที่ไม่ถูกต้องหรือไม่ครบ จึงให้ LLM ตรวจสอบอีกครั้ง', 'JEV ไม่ได้สร้างผลลัพธ์ที่ใช้ได้โดยตรง จึงให้ LLM ตรวจสอบอีกครั้ง', 'เหตุผลทางเทคนิค', 'บันทึกการซื้อขาย', 'ไม่มีบันทึกการซื้อขาย'],
+  'vi-VN': ['Chi tiết độ tin cậy', 'Chưa gửi tới sàn', 'Đã chuyển sang quy trình đặt lệnh', 'Được cho phép theo chính sách dự phòng', 'Xác suất lựa chọn', 'Độ tin cậy JEV thấp hơn ngưỡng cấu hình nên LLM đã đánh giá lại.', 'Xác thực JEV thất bại. Hãy kiểm tra khóa API và quyền tài khoản.', 'JEV vượt quá thời gian chờ cấu hình nên LLM đã đánh giá lại.', 'JEV trả về phản hồi có cấu trúc không hợp lệ hoặc chưa đầy đủ nên LLM đã đánh giá lại.', 'JEV không tạo được kết quả có thể dùng trực tiếp nên LLM đã đánh giá lại.', 'Lý do kỹ thuật', 'Lịch sử giao dịch', 'Chưa có lịch sử giao dịch']
 }
 
 function withExperience (localeCode, messages) {
