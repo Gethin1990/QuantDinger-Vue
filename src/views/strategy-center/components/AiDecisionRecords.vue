@@ -8,7 +8,14 @@
       <a-button icon="reload" :loading="loading" @click="load">{{ $t('common.refresh') }}</a-button>
     </div>
     <a-spin :spinning="loading" aria-live="polite">
-      <a-empty v-if="!rows.length" :description="$t('aiDecisionFilter.noRecords')" />
+      <a-alert
+        v-if="loadFailed"
+        type="error"
+        show-icon
+        :message="$t('ai-trading-assistant.messages.loadDecisionsFailed')"
+        class="ai-decision-records__error"
+      />
+      <a-empty v-else-if="!rows.length" :description="$t('aiDecisionFilter.noRecords')" />
       <a-collapse v-else :bordered="false" class="ai-decision-records__list">
         <a-collapse-panel v-for="(row, index) in rows" :key="row.decision_uid || String(index)">
           <template slot="header">
@@ -83,7 +90,7 @@ export default {
     isDark: { type: Boolean, default: false }
   },
   data () {
-    return { rows: [], loading: false, requestToken: 0 }
+    return { rows: [], loading: false, loadFailed: false, requestToken: 0 }
   },
   watch: {
     strategyId: { immediate: true, handler () { this.load() } },
@@ -110,6 +117,7 @@ export default {
         return
       }
       this.loading = true
+      this.loadFailed = false
       try {
         const res = isQuickTrade
           ? await getQuickTradeAiDecisions({
@@ -122,6 +130,10 @@ export default {
         if (requestToken !== this.requestToken) return
         this.rows = (res && Array.isArray(res.data)) ? res.data : []
         this.$emit('loaded', this.rows)
+      } catch (error) {
+        if (requestToken !== this.requestToken) return
+        this.loadFailed = true
+        this.$emit('load-error', error)
       } finally {
         if (requestToken === this.requestToken) this.loading = false
       }
@@ -241,6 +253,7 @@ export default {
 .ai-decision-records__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
 .ai-decision-records__head h3 { margin: 0; color: inherit; font-size: 16px; }
 .ai-decision-records__head p { max-width: 680px; margin: 5px 0 0; color: #667085; line-height: 1.55; }
+.ai-decision-records__error { margin-bottom: 14px; }
 .ai-decision-records__list { background: transparent; }
 .ai-decision-records__list /deep/ .ant-collapse-item { margin-bottom: 10px; overflow: hidden; border: 1px solid #e8ebf0; border-radius: 9px; background: #fff; }
 .ai-decision-records__list /deep/ .ant-collapse-header { padding: 12px 38px 12px 14px; }
