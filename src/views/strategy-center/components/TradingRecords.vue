@@ -59,7 +59,7 @@
       <template slot="value" slot-scope="text">
         ${{ parseFloat(text).toFixed(2) }}
       </template>
-      <template slot="exchange_pnl" slot-scope="text">
+      <template slot="exchange_pnl" slot-scope="text, record">
         <a-popover v-if="text && text.status === 'reported'" placement="top" trigger="hover">
           <div slot="content" class="pnl-breakdown">
             <p>{{ $t('trading-assistant.execution.exchangePnlHint') }}</p>
@@ -68,9 +68,9 @@
             <p>{{ $t('trading-assistant.execution.reportedQuantity') }}: {{ formatExecutionNumber(text.quantity) }}</p>
             <p>{{ $t('trading-assistant.execution.reportSource') }}: {{ text.source }}</p>
           </div>
-          <span :class="['ta-pnl', { 'ta-pnl-pos': text.amount > 0, 'ta-pnl-neg': text.amount < 0 }]">{{ formatReportedPnl(text) }}</span>
+          <span :class="['ta-pnl', { 'ta-pnl-pos': text.amount > 0, 'ta-pnl-neg': text.amount < 0 }]">{{ formatReportedPnl(text, record) }}</span>
         </a-popover>
-        <span v-else class="pnl-status">{{ formatReportedPnl(text) }}</span>
+        <span v-else class="pnl-status">{{ formatReportedPnl(text, record) }}</span>
       </template>
       <template slot="profit" slot-scope="text, record">
         <a-popover v-if="hasRealizedProfit(record) || record.pnl_source === 'grid_exchange_order_pairs'" placement="top" trigger="hover">
@@ -111,6 +111,30 @@ import { getStrategyTrades } from '@/api/strategy'
 import { formatExecutionNumber, formatExecutionPrice, formatPriceDeviation, formatTradeMoney } from '@/utils/tradeExecution'
 import { formatTradeCommission } from '@/utils/tradeCommission'
 import { formatUserDateTime, formatBrowserLocalDateTime, getUserTimezoneFromStorage } from '@/utils/userTime'
+
+const SYSTEM_PNL_FIELDS = [
+  'net_pnl',
+  'netPnl',
+  'profit',
+  'pnl',
+  'realized_pnl',
+  'realizedPnl',
+  'net_profit',
+  'netProfit',
+  'realized_profit',
+  'realizedProfit'
+]
+
+function hasSystemPnlResult (record) {
+  if (!record || typeof record !== 'object') return false
+  if (record.pnl_source === 'grid_exchange_order_pairs' && record.pnl_status !== 'matched') return false
+  const raw = SYSTEM_PNL_FIELDS.map(key => record[key])
+    .find(value => value !== null && value !== undefined && value !== '')
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return false
+  const openTypes = ['open_long', 'open_short', 'add_long', 'add_short']
+  return !openTypes.includes(String(record.type || '').toLowerCase()) || Math.abs(value) >= 1e-9
+}
 
 export default {
   name: 'TradingRecords',
@@ -287,7 +311,7 @@ export default {
     formatExecutionNumber,
     formatExecutionPrice,
     formatPriceDeviation,
-    formatReportedPnl (report) {
+    formatReportedPnl (report, record) {
       if (!report || report.status === 'not_applicable') return '--'
       if (report.status === 'not_applicable_spot') {
         return this.$t('trading-assistant.execution.spotPnlNotApplicable')
@@ -295,7 +319,10 @@ export default {
       if (report.status === 'reported') {
         return formatTradeMoney(report.amount, true).replace('$', '') + ' ' + report.currency
       }
-      const key = report.status === 'order_total_elsewhere' ? 'orderTotalElsewhere' : (report.status === 'pending' ? 'reportPending' : 'reportUnavailable')
+      const systemPnlAvailable = hasSystemPnlResult(record)
+      const key = report.status === 'order_total_elsewhere'
+        ? 'orderTotalElsewhere'
+        : (report.status === 'pending' && !systemPnlAvailable ? 'reportPending' : 'reportUnavailable')
       return this.$t('trading-assistant.execution.' + key)
     },
     formatTradeInstrument (record) {
@@ -392,19 +419,7 @@ export default {
     },
     pickTradeProfitRaw (row) {
       if (!row || typeof row !== 'object') return null
-      const keys = [
-        'net_pnl',
-        'netPnl',
-        'profit',
-        'pnl',
-        'realized_pnl',
-        'realizedPnl',
-        'net_profit',
-        'netProfit',
-        'realized_profit',
-        'realizedProfit'
-      ]
-      for (const k of keys) {
+      for (const k of SYSTEM_PNL_FIELDS) {
         const v = row[k]
         if (v !== null && v !== undefined && v !== '') return v
       }
