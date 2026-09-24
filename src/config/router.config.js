@@ -179,6 +179,7 @@ export const constantRouterMap = [
       {
         path: 'login',
         name: 'login',
+        meta: { title: 'user.login.tab' },
         component: () => import(/* webpackChunkName: "user" */ '@/views/user/Login')
       }
     ]

@@ -6877,7 +6877,22 @@ const locale = {
   "wallet.withdrawHint": "الحد الأدنى لمبلغ السحب: 1 QDT",
   "wallet.withdrawSubmitSuccess": "تم تقديم طلب الانسحاب بنجاح، يرجى الانتظار للمراجعة",
   "wallet.withdrawSuccess": "تمت عملية السحب بنجاح! تم سحب {amount} QDT",
-  "wallet.withdrawTip": "يرجى إدخال مبلغ السحب والعنوان"
+  "wallet.withdrawTip": "يرجى إدخال مبلغ السحب والعنوان",
+  "user.login.hero.edition": "منصة كمية بالذكاء الاصطناعي",
+  "user.login.hero.kicker": "بنية تحتية كمية مدعومة بالذكاء الاصطناعي",
+  "user.login.hero.title": "حوّل أنماط السوق غير المؤكدة إلى انضباط تداول قابل للتنفيذ.",
+  "user.login.hero.subtitle": "مساحة عمل واحدة لبيانات السوق والنماذج والاختبارات الخلفية والتداول المباشر.",
+  "user.login.hero.researchTitle": "محرك أبحاث الذكاء الاصطناعي",
+  "user.login.hero.researchDesc": "نسّق بيانات السوق والعوامل والنماذج ضمن أبحاث قابلة لإعادة الإنتاج.",
+  "user.login.hero.validateTitle": "بيئة تشغيل الاستراتيجية",
+  "user.login.hero.validateDesc": "قم بالترجمة والاختبار الخلفي وتقييم الاستراتيجيات ضمن عقد تنفيذ موحّد.",
+  "user.login.hero.executeTitle": "التنفيذ والمراقبة",
+  "user.login.hero.executeDesc": "نسّق الإشارات والأوامر وضوابط المخاطر وسجلات التدقيق عبر الحسابات الحية.",
+  "user.login.hero.status": "خدمات الذكاء الاصطناعي متاحة",
+  "user.login.hero.scope": "البيانات · النماذج · التنفيذ",
+  "user.login.hero.secureAccess": "وصول آمن",
+  "user.login.hero.welcome": "مرحباً بك في QuantDinger",
+  "user.login.hero.welcomeDesc": "سجّل الدخول لمتابعة أبحاثك وسير عمل التداول."
 }
 
 export default {
