@@ -142,7 +142,7 @@
           </span>
           <span>
             {{ $t('strategyCenter.console.latency') }}
-            <strong>{{ health(selectedStrategy).latency_ms || health(selectedStrategy).loop_latency_ms || '-' }} ms</strong>
+            <strong>{{ runtimeLatency(selectedStrategy) }} ms</strong>
           </span>
           <span>
             {{ pendingWorkLabel(selectedStrategy) }}
@@ -264,6 +264,13 @@
               :bot-type="selectedStrategy.bot_type || ''"
             />
           </a-tab-pane>
+          <a-tab-pane v-if="aiDecisionFilterEnabled" key="ai-decisions" :tab="$t('aiDecisionFilter.tab')">
+            <ai-decision-records
+              v-if="detailTab === 'ai-decisions'"
+              :strategy-id="Number(selectedStrategy.id)"
+              :is-dark="dark"
+            />
+          </a-tab-pane>
           <a-tab-pane key="review" :tab="$t('trading-assistant.tabs.aiReview')">
             <strategy-review-report
               v-if="detailTab === 'review'"
@@ -291,6 +298,7 @@ import TradingRecords from './TradingRecords.vue'
 import StrategyReviewReport from './StrategyReviewReport.vue'
 import StrategyLogs from './StrategyLogs.vue'
 import GridRestingOrders from './GridRestingOrders.vue'
+import AiDecisionRecords from './AiDecisionRecords.vue'
 import { getExchangeDisplayName } from '@/utils/exchangeCredential'
 import {
   normalizeTimestampMilliseconds,
@@ -306,7 +314,7 @@ import {
 
 export default {
   name: 'LiveOperationsTable',
-  components: { PositionRecords, TradingRecords, StrategyReviewReport, StrategyLogs, GridRestingOrders },
+  components: { PositionRecords, TradingRecords, StrategyReviewReport, StrategyLogs, GridRestingOrders, AiDecisionRecords },
   props: {
     strategies: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
@@ -341,9 +349,16 @@ export default {
       const strategy = this.selectedStrategy || {}
       if (this.executionMode(strategy) !== 'live') return false
       const config = strategyTradingConfig(strategy)
-      const type = String(strategy.bot_type || config.bot_type || config.executor_type || '').toLowerCase()
+      const type = String(strategy.resolved_bot_type || strategy.bot_type || config.bot_type || config.executor_type || '').toLowerCase().replace(/-/g, '_')
       const template = String(strategy.template_key || config.template_key || '').toLowerCase()
-      return type === 'grid' || (!type && template.includes('robot_v2_grid'))
+      const params = config.bot_params && typeof config.bot_params === 'object' ? config.bot_params : {}
+      const parameterKeys = Object.keys(params).map(key => String(key).toLowerCase().replace(/_/g, ''))
+      const hasGridParameters = ['gridcount', 'lowerprice', 'upperprice'].every(key => parameterKeys.includes(key))
+      const triggerMode = String(this.health(strategy).trigger_mode || '').toLowerCase()
+      return type === 'grid' || hasGridParameters || template.includes('robot_v2_grid') || triggerMode === 'exchange_resting_orders'
+    },
+    aiDecisionFilterEnabled () {
+      return Boolean(strategyTradingConfig(this.selectedStrategy || {}).ai_decision_filter)
     },
     runningStrategies () {
       return this.strategies.filter(this.isRunning)
@@ -544,6 +559,11 @@ export default {
     },
     formatLivePnl (value) { return this.isLiveFinancial ? this.formatPnl(value) : '—' },
     formatLivePercent (value, signed = true) { return this.isLiveFinancial ? this.formatPercent(value, signed) : '—' },
+    runtimeLatency (strategy) {
+      const health = this.health(strategy)
+      const value = health.latency_ms ?? health.loop_latency_ms
+      return value == null || value === '' || !Number.isFinite(Number(value)) ? '-' : Number(value)
+    },
     formatTime (value) {
       if (!value) return '-'
       const numeric = typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value).trim()) ? Number(value) : null

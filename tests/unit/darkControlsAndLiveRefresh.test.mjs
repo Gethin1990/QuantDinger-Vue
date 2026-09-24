@@ -31,6 +31,9 @@ test('exchange resting orders are visible only for live grid strategies', () => 
   const operations = read('src/views/strategy-center/components/LiveOperationsTable.vue')
 
   assert.match(operations, /if \(this\.executionMode\(strategy\) !== 'live'\) return false/)
-  assert.match(operations, /type === 'grid' \|\| \(!type && template\.includes\('robot_v2_grid'\)\)/)
+  assert.match(operations, /type === 'grid'/)
+  assert.match(operations, /hasGridParameters/)
+  assert.match(operations, /template\.includes\('robot_v2_grid'\)/)
+  assert.match(operations, /triggerMode === 'exchange_resting_orders'/)
   assert.match(operations, /strategyCenter\.console\.pendingSignals/)
 })

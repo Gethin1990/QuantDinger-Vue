@@ -51,6 +51,7 @@ test('deployment setup edits only source-declared runtime fields and saves them 
   assert.match(source, /item\.exchange_id/)
   assert.match(source, /extractStrategyRuntimeContractFromCode/)
   assert.match(source, /applyStrategyRuntimeConfigToCode/)
+  assert.match(source, /sanitizeRuntimeConfigForSource/)
   assert.match(source, /updateScriptSource/)
   assert.match(source, /getWatchlist/)
   assert.match(source, /searchSymbols/)

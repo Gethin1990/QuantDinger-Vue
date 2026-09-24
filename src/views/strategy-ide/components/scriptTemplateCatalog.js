@@ -174,6 +174,27 @@ export function strategyCodeUsesExplicitExchange (code) {
   return /\b(?:exchange_id|exchangeId|exchange)\b\s*=|\bset_exchange\s*\(/i.test(String(code || ''))
 }
 
+const SOURCE_OWNED_EXECUTION_KEYS = [
+  'strategy_family',
+  'executor_type',
+  'executor_config',
+  'executor_preview',
+  'bot_type',
+  'bot_params'
+]
+
+export function strategyCodeOwnsExecutionConfig (code) {
+  const match = String(code || '').match(/^\s*GRID_TEMPLATE_VERSION\s*=\s*(\d+)\s*$/m)
+  return Boolean(match && Number(match[1]) >= 7)
+}
+
+export function sanitizeRuntimeConfigForSource (config = {}, code = '') {
+  const next = { ...(config && typeof config === 'object' ? config : {}) }
+  if (!strategyCodeOwnsExecutionConfig(code)) return next
+  SOURCE_OWNED_EXECUTION_KEYS.forEach(key => delete next[key])
+  return next
+}
+
 export function extractStrategyRuntimeContractFromCode (code) {
   const source = String(code || '')
   const config = extractStrategyRuntimeConfigFromCode(source)

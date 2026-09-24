@@ -7,6 +7,8 @@ import {
   extractStrategyRuntimeConfigFromCode,
   extractStrategyRuntimeContractFromCode,
   formatStrategyInstrument,
+  sanitizeRuntimeConfigForSource,
+  strategyCodeOwnsExecutionConfig,
   strategyCodeUsesExplicitExchange
 } from '../../src/views/strategy-ide/components/scriptTemplateCatalog.js'
 import {
@@ -176,6 +178,33 @@ def initialize(context):
   assert.match(updated, /subscribe\(frequency=TIMEFRAME\)/)
 })
 
+test('v7 grid source removes stale executor metadata while preserving deployment defaults', () => {
+  const code = `INSTRUMENT = 'Crypto:ETH/USDT@spot'
+GRID_TEMPLATE_VERSION = 7
+CELL_LOWER = [0.9]
+CELL_UPPER = [1.1]
+`
+  const previous = {
+    initial_capital: 1000,
+    exchange_id: 'binance',
+    notification_channels: ['browser'],
+    strategy_family: 'robot',
+    executor_type: 'grid',
+    executor_config: { grid_count: 100 },
+    executor_preview: { grid_count: 100 },
+    bot_type: 'grid',
+    bot_params: { gridCount: 100, lowerPrice: 2000, upperPrice: 3000 }
+  }
+
+  assert.equal(strategyCodeOwnsExecutionConfig(code), true)
+  assert.deepEqual(sanitizeRuntimeConfigForSource(previous, code), {
+    initial_capital: 1000,
+    exchange_id: 'binance',
+    notification_channels: ['browser']
+  })
+  assert.deepEqual(sanitizeRuntimeConfigForSource(previous, 'GRID_TEMPLATE_VERSION = 6'), previous)
+})
+
 test('strategy setup spans primary controls and refreshes the watchlist when opened', () => {
   assert.match(strategyEditorSource, /grid-column-start:\s*1/)
   assert.match(strategyEditorSource, /grid-column-end:\s*-1/)
@@ -220,5 +249,32 @@ test('all supported locales include the strategy builder contract', () => {
     assert.ok(messages.sourceContractHint)
     assert.ok(messages.params.target_pct.label)
     assert.ok(messages.params.allow_short.description)
+    for (const name of [
+      'stop_loss_pct',
+      'take_profit_pct',
+      'trailing_stop_pct',
+      'trailing_activation_pct',
+      'trailing_enabled',
+      'max_holding_bars',
+      'time_limit_seconds'
+    ]) {
+      assert.ok(messages.params[name].label, `${locale} ${name} label`)
+      assert.ok(messages.params[name].description, `${locale} ${name} description`)
+    }
+    assert.equal(messages.params.stopLossPct, messages.params.stop_loss_pct)
+    assert.equal(messages.params.takeProfitPct, messages.params.take_profit_pct)
+    assert.equal(messages.params.trailingStopPct, messages.params.trailing_stop_pct)
   })
+})
+
+test('common protection parameter names resolve through the shared presentation layer', () => {
+  const messages = localeOverrides['zh-CN'].strategyBuilder
+  const translate = key => {
+    const match = /^strategyBuilder\.params\.([^.]+)\.(label|description)$/.exec(key)
+    return match ? messages.params[match[1]]?.[match[2]] || key : key
+  }
+
+  assert.equal(strategyParameterLabel({ name: 'take_profit_pct' }, translate), '止盈比例')
+  assert.equal(strategyParameterDescription({ name: 'trailing_stop_pct' }, translate, 'zh-CN'), '移动止损价格与持仓期间最优价格之间的回撤比例。')
+  assert.equal(strategyParameterLabel({ name: 'trailingActivationPct', label: 'Trailing activation' }, translate), '移动止损启动比例')
 })

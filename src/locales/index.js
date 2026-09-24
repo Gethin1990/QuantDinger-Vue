@@ -11,6 +11,7 @@ import fundamentalSyncMessages from './lang/fundamental-sync'
 import strategyLiveRiskMessages from './lang/strategy-live-risk'
 import robotBuilderMessages from './lang/robot-builder-overrides'
 import strategyTradeRecordMessages from './lang/strategy-trade-records'
+import aiDecisionFilterMessages from './ai-decision-filter-overrides'
 import generatedLocaleOverrides from './generated-locale-overrides'
 import uxOverrides from './ux-overrides'
 import copilotCallsiteOverrides from './copilot-callsite-overrides'
@@ -35,6 +36,7 @@ const messages = {
     ...(strategyLiveRiskMessages[defaultLang] || {}),
     ...(robotBuilderMessages[defaultLang] || {}),
     ...(strategyTradeRecordMessages[defaultLang] || {}),
+    ...(aiDecisionFilterMessages[defaultLang] || {}),
     ...(uxOverrides[defaultLang] || {}),
     ...(copilotCallsiteOverrides[defaultLang] || {}),
     ...(generatedLocaleOverrides[defaultLang] || {}),
@@ -118,6 +120,7 @@ function mergeLocaleOverrides (lang) {
     ...(strategyLiveRiskMessages[lang] || {}),
     ...(robotBuilderMessages[lang] || {}),
     ...(strategyTradeRecordMessages[lang] || {}),
+    ...(aiDecisionFilterMessages[lang] || {}),
     ...(uxOverrides[lang] || {}),
     ...(copilotCallsiteOverrides[lang] || {}),
     ...(generatedLocaleOverrides[lang] || {}),
@@ -155,6 +158,7 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(strategyLiveRiskMessages[lang] || {}),
       ...(robotBuilderMessages[lang] || {}),
       ...(strategyTradeRecordMessages[lang] || {}),
+      ...(aiDecisionFilterMessages[lang] || {}),
       ...(uxOverrides[lang] || {}),
       ...(copilotCallsiteOverrides[lang] || {}),
       ...(generatedLocaleOverrides[lang] || {}),

@@ -35,7 +35,7 @@
         :pagination="false"
         size="small"
         rowKey="id"
-        :scroll="{ x: 960 }"
+        :scroll="{ x: compact ? 1060 : 1260 }"
       >
         <template slot="symbol" slot-scope="text, record">
           <strong>{{ record.symbol || text }}</strong>
@@ -57,9 +57,20 @@
         <template slot="size" slot-scope="text, record">
           {{ parseFloat(record.size || text || 0).toFixed(4) }}
         </template>
-        <template slot="notional" slot-scope="text, record">
-          <span v-if="getNotional(record) > 0">${{ getNotional(record).toFixed(2) }}</span>
+        <template slot="positionCost" slot-scope="text, record">
+          <span v-if="getPositionCost(record) > 0">{{ formatMoney(getPositionCost(record)) }}</span>
           <span v-else>--</span>
+        </template>
+        <template slot="marketValue" slot-scope="text, record">
+          <span v-if="getMarketValue(record) > 0">{{ formatMoney(getMarketValue(record)) }}</span>
+          <span v-else>--</span>
+        </template>
+        <template slot="valueSummary" slot-scope="text, record">
+          <span class="position-value-summary">
+            <span>{{ formatMoney(getPositionCost(record)) }}</span>
+            <a-icon type="arrow-right" />
+            <strong>{{ formatMoney(getMarketValue(record)) }}</strong>
+          </span>
         </template>
         <template slot="unrealizedPnl" slot-scope="text, record">
           <span :class="{ 'profit': parseFloat(record.unrealized_pnl || text || 0) > 0, 'loss': parseFloat(record.unrealized_pnl || text || 0) < 0 }">
@@ -274,14 +285,13 @@ export default {
             scopedSlots: { customRender: 'size' }
           },
           {
-            title: this.$t('trading-assistant.table.notional'),
-            dataIndex: 'notional',
-            key: 'notional',
-            width: 132,
-            scopedSlots: { customRender: 'notional' }
+            title: `${this.$t('trading-assistant.table.positionCost')} / ${this.$t('trading-assistant.table.marketValue')}`,
+            key: 'value_summary',
+            width: 210,
+            scopedSlots: { customRender: 'valueSummary' }
           },
           {
-            title: `${this.$t('trading-assistant.table.entryPrice')} / ${this.$t('trading-assistant.table.currentPrice')}`,
+            title: `${this.$t('trading-assistant.table.averageEntryPrice')} / ${this.$t('trading-assistant.table.currentPrice')}`,
             key: 'price_summary',
             width: 190,
             scopedSlots: { customRender: 'priceSummary' }
@@ -323,14 +333,21 @@ export default {
           scopedSlots: { customRender: 'size' }
         },
         {
-          title: this.$t('trading-assistant.table.notional'),
-          dataIndex: 'notional',
-          key: 'notional',
-          width: 130,
-          scopedSlots: { customRender: 'notional' }
+          title: this.$t('trading-assistant.table.positionCost'),
+          dataIndex: 'position_cost',
+          key: 'position_cost',
+          width: 140,
+          scopedSlots: { customRender: 'positionCost' }
         },
         {
-          title: this.$t('trading-assistant.table.entryPrice'),
+          title: this.$t('trading-assistant.table.marketValue'),
+          dataIndex: 'market_value',
+          key: 'market_value',
+          width: 140,
+          scopedSlots: { customRender: 'marketValue' }
+        },
+        {
+          title: this.$t('trading-assistant.table.averageEntryPrice'),
           dataIndex: 'entry_price',
           key: 'entry_price',
           width: 120,
@@ -471,11 +488,13 @@ export default {
             const entryPrice = parseFloat(position.entry_price || position.entryPrice || 0)
             const size = parseFloat(position.size || '0') || 0
             const pnl = parseFloat(position.unrealized_pnl || position.unrealizedPnl || '0') || 0
-            const notional = parseFloat(position.notional_value || position.notionalValue || 0) || (entryPrice > 0 && size > 0 ? entryPrice * size : 0)
+            const currentPrice = parseFloat(position.current_price || position.currentPrice || 0) || 0
+            const positionCost = parseFloat(position.notional_value || position.notionalValue || 0) || (entryPrice > 0 && size > 0 ? entryPrice * size : 0)
+            const marketValue = currentPrice > 0 && size > 0 ? currentPrice * size : positionCost
             const legacyPct = this.safeNumber(position.pnl_percent ?? position.pnlPercent)
             let marginPct = this.safeNumber(position.position_margin_pnl_percent ?? position.positionMarginPnlPercent)
             if (!Number.isFinite(marginPct)) {
-              marginPct = Number.isFinite(legacyPct) ? legacyPct : (notional > 0 ? (pnl / notional) * 100 * lev : 0)
+              marginPct = Number.isFinite(legacyPct) ? legacyPct : (positionCost > 0 ? (pnl / positionCost) * 100 * lev : 0)
             }
             let capitalPct = this.safeNumber(position.strategy_capital_pnl_percent ?? position.capital_contribution_percent ?? position.strategyCapitalPnlPercent)
             if (!Number.isFinite(capitalPct)) capitalPct = 0
@@ -486,13 +505,15 @@ export default {
               side: position.side || 'long',
               size: size > 0 ? size.toString() : '0',
               entry_price: entryPrice > 0 ? entryPrice.toString() : '0',
-              current_price: position.current_price || position.currentPrice || '0',
+              current_price: currentPrice > 0 ? currentPrice.toString() : '0',
               unrealized_pnl: position.unrealized_pnl || position.unrealizedPnl || '0',
               pnl_percent: marginPct,
               position_margin_pnl_percent: marginPct,
               position_notional_pnl_percent: this.safeNumber(position.position_notional_pnl_percent ?? position.positionNotionalPnlPercent) || 0,
               strategy_capital_pnl_percent: capitalPct,
-              notional_value: notional,
+              position_cost: positionCost,
+              market_value: marketValue,
+              notional_value: positionCost,
               updated_at: position.updated_at || position.updatedAt || ''
             }
           })
@@ -527,6 +548,10 @@ export default {
       const amount = Number.isFinite(parsed) ? parsed : 0
       return `${amount > 0 ? '+' : amount < 0 ? '-' : ''}$${Math.abs(amount).toFixed(2)}`
     },
+    formatMoney (value) {
+      const parsed = this.safeNumber(value)
+      return Number.isFinite(parsed) && parsed > 0 ? `$${parsed.toFixed(2)}` : '--'
+    },
     pnlClass (value) {
       const parsed = this.safeNumber(value)
       return {
@@ -534,15 +559,21 @@ export default {
         loss: Number.isFinite(parsed) && parsed < 0
       }
     },
-    getNotional (record) {
-      const supplied = parseFloat(record.notional_value || 0)
+    getPositionCost (record) {
+      const supplied = parseFloat(record.position_cost || record.notional_value || 0)
+      if (Number.isFinite(supplied) && supplied > 0) return supplied
+      const size = parseFloat(record.size || 0)
+      const ep = parseFloat(record.entry_price || 0)
+      if (size > 0 && ep > 0) return size * ep
+      return 0
+    },
+    getMarketValue (record) {
+      const supplied = parseFloat(record.market_value || 0)
       if (Number.isFinite(supplied) && supplied > 0) return supplied
       const size = parseFloat(record.size || 0)
       const cp = parseFloat(record.current_price || 0)
       if (size > 0 && cp > 0) return size * cp
-      const ep = parseFloat(record.entry_price || 0)
-      if (size > 0 && ep > 0) return size * ep
-      return 0
+      return this.getPositionCost(record)
     },
     startPolling () {
       this.stopPolling()
@@ -700,6 +731,7 @@ export default {
     font-weight: 700;
   }
 
+  .position-value-summary,
   .position-price-summary,
   .position-pnl-summary {
     display: inline-flex;
@@ -709,6 +741,7 @@ export default {
     font-variant-numeric: tabular-nums;
   }
 
+  .position-value-summary,
   .position-price-summary {
     color: #64748b;
 
@@ -726,6 +759,7 @@ export default {
   }
 
   &.theme-dark {
+    .position-value-summary,
     .position-price-summary {
       color: #8f98a5;
 

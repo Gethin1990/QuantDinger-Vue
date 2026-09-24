@@ -532,6 +532,7 @@
       :asset-type="currentAssetType"
       :selected-universe-id="selectedUniverseId"
       @use="handleUniverseUse"
+      @deleted="handleUniverseDeleted"
       @close="showUniverseLibrary = false"
     />
 
@@ -617,7 +618,8 @@ import { getWatchlist, searchSymbols } from '@/api/market'
 import { CRYPTO_EXCHANGE_IDS, normalizeExchangeId, normalizeMarketType } from '@/utils/marketContext'
 import {
   applyStrategyRuntimeConfigToCode,
-  extractStrategyRuntimeContractFromCode
+  extractStrategyRuntimeContractFromCode,
+  sanitizeRuntimeConfigForSource
 } from './components/scriptTemplateCatalog'
 import {
   aiGenerateStrategy,
@@ -640,6 +642,16 @@ import {
 } from '@/api/strategy'
 
 const EMPTY_DRAFT_CODE = ''
+const createDefaultRunConfig = () => ({
+  market_category: 'Crypto',
+  exchange_id: 'binance',
+  symbol: 'BTC/USDT',
+  timeframe: '1m',
+  market_type: 'swap',
+  trade_direction: 'long',
+  initial_capital: 10000,
+  leverage: 5
+})
 
 export default {
   name: 'StrategyIde',
@@ -708,16 +720,7 @@ export default {
       indicatorConvertContext: null,
       indicatorConvertInstruction: '',
       indicatorConvertError: '',
-      runConfig: {
-        market_category: 'Crypto',
-        exchange_id: 'binance',
-        symbol: 'BTC/USDT',
-        timeframe: '1m',
-        market_type: 'swap',
-        trade_direction: 'long',
-        initial_capital: 10000,
-        leverage: 5
-      },
+      runConfig: createDefaultRunConfig(),
       strategySymbolOptions: [],
       strategyWatchlistOptions: [],
       strategySymbolLoading: false,
@@ -949,6 +952,7 @@ export default {
         'switchWorkspaceTitle',
         'switchWorkspaceContent',
         'universeApplied',
+        'universeDeleted',
         'robotTemplates',
         'robotTemplatesDesc',
         'robotGenerated'
@@ -1010,8 +1014,10 @@ export default {
     syncRunConfigFromCode (code = this.scriptCode) {
       if (this.currentAssetType !== 'script' || this.scriptCodeHidden) return
       const inferred = extractStrategyRuntimeContractFromCode(code).config
-      if (!Object.keys(inferred).length) return
-      this.runConfig = { ...this.runConfig, ...inferred }
+      this.runConfig = {
+        ...sanitizeRuntimeConfigForSource(this.runConfig, code),
+        ...inferred
+      }
     },
     async initializeStrategyBuilderOptions () {
       await this.loadStrategyWatchlistOptions()
@@ -1618,8 +1624,8 @@ export default {
       }
       this.scriptParamSchema = this.parseObject(source.param_schema)
       this.runConfig = {
-        ...this.runConfig,
-        ...runConfig,
+        ...createDefaultRunConfig(),
+        ...sanitizeRuntimeConfigForSource(runConfig, source.code || ''),
         ...inferredRunConfig
       }
       this.$nextTick(() => {
@@ -1652,7 +1658,7 @@ export default {
       this.editorInitialTemplateKey = ''
       this.scriptVerified = false
       this.runConfig = {
-        ...this.runConfig,
+        ...createDefaultRunConfig(),
         universe_id: undefined,
         universe_code: '',
         universe_name: ''
@@ -1724,6 +1730,19 @@ export default {
       this.applyUniverseReferenceToCode(item)
       this.showUniverseLibrary = false
       this.$message.success(this.text.universeApplied.replace('{name}', item.name || item.code || ''))
+    },
+    handleUniverseDeleted (item) {
+      if (!item || Number(item.id) !== Number(this.selectedUniverseId)) return
+      this.runConfig = {
+        ...this.runConfig,
+        universe_id: null,
+        universe_code: '',
+        universe_name: ''
+      }
+      if (!this.scriptCodeHidden) {
+        this.scriptCode = String(this.scriptCode || '').replace(/^\s*context\.set_universe\((?:pool=["'][^"']+["']|index=["']INDEX:[^"']+["'])\)\s*\r?\n?/mi, '')
+      }
+      this.$message.info(this.text.universeDeleted.replace('{name}', item.name || item.code || ''))
     },
     async applyGeneratedRobot (generated) {
       if (!generated || !generated.code) return
@@ -1880,7 +1899,7 @@ export default {
       return aliases[raw.toLowerCase()] || ''
     },
     buildTradingConfig () {
-      const cfg = this.runConfig || {}
+      const cfg = sanitizeRuntimeConfigForSource(this.runConfig, this.getCurrentScriptCode())
       const marketCategory = cfg.market_category || cfg.marketCategory || 'Crypto'
       const marketType = marketCategory === 'Crypto' && cfg.market_type === 'swap' ? 'swap' : 'spot'
       const tradeDirection = marketType === 'spot' ? 'long' : (cfg.trade_direction || 'long')

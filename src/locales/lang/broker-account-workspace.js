@@ -28,6 +28,8 @@ const locale = {
   'brokerAccounts.snapshotConnectionFailed': 'Could not connect to the brokerage account. Check its credentials and environment.',
   'brokerAccounts.snapshotPositionsFailed': 'Could not load positions. The account may still hold assets; retry the request.',
   'brokerAccounts.snapshotOrdersFailed': 'Could not load open orders. Existing orders may still be active; retry the request.',
+  'brokerAccounts.snapshotSpotOrdersFailed': 'Could not load spot open orders. Existing spot orders may still be active; retry the request.',
+  'brokerAccounts.snapshotSwapOrdersFailed': 'Could not load derivatives open orders. Existing derivatives orders may still be active; retry the request.',
   'brokerAccounts.quoteUnavailable': 'No valid quote is currently available for this instrument. Retry later.',
   'brokerAccounts.commandCenterTitle': 'Account Center',
   'brokerAccounts.commandCenterSubtitle': 'Manage brokerage and crypto exchange connections from one workspace.',
@@ -73,6 +75,8 @@ const zhCN = {
   'brokerAccounts.snapshotConnectionFailed': '无法连接券商账户，请检查凭证与账户环境。',
   'brokerAccounts.snapshotPositionsFailed': '持仓读取失败，账户可能仍有持仓，请重试。',
   'brokerAccounts.snapshotOrdersFailed': '未成交订单读取失败，已有订单可能仍在执行，请重试。',
+  'brokerAccounts.snapshotSpotOrdersFailed': '现货未成交订单读取失败，已有现货订单可能仍在执行，请重试。',
+  'brokerAccounts.snapshotSwapOrdersFailed': '合约未成交订单读取失败，已有合约订单可能仍在执行，请重试。',
   'brokerAccounts.quoteUnavailable': '当前无法获取该标的的有效报价，请稍后重试。',
   'brokerAccounts.commandCenterTitle': '账户中心',
   'brokerAccounts.commandCenterSubtitle': '统一管理股票券商与加密交易所连接，实时掌握账户状态。',
@@ -118,6 +122,8 @@ const zhTW = {
   'brokerAccounts.snapshotConnectionFailed': '無法連接券商帳戶，請檢查憑證與帳戶環境。',
   'brokerAccounts.snapshotPositionsFailed': '持倉讀取失敗，帳戶可能仍有持倉，請重試。',
   'brokerAccounts.snapshotOrdersFailed': '未成交訂單讀取失敗，已有訂單可能仍在執行，請重試。',
+  'brokerAccounts.snapshotSpotOrdersFailed': '現貨未成交訂單讀取失敗，已有現貨訂單可能仍在執行，請重試。',
+  'brokerAccounts.snapshotSwapOrdersFailed': '合約未成交訂單讀取失敗，已有合約訂單可能仍在執行，請重試。',
   'brokerAccounts.quoteUnavailable': '目前無法取得該標的的有效報價，請稍後重試。',
   'brokerAccounts.commandCenterTitle': '帳戶中心',
   'brokerAccounts.commandCenterSubtitle': '統一管理股票券商與加密交易所連線，即時掌握帳戶狀態。',
@@ -143,7 +149,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': 'شبكة اختبار',
     'brokerAccounts.cryptoSection.scope.spot': 'فوري',
     'brokerAccounts.cryptoSection.scope.swap': 'مشتقات',
-    'brokerAccounts.cryptoSection.scope.both': 'فوري + مشتقات'
+    'brokerAccounts.cryptoSection.scope.both': 'فوري + مشتقات',
+    'brokerAccounts.snapshotSpotOrdersFailed': 'تعذر تحميل أوامر التداول الفوري المفتوحة. قد تظل الأوامر الحالية نشطة؛ أعد المحاولة.',
+    'brokerAccounts.snapshotSwapOrdersFailed': 'تعذر تحميل أوامر المشتقات المفتوحة. قد تظل الأوامر الحالية نشطة؛ أعد المحاولة.'
   },
   'de-DE': {
     'brokerAccounts.cryptoSection.environmentLabel': 'Kontoumgebung',
@@ -153,7 +161,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': 'Testnetz',
     'brokerAccounts.cryptoSection.scope.spot': 'Kassahandel',
     'brokerAccounts.cryptoSection.scope.swap': 'Derivate',
-    'brokerAccounts.cryptoSection.scope.both': 'Spot + Derivate'
+    'brokerAccounts.cryptoSection.scope.both': 'Spot + Derivate',
+    'brokerAccounts.snapshotSpotOrdersFailed': 'Offene Spot-Aufträge konnten nicht geladen werden. Bestehende Aufträge können weiterhin aktiv sein; bitte erneut versuchen.',
+    'brokerAccounts.snapshotSwapOrdersFailed': 'Offene Derivate-Aufträge konnten nicht geladen werden. Bestehende Aufträge können weiterhin aktiv sein; bitte erneut versuchen.'
   },
   'fr-FR': {
     'brokerAccounts.cryptoSection.environmentLabel': 'Environnement du compte',
@@ -163,7 +173,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': 'Réseau de test',
     'brokerAccounts.cryptoSection.scope.spot': 'Au comptant',
     'brokerAccounts.cryptoSection.scope.swap': 'Produits dérivés',
-    'brokerAccounts.cryptoSection.scope.both': 'Comptant + dérivés'
+    'brokerAccounts.cryptoSection.scope.both': 'Comptant + dérivés',
+    'brokerAccounts.snapshotSpotOrdersFailed': 'Impossible de charger les ordres au comptant ouverts. Des ordres peuvent encore être actifs ; réessayez.',
+    'brokerAccounts.snapshotSwapOrdersFailed': 'Impossible de charger les ordres dérivés ouverts. Des ordres peuvent encore être actifs ; réessayez.'
   },
   'ja-JP': {
     'brokerAccounts.cryptoSection.environmentLabel': '口座環境',
@@ -173,7 +185,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': 'テストネット',
     'brokerAccounts.cryptoSection.scope.spot': '現物',
     'brokerAccounts.cryptoSection.scope.swap': 'デリバティブ',
-    'brokerAccounts.cryptoSection.scope.both': '現物 + デリバティブ'
+    'brokerAccounts.cryptoSection.scope.both': '現物 + デリバティブ',
+    'brokerAccounts.snapshotSpotOrdersFailed': '現物の未約定注文を取得できませんでした。既存の注文は有効な可能性があります。再試行してください。',
+    'brokerAccounts.snapshotSwapOrdersFailed': 'デリバティブの未約定注文を取得できませんでした。既存の注文は有効な可能性があります。再試行してください。'
   },
   'ko-KR': {
     'brokerAccounts.cryptoSection.environmentLabel': '계정 환경',
@@ -183,7 +197,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': '테스트넷',
     'brokerAccounts.cryptoSection.scope.spot': '현물',
     'brokerAccounts.cryptoSection.scope.swap': '파생상품',
-    'brokerAccounts.cryptoSection.scope.both': '현물 + 파생상품'
+    'brokerAccounts.cryptoSection.scope.both': '현물 + 파생상품',
+    'brokerAccounts.snapshotSpotOrdersFailed': '현물 미체결 주문을 불러오지 못했습니다. 기존 주문이 계속 활성 상태일 수 있으니 다시 시도하세요.',
+    'brokerAccounts.snapshotSwapOrdersFailed': '파생상품 미체결 주문을 불러오지 못했습니다. 기존 주문이 계속 활성 상태일 수 있으니 다시 시도하세요.'
   },
   'ru-RU': {
     'brokerAccounts.cryptoSection.environmentLabel': 'Среда счёта',
@@ -193,7 +209,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': 'Тестовая сеть',
     'brokerAccounts.cryptoSection.scope.spot': 'Спот',
     'brokerAccounts.cryptoSection.scope.swap': 'Деривативы',
-    'brokerAccounts.cryptoSection.scope.both': 'Спот + деривативы'
+    'brokerAccounts.cryptoSection.scope.both': 'Спот + деривативы',
+    'brokerAccounts.snapshotSpotOrdersFailed': 'Не удалось загрузить открытые спотовые ордера. Существующие ордера могут оставаться активными; повторите попытку.',
+    'brokerAccounts.snapshotSwapOrdersFailed': 'Не удалось загрузить открытые ордера по деривативам. Существующие ордера могут оставаться активными; повторите попытку.'
   },
   'th-TH': {
     'brokerAccounts.cryptoSection.environmentLabel': 'สภาพแวดล้อมบัญชี',
@@ -203,7 +221,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': 'เครือข่ายทดสอบ',
     'brokerAccounts.cryptoSection.scope.spot': 'สปอต',
     'brokerAccounts.cryptoSection.scope.swap': 'อนุพันธ์',
-    'brokerAccounts.cryptoSection.scope.both': 'สปอต + อนุพันธ์'
+    'brokerAccounts.cryptoSection.scope.both': 'สปอต + อนุพันธ์',
+    'brokerAccounts.snapshotSpotOrdersFailed': 'ไม่สามารถโหลดคำสั่งสปอตที่เปิดอยู่ได้ คำสั่งเดิมอาจยังทำงานอยู่ โปรดลองอีกครั้ง',
+    'brokerAccounts.snapshotSwapOrdersFailed': 'ไม่สามารถโหลดคำสั่งอนุพันธ์ที่เปิดอยู่ได้ คำสั่งเดิมอาจยังทำงานอยู่ โปรดลองอีกครั้ง'
   },
   'vi-VN': {
     'brokerAccounts.cryptoSection.environmentLabel': 'Môi trường tài khoản',
@@ -213,7 +233,9 @@ const credentialMetaLocales = {
     'brokerAccounts.cryptoSection.environment.testnet': 'Mạng thử nghiệm',
     'brokerAccounts.cryptoSection.scope.spot': 'Giao ngay',
     'brokerAccounts.cryptoSection.scope.swap': 'Phái sinh',
-    'brokerAccounts.cryptoSection.scope.both': 'Giao ngay + phái sinh'
+    'brokerAccounts.cryptoSection.scope.both': 'Giao ngay + phái sinh',
+    'brokerAccounts.snapshotSpotOrdersFailed': 'Không thể tải các lệnh giao ngay đang mở. Các lệnh hiện có có thể vẫn hoạt động; hãy thử lại.',
+    'brokerAccounts.snapshotSwapOrdersFailed': 'Không thể tải các lệnh phái sinh đang mở. Các lệnh hiện có có thể vẫn hoạt động; hãy thử lại.'
   }
 }
 

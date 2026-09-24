@@ -41,8 +41,8 @@ export const researchModes = isZh => [
 
 export function researchResponseContract (mode = 'research', isZh = false) {
   const shared = isZh
-    ? '先给一句话结论，再给证据和数据；注明数据截止时间与时区，明确区分事实、推断与数据缺口。只报告当前资产类别真正适用的数据：例如美股不把资金费率或未平仓合约当作缺口。没有回测或样本证据时，不得声称胜率、成功概率或统计优势。涉及方向性交易时同时列出看多、看空和观望条件，不把超买直接等同于适合做空。'
-    : 'Lead with a one-sentence conclusion, then evidence and data. State the data cutoff time and timezone, and separate facts, inference, and missing data. Report only fields relevant to the active asset class; for example, do not call funding rate or open interest a data gap for a US stock. Never claim a win rate, success probability, or statistical edge without an actual backtest or sample. For directional trades, include bull, bear, and stay-out conditions; do not equate overbought with a short signal.'
+    ? '先给一句话结论，再给证据和数据；注明数据截止时间与时区，明确区分事实、推断与数据缺口。只报告当前资产类别真正适用的数据：例如美股不把资金费率或未平仓合约当作缺口。没有回测或样本证据时，不得声称胜率、成功概率或统计优势。涉及方向性交易时同时列出看多、看空和观望条件，不把超买直接等同于适合做空。当至少有 3 个可比较数据点且图形明显比文字更清晰时，可附加一个 ```chart JSON 代码块；仅使用 type（line、bar、area、pie、scatter）、title、unit、categories 和 series（name、data）字段，不得编造缺失数据。'
+    : 'Lead with a one-sentence conclusion, then evidence and data. State the data cutoff time and timezone, and separate facts, inference, and missing data. Report only fields relevant to the active asset class; for example, do not call funding rate or open interest a data gap for a US stock. Never claim a win rate, success probability, or statistical edge without an actual backtest or sample. For directional trades, include bull, bear, and stay-out conditions; do not equate overbought with a short signal. When at least three comparable data points exist and a visual is clearer than prose, you may append one ```chart JSON code block using only type (line, bar, area, pie, scatter), title, unit, categories, and series (name, data). Never invent missing values.'
   const contracts = {
     diagnosis: isZh
       ? '按“结论、趋势与动量、关键价位、风险、下一步验证”组织；关键价位和可比数据优先使用紧凑表格。'
