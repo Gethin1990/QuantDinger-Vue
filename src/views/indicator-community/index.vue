@@ -1,5 +1,5 @@
 <template>
-  <div class="indicator-community-container" :class="{ 'theme-dark': isDarkTheme }">
+  <div class="indicator-community-container qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
     <a-tabs v-model="activeTab" class="admin-tabs" @change="handleTabChange">
       <a-tab-pane key="market" :tab="$t('community.title')">
       </a-tab-pane>

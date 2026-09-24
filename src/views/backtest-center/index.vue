@@ -1,5 +1,5 @@
 <template>
-  <div class="backtest-page" :class="{ 'theme-dark': isDarkTheme }" data-testid="backtest-center">
+  <div class="backtest-page qd-workspace-page" :class="{ 'theme-dark': isDarkTheme }" data-testid="backtest-center">
     <section class="workspace-toolbar">
       <div class="workspace-toolbar__primary">
         <a-radio-group v-model="mode" button-style="solid" data-testid="research-mode-switch">

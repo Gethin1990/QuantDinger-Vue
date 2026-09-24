@@ -1,5 +1,5 @@
 <template>
-  <div class="strategy-ide-shell" :class="{ 'theme-dark': isDarkTheme }">
+  <div class="strategy-ide-shell qd-workspace-page" :class="{ 'theme-dark': isDarkTheme }">
     <div class="strategy-ide-layout">
       <a-alert
         v-if="adaptedBacktestRequired"

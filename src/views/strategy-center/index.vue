@@ -1,5 +1,5 @@
 <template>
-  <div class="strategy-center" :class="{ 'theme-dark': isDarkTheme }">
+  <div class="strategy-center qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
     <header class="sc-header">
       <div>
         <div class="sc-title-row">
