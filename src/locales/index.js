@@ -10,7 +10,12 @@ import strategyV2Messages from './lang/strategy-v2'
 import fundamentalSyncMessages from './lang/fundamental-sync'
 import strategyLiveRiskMessages from './lang/strategy-live-risk'
 import robotBuilderMessages from './lang/robot-builder-overrides'
+import billingPaymentMessages from './billing-payment-overrides'
+import referralRewardMessages from './referral-reward-overrides'
+import adminOrderMessages from './admin-order-overrides'
 import strategyTradeRecordMessages from './lang/strategy-trade-records'
+import quickTradeRecordMessages from './quick-trade-records'
+import chartTypeMessages from './chart-type-overrides'
 import aiDecisionFilterMessages from './ai-decision-filter-overrides'
 import generatedLocaleOverrides from './generated-locale-overrides'
 import uxOverrides from './ux-overrides'
@@ -19,7 +24,14 @@ import reviewedUiOverrides from './reviewed-ui-overrides'
 import professionalReportOverrides from './professional-report-overrides'
 import backtestRangeOverrides from './backtest-range-overrides'
 import settingsResearchOverrides from './settings-research-overrides'
+import settingsRuntimeOverrides from './settings-runtime-overrides'
 import strategyBuilderOverrides from './strategy-builder-overrides'
+import eventRadarMessages from './lang/event-radar'
+import currentFeatureOverrides from './lang/current-feature-overrides'
+import strategyEvolutionMessages from './lang/strategy-evolution'
+import quickTradeSpotSellMessages from './lang/quick-trade-spot-sell'
+import talibFactorMessages from './lang/talib-factors'
+import factorResearchMessages from './lang/factor-research-factors'
 
 Vue.use(VueI18n)
 
@@ -35,7 +47,12 @@ const messages = {
     ...(fundamentalSyncMessages[defaultLang] || {}),
     ...(strategyLiveRiskMessages[defaultLang] || {}),
     ...(robotBuilderMessages[defaultLang] || {}),
+    ...(billingPaymentMessages[defaultLang] || {}),
+    ...(referralRewardMessages[defaultLang] || {}),
+    ...(adminOrderMessages[defaultLang] || {}),
     ...(strategyTradeRecordMessages[defaultLang] || {}),
+    ...(quickTradeRecordMessages[defaultLang] || {}),
+    ...(chartTypeMessages[defaultLang] || {}),
     ...(aiDecisionFilterMessages[defaultLang] || {}),
     ...(uxOverrides[defaultLang] || {}),
     ...(copilotCallsiteOverrides[defaultLang] || {}),
@@ -44,7 +61,14 @@ const messages = {
     ...(professionalReportOverrides[defaultLang] || {}),
     ...(backtestRangeOverrides[defaultLang] || {}),
     ...(settingsResearchOverrides[defaultLang] || {}),
-    ...(strategyBuilderOverrides[defaultLang] || {})
+    ...(settingsRuntimeOverrides[defaultLang] || {}),
+    ...(strategyBuilderOverrides[defaultLang] || {}),
+    ...(currentFeatureOverrides[defaultLang] || {}),
+    ...(eventRadarMessages[defaultLang] || {}),
+    ...(strategyEvolutionMessages[defaultLang] || {}),
+    ...(quickTradeSpotSellMessages[defaultLang] || {}),
+    ...(talibFactorMessages[defaultLang] || {}),
+    ...(factorResearchMessages[defaultLang] || {})
   }
 }
 
@@ -119,7 +143,12 @@ function mergeLocaleOverrides (lang) {
     ...(fundamentalSyncMessages[lang] || {}),
     ...(strategyLiveRiskMessages[lang] || {}),
     ...(robotBuilderMessages[lang] || {}),
+    ...(billingPaymentMessages[lang] || {}),
+    ...(referralRewardMessages[lang] || {}),
+    ...(adminOrderMessages[lang] || {}),
     ...(strategyTradeRecordMessages[lang] || {}),
+    ...(quickTradeRecordMessages[lang] || {}),
+    ...(chartTypeMessages[lang] || {}),
     ...(aiDecisionFilterMessages[lang] || {}),
     ...(uxOverrides[lang] || {}),
     ...(copilotCallsiteOverrides[lang] || {}),
@@ -128,7 +157,14 @@ function mergeLocaleOverrides (lang) {
     ...(professionalReportOverrides[lang] || {}),
     ...(backtestRangeOverrides[lang] || {}),
     ...(settingsResearchOverrides[lang] || {}),
-    ...(strategyBuilderOverrides[lang] || {})
+    ...(settingsRuntimeOverrides[lang] || {}),
+    ...(strategyBuilderOverrides[lang] || {}),
+    ...(currentFeatureOverrides[lang] || {}),
+    ...(eventRadarMessages[lang] || {}),
+    ...(strategyEvolutionMessages[lang] || {}),
+    ...(quickTradeSpotSellMessages[lang] || {}),
+    ...(talibFactorMessages[lang] || {}),
+    ...(factorResearchMessages[lang] || {})
   }
   i18n.setLocaleMessage(lang, {
     ...(i18n.getLocaleMessage(lang) || {}),
@@ -157,7 +193,12 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(fundamentalSyncMessages[lang] || {}),
       ...(strategyLiveRiskMessages[lang] || {}),
       ...(robotBuilderMessages[lang] || {}),
+      ...(billingPaymentMessages[lang] || {}),
+      ...(referralRewardMessages[lang] || {}),
+      ...(adminOrderMessages[lang] || {}),
       ...(strategyTradeRecordMessages[lang] || {}),
+      ...(quickTradeRecordMessages[lang] || {}),
+      ...(chartTypeMessages[lang] || {}),
       ...(aiDecisionFilterMessages[lang] || {}),
       ...(uxOverrides[lang] || {}),
       ...(copilotCallsiteOverrides[lang] || {}),
@@ -166,7 +207,13 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(professionalReportOverrides[lang] || {}),
       ...(backtestRangeOverrides[lang] || {}),
       ...(settingsResearchOverrides[lang] || {}),
-      ...(strategyBuilderOverrides[lang] || {})
+      ...(settingsRuntimeOverrides[lang] || {}),
+      ...(strategyBuilderOverrides[lang] || {}),
+      ...(currentFeatureOverrides[lang] || {}),
+      ...(eventRadarMessages[lang] || {}),
+      ...(quickTradeSpotSellMessages[lang] || {}),
+      ...(talibFactorMessages[lang] || {}),
+      ...(factorResearchMessages[lang] || {})
     })
     i18n.setLocaleMessage(lang, locale)
     loadedLanguages.push(lang)

@@ -35,7 +35,7 @@
         <div class="master-columns">
           <span>{{ $t('strategyCenter.console.strategyAndSymbol') }}</span>
           <span>{{ $t('systemOverview.colStatus') }}</span>
-          <span>{{ $t('strategyCenter.console.todayPnl') }}</span>
+          <span>{{ $t('strategyCenter.console.strategyTotalPnl') }}</span>
         </div>
 
         <div class="strategy-list" :class="{ 'is-loading': loading }">
@@ -55,7 +55,10 @@
               <i :class="statusClass(strategy)"></i>{{ statusLabel(strategy) }}
               <em :class="executionMode(strategy)">{{ executionLabel(strategy) }}</em>
             </span>
-            <span class="row-pnl" :class="pnlClass(strategyPnl(strategy))">{{ formatPnl(strategyPnl(strategy)) }}</span>
+            <span class="row-pnl" :class="pnlClass(strategyTotalPnl(strategy))">
+              <strong>{{ formatPnl(strategyTotalPnl(strategy)) }}</strong>
+              <small>{{ formatPnlPercent(strategyTotalReturn(strategy)) }}</small>
+            </span>
           </button>
           <div v-if="!loading && filteredStrategies.length === 0" class="list-empty">
             <a-icon type="inbox" />
@@ -93,7 +96,19 @@
               :loading="controlLoadingId === selectedStrategy.id"
               @click="$emit('start', selectedStrategy)"
             >{{ $t('trading-assistant.startStrategy') }}</a-button>
-            <div v-else class="pause-actions">
+            <a-popconfirm
+              v-if="hasRetainedVirtualPosition"
+              :title="$t('strategyCenter.console.settleVirtualPositionsConfirm')"
+              :ok-text="$t('strategyCenter.console.settleVirtualPositions')"
+              :cancel-text="$t('common.cancel')"
+              ok-type="danger"
+              @confirm="$emit('stop', selectedStrategy, { closePositions: true })"
+            >
+              <a-button icon="stop" type="danger" ghost :loading="controlLoadingId === selectedStrategy.id">
+                {{ $t('strategyCenter.console.settleVirtualPositions') }}
+              </a-button>
+            </a-popconfirm>
+            <div v-if="isRunning(selectedStrategy)" class="pause-actions">
               <a-popconfirm
                 :title="$t('strategyCenter.console.pauseConfirm')"
                 :ok-text="$t('strategyCenter.console.pauseOnly')"
@@ -168,7 +183,7 @@
             </div>
             <div>
               <span>{{ $t('strategyCenter.console.cumulativeNetPnl') }}</span>
-              <strong :class="isLiveFinancial ? pnlClass(performanceSummary.netPnl) : ''">{{ formatLiveMoney(performanceSummary.netPnl, true) }}</strong>
+              <strong :class="hasFinancialLedger ? pnlClass(performanceSummary.netPnl) : ''">{{ formatLiveMoney(performanceSummary.netPnl, true) }}</strong>
               <small>{{ financialMetricSuffix }}</small>
             </div>
             <div>
@@ -192,15 +207,15 @@
           <div class="performance-strip">
             <div>
               <span>{{ $t('strategyCenter.console.todayPnl') }}</span>
-              <strong :class="isLiveFinancial ? pnlClass(strategyPnl(selectedStrategy)) : ''">{{ formatLivePnl(strategyPnl(selectedStrategy)) }}</strong>
+              <strong :class="hasFinancialLedger ? pnlClass(strategyPnl(selectedStrategy)) : ''">{{ formatLivePnl(strategyPnl(selectedStrategy)) }}</strong>
               <small
-                v-if="isLiveFinancial && selectedStrategy.today_pnl_estimated"
+                v-if="hasFinancialLedger && selectedStrategy.today_pnl_estimated"
                 :title="$t('strategyCenter.console.todayPnlEstimatedHint')"
               >{{ $t('strategyCenter.console.todayPnlEstimated') }}</small>
             </div>
             <div>
               <span>{{ $t('trading-assistant.performance.totalReturn') }}</span>
-              <strong :class="isLiveFinancial ? pnlClass(performanceSummary.totalReturn) : ''">{{ formatLivePercent(performanceSummary.totalReturn) }}</strong>
+              <strong :class="hasFinancialLedger ? pnlClass(performanceSummary.totalReturn) : ''">{{ formatLivePercent(performanceSummary.totalReturn) }}</strong>
             </div>
             <div>
               <span>{{ $t('trading-assistant.performance.maxDrawdown') }}</span>
@@ -209,19 +224,19 @@
             <div>
               <span>{{ $t('trading-assistant.performance.winRate') }}</span>
               <strong>{{ formatLivePercent(performanceSummary.winRate, false) }}</strong>
-              <small v-if="isLiveFinancial && performanceSummary.completedTrades">
+              <small v-if="hasFinancialLedger && performanceSummary.completedTrades">
                 {{ $t('strategyCenter.console.winRateSample', { wins: performanceSummary.wins, total: performanceSummary.completedTrades }) }}
               </small>
             </div>
             <div>
               <span>{{ $t('strategyCenter.console.completedTrades') }}</span>
-              <strong>{{ isLiveFinancial ? performanceSummary.completedTrades : '—' }}</strong>
+              <strong>{{ hasFinancialLedger ? performanceSummary.completedTrades : '—' }}</strong>
             </div>
           </div>
         </section>
 
         <a-tabs v-model="detailTab" class="runtime-tabs" :animated="false">
-          <a-tab-pane v-if="isGridStrategy" key="grid-orders" :tab="$t('strategyCenter.gridOrders.tab')">
+          <a-tab-pane v-if="isGridStrategy" key="grid-orders" :tab="gridOrdersTabLabel">
             <grid-resting-orders
               v-if="detailTab === 'grid-orders'"
               :strategy-id="Number(selectedStrategy.id)"
@@ -242,6 +257,7 @@
                 :market-type="tradingConfig(selectedStrategy).market_type || 'swap'"
                 :leverage="tradingConfig(selectedStrategy).leverage || 1"
                 :is-dark="dark"
+                @ownership-reconciled="$emit('ownership-reconciled')"
               />
             </section>
             <section class="equity-panel panel-section overview-equity-panel">
@@ -292,7 +308,7 @@
 
 <script>
 import * as echarts from 'echarts'
-import { getStrategyDetail, getStrategyEquityCurve, getStrategyTrades } from '@/api/strategy'
+import { getStrategyEquityCurve } from '@/api/strategy'
 import PositionRecords from './PositionRecords.vue'
 import TradingRecords from './TradingRecords.vue'
 import StrategyReviewReport from './StrategyReviewReport.vue'
@@ -302,6 +318,7 @@ import AiDecisionRecords from './AiDecisionRecords.vue'
 import { getExchangeDisplayName } from '@/utils/exchangeCredential'
 import {
   normalizeTimestampMilliseconds,
+  strategyCapital,
   strategyExchangeId,
   strategyExecutionMode,
   strategyLeverage,
@@ -326,12 +343,10 @@ export default {
   data () {
     return {
       selectedId: null,
-      selectedDetail: null,
       detailTab: 'overview',
       statusTab: 'all',
       keyword: '',
       curve: [],
-      trades: [],
       detailLoading: false,
       chart: null,
       detailRequestId: 0
@@ -339,16 +354,15 @@ export default {
   },
   computed: {
     selectedStrategy () {
-      const base = this.strategies.find(item => item.id === this.selectedId)
-      // The list endpoint owns volatile runtime fields such as status and heartbeat.
-      // Detail data is useful for richer configuration, but it may lag behind a
-      // start or stop request and must not overwrite the refreshed list state.
-      return base ? { ...(this.selectedDetail || {}), ...base } : null
+      return this.strategies.find(item => item.id === this.selectedId) || null
     },
     isGridStrategy () {
       const strategy = this.selectedStrategy || {}
-      if (this.executionMode(strategy) !== 'live') return false
       const config = strategyTradingConfig(strategy)
+      const manifest = config.strategy_manifest && typeof config.strategy_manifest === 'object' ? config.strategy_manifest : {}
+      const metadata = manifest.metadata && typeof manifest.metadata === 'object' ? manifest.metadata : {}
+      const declaredFamily = String(metadata.strategy_family || '').toLowerCase().replace(/-/g, '_')
+      if (declaredFamily && !['robot', 'grid'].includes(declaredFamily)) return false
       const type = String(strategy.resolved_bot_type || strategy.bot_type || config.bot_type || config.executor_type || '').toLowerCase().replace(/-/g, '_')
       const template = String(strategy.template_key || config.template_key || '').toLowerCase()
       const params = config.bot_params && typeof config.bot_params === 'object' ? config.bot_params : {}
@@ -356,6 +370,11 @@ export default {
       const hasGridParameters = ['gridcount', 'lowerprice', 'upperprice'].every(key => parameterKeys.includes(key))
       const triggerMode = String(this.health(strategy).trigger_mode || '').toLowerCase()
       return type === 'grid' || hasGridParameters || template.includes('robot_v2_grid') || triggerMode === 'exchange_resting_orders'
+    },
+    gridOrdersTabLabel () {
+      return this.$t(this.executionMode(this.selectedStrategy || {}) === 'signal'
+        ? 'strategyCenter.gridOrders.tabVirtual'
+        : 'strategyCenter.gridOrders.tab')
     },
     aiDecisionFilterEnabled () {
       return Boolean(strategyTradingConfig(this.selectedStrategy || {}).ai_decision_filter)
@@ -387,8 +406,7 @@ export default {
       return {
         ...summarizeStrategyPerformance({
           strategy: this.selectedStrategy,
-          curve: this.curve,
-          trades: this.trades
+          curve: this.curve
         }),
         grossExposure: Number(this.health(this.selectedStrategy).gross_exposure || 0)
       }
@@ -396,25 +414,36 @@ export default {
     isLiveFinancial () {
       return this.selectedStrategy && this.executionMode(this.selectedStrategy) === 'live'
     },
+    hasFinancialLedger () {
+      return this.selectedStrategy && ['live', 'signal'].includes(this.executionMode(this.selectedStrategy))
+    },
+    hasRetainedVirtualPosition () {
+      return Boolean(
+        this.selectedStrategy &&
+        !this.isRunning(this.selectedStrategy) &&
+        this.executionMode(this.selectedStrategy) === 'signal' &&
+        Math.abs(this.performanceSummary.grossExposure) > 1e-8
+      )
+    },
     financialCurrency () {
       return strategyQuoteCurrency(this.selectedStrategy)
     },
     financialMetricContext () {
       return this.isLiveFinancial
         ? this.$t('strategyCenter.console.netPnlBasis')
-        : this.$t('strategyCenter.console.liveFinancialUnavailable')
+        : this.$t('strategyCenter.console.virtualAccountBasis')
     },
     financialMetricSuffix () {
       return this.isLiveFinancial
         ? this.financialCurrency
-        : this.$t('systemOverview.signal')
+        : this.$t('strategyCenter.console.virtualAccount')
     },
     leverageDisplay () {
-      if (!this.isLiveFinancial) return '—'
+      if (!this.hasFinancialLedger) return '—'
       return `${strategyLeverage(this.selectedStrategy).toLocaleString(undefined, { maximumFractionDigits: 2 })}×`
     },
     leverageMarketLabel () {
-      if (!this.isLiveFinancial) return this.$t('systemOverview.signal')
+      if (!this.isLiveFinancial) return this.$t('strategyCenter.console.virtualAccount')
       const marketType = String(this.tradingConfig(this.selectedStrategy).market_type || this.selectedStrategy.market_type || '').toLowerCase()
       return marketType === 'spot'
         ? this.$t('strategyCenter.console.spotMarket')
@@ -454,26 +483,16 @@ export default {
       if (!strategy || !strategy.id) return
       this.selectedId = strategy.id
       this.detailTab = 'overview'
-      this.selectedDetail = null
       this.loadDetails(strategy.id)
     },
     async loadDetails (id) {
       const requestId = ++this.detailRequestId
       this.detailLoading = true
       this.curve = []
-      this.trades = []
       try {
-        const [detailRes, curveRes, tradesRes] = await Promise.all([
-          getStrategyDetail(id).catch(() => null),
-          getStrategyEquityCurve(id).catch(() => null),
-          getStrategyTrades(id).catch(() => null)
-        ])
+        const curveRes = await getStrategyEquityCurve(id).catch(() => null)
         if (requestId !== this.detailRequestId) return
-        if (detailRes && detailRes.code === 1) this.selectedDetail = detailRes.data || null
         this.curve = curveRes && curveRes.code === 1 && Array.isArray(curveRes.data) ? curveRes.data : []
-        if (tradesRes && tradesRes.code === 1 && tradesRes.data) {
-          this.trades = tradesRes.data.trades || tradesRes.data.items || []
-        }
       } finally {
         if (requestId === this.detailRequestId) {
           this.detailLoading = false
@@ -542,6 +561,16 @@ export default {
       const value = Number(strategy.today_pnl)
       return Number.isFinite(value) ? value : null
     },
+    strategyTotalPnl (strategy) {
+      if (!strategy || strategy.total_pnl == null || strategy.total_pnl === '') return null
+      const value = Number(strategy.total_pnl)
+      return Number.isFinite(value) ? value : null
+    },
+    strategyTotalReturn (strategy) {
+      const pnl = this.strategyTotalPnl(strategy)
+      const capital = strategyCapital(strategy)
+      return pnl == null || !Number.isFinite(capital) || capital <= 0 ? null : pnl / capital
+    },
     lastActivity (strategy) {
       return this.health(strategy).last_heartbeat_at || strategyLastActivity(strategy)
     },
@@ -551,14 +580,19 @@ export default {
       const number = Number(value)
       return `${number > 0 ? '+' : ''}${number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     },
+    formatPnlPercent (value) {
+      if (value == null || value === '' || !Number.isFinite(Number(value))) return '—'
+      const number = Number(value) * 100
+      return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`
+    },
     formatPercent (value, signed = true) { const number = Number(value || 0) * 100; return `${signed && number > 0 ? '+' : ''}${number.toFixed(2)}%` },
     formatLiveMoney (value, signed = false) {
-      if (!this.isLiveFinancial) return '—'
+      if (!this.hasFinancialLedger) return '—'
       const number = Number(value || 0)
       return `${signed && number > 0 ? '+' : ''}${number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     },
-    formatLivePnl (value) { return this.isLiveFinancial ? this.formatPnl(value) : '—' },
-    formatLivePercent (value, signed = true) { return this.isLiveFinancial ? this.formatPercent(value, signed) : '—' },
+    formatLivePnl (value) { return this.hasFinancialLedger ? this.formatPnl(value) : '—' },
+    formatLivePercent (value, signed = true) { return this.hasFinancialLedger ? this.formatPercent(value, signed) : '—' },
     runtimeLatency (strategy) {
       const health = this.health(strategy)
       const value = health.latency_ms ?? health.loop_latency_ms
@@ -613,7 +647,9 @@ export default {
 .row-status > i { position: absolute; left: 0; top: 4px; width: 6px; height: 6px; border-radius: 50%; }
 .row-status > i.running { background: #28a85f; }.row-status > i.warning { background: #e16b47; }.row-status > i.stopped { background: #858c96; }
 .row-status em { width: max-content; padding: 1px 5px; border: 1px solid #dfe3e8; border-radius: 3px; color: #697382; font-size: 11px; font-style: normal; font-weight: 500; }.row-status em.live { border-color: rgba(222, 164, 24, .35); color: #a66f00; }
-.row-pnl { text-align: right; color: #596273; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.row-pnl { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; color: #596273; font-variant-numeric: tabular-nums; }
+.row-pnl strong { font-size: 13px; font-weight: 650; }
+.row-pnl small { color: currentColor; font-size: 11px; font-weight: 500; opacity: .82; }
 .profit { color: #24a25a !important; }.loss { color: #d95656 !important; }
 .list-empty, .section-empty { display: flex; align-items: center; justify-content: center; min-height: 180px; color: #949ca7; }.section-empty.compact { min-height: 110px; }
 .strategy-master footer { padding: 12px 16px; border-top: 1px solid #e7eaf0; color: #7d8794; font-size: 12px; }

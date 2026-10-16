@@ -46,10 +46,40 @@ const locale = {
   'trading-assistant.logs.level.signal': 'Signal',
   'trading-assistant.logs.autoRefresh': 'Auto refresh',
   'trading-assistant.logs.noLogs': 'No logs',
+  'trading-assistant.logs.action.open_long': 'open long',
+  'trading-assistant.logs.action.open_short': 'open short',
+  'trading-assistant.logs.action.close_long': 'close long',
+  'trading-assistant.logs.action.close_short': 'close short',
+  'trading-assistant.logs.message.runtimeScheduled': 'Strategy runtime has been scheduled and is waiting to run.',
+  'trading-assistant.logs.message.runtimeReady': 'Runtime ready: {instruments} instrument(s), timeframe {timeframe}, mode {mode}, trigger {trigger}.',
+  'trading-assistant.logs.message.orderQueued': 'Queued locally, not yet confirmed by the exchange: {action} {symbol}, quantity {quantity}, pending #{pendingId}.',
+  'trading-assistant.logs.message.invalidSymbol': '{symbol} is not recognized by the selected Binance derivatives market (error -1121). The order was not submitted. Check the symbol and spot/perpetual market type.',
+  'trading-assistant.logs.message.accountSetupFailed': 'Could not configure leverage or margin mode for {symbol}. The order was not submitted. Check the account, market type, and exchange settings.',
+  'trading-assistant.logs.message.exchangeClientFailed': 'Could not connect to {exchange}; the order was not submitted. Check API credentials, permissions, and network.',
+  'trading-assistant.logs.message.positionSnapshotFailed': 'Could not verify the current exchange position for {symbol}; the order was blocked for safety.',
+  'trading-assistant.logs.message.spotShortRejected': 'Spot markets do not support short positions in this system; the order was blocked ({context}).',
+  'trading-assistant.logs.message.exchangeOrderFailed': 'The exchange rejected the order ({context}). Check balance, order precision, permissions, and technical details.',
+  'trading-assistant.logs.message.runtimeCycleFailed': 'This strategy execution cycle failed. Check technical details; repeated failures may stop the strategy.',
+  'trading-assistant.logs.exchangeError.credentialsStopped': '{exchange} rejected API authentication, so the strategy was stopped. Verify the API key and secret, live/test environment, IP allowlist, and trading permissions, then restart it.',
+  'trading-assistant.logs.exchangeError.credentials': '{exchange} rejected API authentication. Verify the API key and secret, live/test environment, IP allowlist, and trading permissions.',
+  'trading-assistant.logs.exchangeError.clock_skew': '{exchange} rejected the request because the server time or request timestamp is out of sync. Synchronize the runtime host clock and retry.',
+  'trading-assistant.logs.exchangeError.rate_limit': '{exchange} rate-limited the request ({context}). The order was not accepted; wait briefly and avoid duplicate retries.',
+  'trading-assistant.logs.exchangeError.invalid_symbol': '{exchange} does not recognize this instrument in the selected market ({context}). The order was not submitted. Check the symbol and spot/perpetual market type.',
+  'trading-assistant.logs.exchangeError.price_band': '{exchange} price protection rejected the order ({context}). It was not filled because the executable price moved outside the allowed range; check the position before retrying.',
+  'trading-assistant.logs.exchangeError.insufficient_funds': '{exchange} reports insufficient available balance or margin ({context}). Reduce the allocation/order size or free and transfer collateral before retrying.',
+  'trading-assistant.logs.exchangeError.order_size': '{exchange} rejected the order quantity or precision ({context}). Check minimum notional, lot size, decimal precision, and contract units.',
+  'trading-assistant.logs.exchangeError.account_configuration': '{exchange} account settings do not match this order ({context}). Check position mode, margin mode, leverage, and account type.',
+  'trading-assistant.logs.exchangeError.position_conflict': '{exchange} rejected the order because it conflicts with the current position or open orders ({context}). Check position side, reduce-only orders, and remaining quantity.',
+  'trading-assistant.logs.exchangeError.risk_limit': '{exchange} risk controls rejected the order ({context}). Check leverage, risk tier, liquidation status, and position limits before retrying.',
+  'trading-assistant.logs.exchangeError.market_unavailable': '{exchange} reports that this market or trading service is temporarily unavailable ({context}). Check market status and retry later.',
+  'trading-assistant.logs.exchangeError.transport': 'The request to {exchange} failed because of a network or exchange service problem ({context}). The submission result may be uncertain; verify open orders before retrying.',
+  'trading-assistant.logs.exchangeError.exchange_rejected': '{exchange} rejected the request ({context}). Review the technical details and the exchange account before retrying.',
   'strategyCenter.console.pauseOnly': 'Pause only',
   'strategyCenter.console.pauseConfirm': 'Pause strategy execution and keep its current positions?',
   'strategyCenter.console.stopAndClose': 'Pause and close',
   'strategyCenter.console.stopAndCloseConfirm': 'Pause the strategy and queue reduce-only orders for all positions owned by it?',
+  'strategyCenter.console.settleVirtualPositions': 'Settle virtual positions',
+  'strategyCenter.console.settleVirtualPositionsConfirm': 'Settle all retained virtual positions now? This only updates the built-in virtual account and never sends an exchange order.',
   'strategyCenter.console.stopAndCloseQueued': 'Strategy paused and its close orders were queued',
   'strategyCenter.console.pauseSuccess': 'Strategy paused; positions remain open',
   'strategyCenter.console.runtimeStatus': 'Runtime status',
@@ -63,10 +93,17 @@ const locale = {
   'strategyCenter.console.performanceOverview': 'Runtime performance',
   'strategyCenter.console.winRateSample': '{wins}/{total} profitable',
   'strategyCenter.console.completedTrades': 'Completed trades',
+  'strategyCenter.console.strategyTotalPnl': 'Strategy total P&L',
   'strategyCenter.console.todayPnlEstimated': 'Opening baseline estimated',
   'strategyCenter.console.todayPnlEstimatedHint': 'No equity snapshot was available near local midnight. This value uses the trade ledger as a temporary opening baseline and becomes exact after continuous snapshots cover a day boundary.',
   'strategyCenter.console.netPnlBasis': 'Realized and unrealized P&L, net of recorded fees',
   'strategyCenter.console.liveFinancialUnavailable': 'Live financial metrics are unavailable in notification mode',
+  'strategyCenter.console.virtualAccount': 'Virtual account',
+  'strategyCenter.console.virtualAccountBasis': 'Simulated fills and P&L; no broker order is submitted',
+  'strategyCenter.console.virtualPositionsHint': 'Virtual positions generated from signal prices, fees, and slippage. No broker order is submitted.',
+  'trading-assistant.costs.slippage': 'Embedded slippage cost',
+  'trading-assistant.execution.virtualFeeBasis': 'Fixed virtual commission: {rate}%; charged on executed notional ({leverage}× leverage is already reflected in notional).',
+  'trading-assistant.execution.virtualSlippageBasis': 'Fixed one-way virtual slippage: {rate}%.',
   'strategyCenter.console.spotMarket': 'Spot',
   'strategyCenter.console.swapMarket': 'Perpetual',
   'strategyCenter.editor.positionSide': 'Position direction',
@@ -77,12 +114,12 @@ const locale = {
   'strategyCenter.editor.directionMode': 'Strategy trading capability',
   'strategyCenter.editor.directionLongOnly': 'Long only',
   'strategyCenter.editor.directionShortOnly': 'Short only',
-  'strategyCenter.editor.directionOneWay': 'One-way long / short',
+  'strategyCenter.editor.directionOneWay': 'Single-position long / short',
   'strategyCenter.editor.directionBoth': 'Hedge-mode dual legs',
   'strategyCenter.editor.directionNeutral': 'Neutral',
   'strategyCenter.editor.directionMode.long_only': 'Long only',
   'strategyCenter.editor.directionMode.short_only': 'Short only',
-  'strategyCenter.editor.directionMode.one_way': 'One-way long / short',
+  'strategyCenter.editor.directionMode.one_way': 'Single-position long / short',
   'strategyCenter.editor.directionMode.both': 'Hedge-mode dual legs',
   'strategyCenter.editor.directionMode.neutral': 'Neutral dual-leg',
   'strategyCenter.editor.directionMode.unknown': 'Not declared',
@@ -130,14 +167,25 @@ const locale = {
   'strategyRuntime.stopCommand': 'The execution worker received a pause command.',
   'strategyRuntime.workerShutdown': 'The trading worker is shutting down; persisted strategy state is retained for recovery.',
   'strategyRuntime.gridStopCleanup': 'Grid stop cleanup completed. Check exchange order status for cancellations that remain unconfirmed.',
+  'strategyRuntime.virtualFillFailed': 'The virtual trade could not be recorded. Check the strategy log before retrying.',
+  'strategyRuntime.virtualFillCompleted': 'The signal was recorded in the virtual account and its notification was sent.',
+  'strategyRuntime.virtualFillNotificationFailed': 'The virtual trade was recorded, but the notification could not be delivered.',
+  'strategyRuntime.virtualLimitOrderOpened': 'The virtual limit order is open and will fill only after the market reaches its price.',
+  'strategyRuntime.virtualLimitOrderOpenedNotificationFailed': 'The virtual limit order is open, but its notification could not be delivered.',
   'strategyV2.stopAndCloseQueued': 'Pause and close request accepted; waiting for execution. Positions have not been confirmed closed.',
   'strategyV2.stopFailed': 'Pause could not be confirmed. Check the latest strategy status and logs before retrying.',
+  'strategyV2.stopBeforeDelete': 'The strategy is still running or stopping. Pause it and wait for execution to finish before deleting it.',
+  'strategyV2.virtualCloseSettlementFailed': 'A virtual position could not be settled during pause and close.',
   'strategyV2.closeRunIdentityMissing': 'The position has no usable strategy run identity.',
   'strategyV2.closePositionSideInvalid': 'The position direction could not be confirmed.',
   'strategyV2.closePositionQuoteMissing': 'The position quantity or reference price is unavailable.',
   'strategyV2.closeOrderQueueFailed': 'The close order could not be added to the execution queue.',
   'strategyV2.paused': 'Strategy paused',
+  'strategyV2.stoppedNoPositions': 'Strategy paused; there were no positions to close',
   'strategyV2.stoppedAndCloseQueued': 'Strategy paused and close orders queued',
+  'strategyV2.stoppedAndVirtualCloseCompleted': 'Strategy paused and all virtual positions were settled',
+  'strategyV2.commandNotFound': 'The lifecycle command was not found or does not belong to this strategy.',
+  'strategyV2.commandStatusUnavailable': 'Lifecycle command status is temporarily unavailable.',
   'strategyV2.startQueued': 'Strategy start queued; waiting for the execution worker to confirm.',
   'accountRisk.grossNotionalExceeded': 'Account gross notional limit exceeded.',
   'accountRisk.symbolGrossNotionalExceeded': 'Symbol gross notional limit exceeded.',
@@ -148,7 +196,10 @@ const locale = {
   'accountRisk.positionPriceMissing': 'A current position could not be valued, so the opening order was blocked.',
   'accountRisk.proposedPriceMissing': 'The opening order has no usable reference price, so it was blocked.'
   , 'strategyCenter.gridOrders.tab': 'Exchange orders'
+  , 'strategyCenter.gridOrders.tabVirtual': 'Virtual orders'
   , 'strategyCenter.gridOrders.title': 'Exchange resting grid orders'
+  , 'strategyCenter.gridOrders.virtualTitle': 'Virtual resting grid orders'
+  , 'strategyCenter.gridOrders.virtualDescription': 'The strategy keeps independently tracked price levels up to its configured open-order limit. Exit levels appear after the matching virtual inventory exists; no order is sent to an exchange.'
   , 'strategyCenter.gridOrders.description': 'Matches tracked order IDs against the bound account’s current exchange orders. Prices and quantities come from the exchange; verification does not place or cancel orders.'
   , 'strategyCenter.gridOrders.errors.grid_exchange_snapshot_failed': 'Could not read a complete exchange order snapshot. Order status remains unverified; retry shortly.'
   , 'strategyCenter.gridOrders.exchangeStatus.open': 'Confirmed open'
@@ -156,12 +207,19 @@ const locale = {
   , 'strategyCenter.gridOrders.exchangeStatus.not_open': 'Not in open orders'
   , 'strategyCenter.gridOrders.exchangeStatus.unverified': 'Unverified'
   , 'strategyCenter.gridOrders.reconcile': 'Reconcile now'
+  , 'strategyCenter.gridOrders.refresh': 'Refresh'
   , 'strategyCenter.gridOrders.syncFailed': 'Exchange reconciliation failed'
   , 'strategyCenter.gridOrders.errors.grid_runner_not_available': 'The grid runtime is not available for verification.'
   , 'strategyCenter.gridOrders.errors.grid_exchange_client_unavailable': 'The exchange client could not be created for verification.'
   , 'strategyCenter.gridOrders.errors.grid_exchange_audit_rate_limited': 'The verification request limit was reached before every tracked order could be checked.'
   , 'strategyCenter.gridOrders.errors.grid_exchange_orders_unverified': 'One or more tracked orders could not be confirmed on the exchange.'
   , 'strategyCenter.gridOrders.open': 'Tracked open orders'
+  , 'strategyCenter.gridOrders.source': 'Execution source'
+  , 'strategyCenter.gridOrders.virtualAccount': 'Virtual account'
+  , 'strategyCenter.gridOrders.matching': 'Fill model'
+  , 'strategyCenter.gridOrders.priceTrigger': 'Latest price reaches limit'
+  , 'strategyCenter.gridOrders.virtualOpen': 'Waiting for price'
+  , 'strategyCenter.gridOrders.lastEvaluated': 'Last evaluated'
   , 'strategyCenter.gridOrders.verified': 'Verified on exchange'
   , 'strategyCenter.gridOrders.unverified': 'Not confirmed active'
   , 'strategyCenter.gridOrders.lastSync': 'Last reconciliation'
@@ -173,16 +231,21 @@ const locale = {
   , 'strategyCenter.gridOrders.filled': 'Filled'
   , 'strategyCenter.gridOrders.status': 'Status'
   , 'strategyCenter.gridOrders.exchangeOrderId': 'Exchange order ID'
+  , 'strategyCenter.gridOrders.virtualOrderId': 'Virtual order ID'
   , 'strategyCenter.gridOrders.updatedAt': 'Updated'
   , 'strategyCenter.gridOrders.notVerified': 'Not verified'
+  , 'strategyCenter.gridOrders.notAvailable': 'Not available'
   , 'strategyCenter.gridOrders.empty': 'No exchange resting orders are visible'
   , 'strategyCenter.gridOrders.emptyHint': 'A running grid should normally have resting entries. Reconcile and inspect strategy health before assuming it is active.'
+  , 'strategyCenter.gridOrders.virtualEmpty': 'No virtual resting orders are open'
+  , 'strategyCenter.gridOrders.virtualEmptyHint': 'The strategy may be waiting for its initial position or the next grid cycle. Refresh after the next market update.'
 }
 
 const enUSFallback = locale
 
 const zhCN = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': '策略总盈亏',
   'strategyRuntime.fillContractMetadataUnavailable': '合约规格暂不可用，成交入账将重试，不会猜测成交数量。',
   'strategyRuntime.unsupportedFillContract': '当前入账模型不支持此合约单位。',
   'strategyRuntime.invalidFillQuantity': '交易所成交数量无效，已暂缓入账。',
@@ -228,10 +291,40 @@ const zhCN = {
   'trading-assistant.logs.level.signal': '信号',
   'trading-assistant.logs.autoRefresh': '自动刷新',
   'trading-assistant.logs.noLogs': '暂无日志',
+  'trading-assistant.logs.action.open_long': '开多',
+  'trading-assistant.logs.action.open_short': '开空',
+  'trading-assistant.logs.action.close_long': '平多',
+  'trading-assistant.logs.action.close_short': '平空',
+  'trading-assistant.logs.message.runtimeScheduled': '策略运行任务已调度，正在等待执行。',
+  'trading-assistant.logs.message.runtimeReady': '策略运行环境已就绪：{instruments} 个标的，周期 {timeframe}，模式 {mode}，触发方式 {trigger}。',
+  'trading-assistant.logs.message.orderQueued': '订单已进入本地执行队列，尚未确认提交到交易所：{action} {symbol}，数量 {quantity}，待执行编号 #{pendingId}。',
+  'trading-assistant.logs.message.invalidSymbol': '所选 Binance 合约市场不识别 {symbol}（错误 -1121），订单未提交。请检查交易对以及现货/永续合约市场类型。',
+  'trading-assistant.logs.message.accountSetupFailed': '无法为 {symbol} 配置杠杆或保证金模式，订单未提交。请检查账户、市场类型和交易所设置。',
+  'trading-assistant.logs.message.exchangeClientFailed': '无法连接 {exchange}，订单未提交。请检查 API 凭证、交易权限和网络连接。',
+  'trading-assistant.logs.message.positionSnapshotFailed': '无法确认 {symbol} 的交易所当前持仓；为安全起见，订单已被拦截。',
+  'trading-assistant.logs.message.spotShortRejected': '现货市场不支持做空，订单已被拦截（{context}）。',
+  'trading-assistant.logs.message.exchangeOrderFailed': '交易所拒绝了订单（{context}）。请检查余额、下单精度、账户权限和技术详情。',
+  'trading-assistant.logs.message.runtimeCycleFailed': '本次策略执行周期失败。请查看技术详情；连续失败可能导致策略停止。',
+  'trading-assistant.logs.exchangeError.credentialsStopped': '{exchange} API 鉴权失败，策略已自动停止。请核对 API Key/Secret、实盘/测试环境、IP 白名单和交易权限，然后重新启动策略。',
+  'trading-assistant.logs.exchangeError.credentials': '{exchange} API 鉴权失败。请核对 API Key/Secret、实盘/测试环境、IP 白名单和交易权限。',
+  'trading-assistant.logs.exchangeError.clock_skew': '{exchange} 因服务器时间或请求时间戳不同步而拒绝请求。请同步运行服务器的系统时间后重试。',
+  'trading-assistant.logs.exchangeError.rate_limit': '{exchange} 对请求进行了限频（{context}），订单未被接受。请稍后重试，并避免重复提交。',
+  'trading-assistant.logs.exchangeError.invalid_symbol': '{exchange} 在所选市场中不识别该标的（{context}），订单未提交。请检查交易对以及现货/永续合约市场类型。',
+  'trading-assistant.logs.exchangeError.price_band': '{exchange} 的价格保护拒绝了订单（{context}）。可成交价超出允许范围，订单未成交；重试前请先核对当前持仓。',
+  'trading-assistant.logs.exchangeError.insufficient_funds': '{exchange} 可用余额或保证金不足（{context}）。请降低策略资金占用/订单数量，或释放并划转保证金后重试。',
+  'trading-assistant.logs.exchangeError.order_size': '{exchange} 拒绝了订单数量或精度（{context}）。请检查最小名义金额、步长、小数精度和合约单位。',
+  'trading-assistant.logs.exchangeError.account_configuration': '{exchange} 账户设置与该订单不匹配（{context}）。请检查持仓模式、保证金模式、杠杆和账户类型。',
+  'trading-assistant.logs.exchangeError.position_conflict': '{exchange} 因当前持仓或挂单冲突而拒绝订单（{context}）。请检查持仓方向、只减仓订单和剩余数量。',
+  'trading-assistant.logs.exchangeError.risk_limit': '{exchange} 风控拒绝了订单（{context}）。请检查杠杆、风险限额档位、强平状态和持仓上限。',
+  'trading-assistant.logs.exchangeError.market_unavailable': '{exchange} 当前市场或交易服务暂不可用（{context}）。请查看交易所状态后稍后重试。',
+  'trading-assistant.logs.exchangeError.transport': '请求 {exchange} 时发生网络或交易所服务异常（{context}）。提交结果可能不确定，重试前请先核对未完成订单。',
+  'trading-assistant.logs.exchangeError.exchange_rejected': '{exchange} 拒绝了请求（{context}）。请查看技术详情并检查交易所账户后再重试。',
   'strategyCenter.console.pauseOnly': '仅暂停',
   'strategyCenter.console.pauseConfirm': '暂停策略运行并保留当前持仓吗？',
   'strategyCenter.console.stopAndClose': '暂停并平仓',
   'strategyCenter.console.stopAndCloseConfirm': '暂停策略，并为该策略持有的全部仓位提交只减仓订单吗？',
+  'strategyCenter.console.settleVirtualPositions': '结算虚拟持仓',
+  'strategyCenter.console.settleVirtualPositionsConfirm': '立即结算全部保留的虚拟持仓吗？此操作只更新系统内置虚拟账户，不会向交易所提交订单。',
   'strategyCenter.console.stopAndCloseQueued': '策略已暂停，平仓订单已提交队列',
   'strategyCenter.console.pauseSuccess': '策略已暂停，当前持仓继续保留',
   'strategyCenter.console.runtimeStatus': '运行状态',
@@ -249,6 +342,12 @@ const zhCN = {
   'strategyCenter.console.todayPnlEstimatedHint': '用户本地零点附近暂时没有净值快照，当前以交易账本重建日初基准；连续采样跨过下一个零点后将自动转为精确值。',
   'strategyCenter.console.netPnlBasis': '已实现与未实现收益，扣除已记录手续费',
   'strategyCenter.console.liveFinancialUnavailable': '仅通知模式不提供实盘资金指标',
+  'strategyCenter.console.virtualAccount': '虚拟账户',
+  'strategyCenter.console.virtualAccountBasis': '按信号模拟成交与盈亏，不会向券商提交订单',
+  'strategyCenter.console.virtualPositionsHint': '根据策略信号价格、手续费和滑点生成的虚拟持仓，不会向券商提交订单。',
+  'trading-assistant.costs.slippage': '内含滑点成本',
+  'trading-assistant.execution.virtualFeeBasis': '虚拟成交固定手续费：{rate}%；按成交名义金额计费（{leverage}× 杠杆已体现在名义金额中）。',
+  'trading-assistant.execution.virtualSlippageBasis': '虚拟成交固定单边滑点：{rate}%。',
   'strategyCenter.console.spotMarket': '现货',
   'strategyCenter.console.swapMarket': '永续合约',
   'strategyCenter.editor.positionSide': '持仓方向',
@@ -259,12 +358,12 @@ const zhCN = {
   'strategyCenter.editor.directionMode': '策略交易方向能力',
   'strategyCenter.editor.directionLongOnly': '仅做多',
   'strategyCenter.editor.directionShortOnly': '仅做空',
-  'strategyCenter.editor.directionOneWay': '单向持仓多空切换',
+  'strategyCenter.editor.directionOneWay': '单仓位多空切换',
   'strategyCenter.editor.directionBoth': '双向持仓（独立双腿）',
   'strategyCenter.editor.directionNeutral': '中性双腿',
   'strategyCenter.editor.directionMode.long_only': '仅做多',
   'strategyCenter.editor.directionMode.short_only': '仅做空',
-  'strategyCenter.editor.directionMode.one_way': '单向持仓多空切换',
+  'strategyCenter.editor.directionMode.one_way': '单仓位多空切换',
   'strategyCenter.editor.directionMode.both': '双向持仓（独立双腿）',
   'strategyCenter.editor.directionMode.neutral': '中性双腿',
   'strategyCenter.editor.directionMode.unknown': '未声明',
@@ -312,14 +411,25 @@ const zhCN = {
   'strategyRuntime.stopCommand': '执行进程已收到暂停命令。',
   'strategyRuntime.workerShutdown': '交易执行进程正在退出，策略期望状态已保留，供重启后恢复。',
   'strategyRuntime.gridStopCleanup': '网格停止清理已执行，请在交易所订单中核对是否仍有未确认撤单的订单。',
+  'strategyRuntime.virtualFillFailed': '虚拟交易未能入账，请检查策略日志后重试。',
+  'strategyRuntime.virtualFillCompleted': '信号已记入虚拟账户，并已发送通知。',
+  'strategyRuntime.virtualFillNotificationFailed': '虚拟交易已入账，但通知发送失败。',
+  'strategyRuntime.virtualLimitOrderOpened': '虚拟限价单已挂出，将在行情触达委托价后成交。',
+  'strategyRuntime.virtualLimitOrderOpenedNotificationFailed': '虚拟限价单已挂出，但通知发送失败。',
   'strategyV2.stopAndCloseQueued': '暂停并平仓请求已受理，等待执行，尚未确认平仓完成。',
   'strategyV2.stopFailed': '暂未确认暂停成功，请查看最新策略状态和日志后再重试。',
+  'strategyV2.stopBeforeDelete': '策略仍在运行或停止处理中，请先暂停并等待执行完成后再删除。',
+  'strategyV2.virtualCloseSettlementFailed': '暂停并平仓时有虚拟持仓未能完成结算。',
   'strategyV2.closeRunIdentityMissing': '未找到持仓对应的有效策略运行记录。',
   'strategyV2.closePositionSideInvalid': '无法确认持仓方向。',
   'strategyV2.closePositionQuoteMissing': '持仓数量或参考价格不可用。',
   'strategyV2.closeOrderQueueFailed': '平仓订单未能加入执行队列。',
   'strategyV2.paused': '策略已暂停',
+  'strategyV2.stoppedNoPositions': '策略已暂停；当前没有持仓，无需平仓',
   'strategyV2.stoppedAndCloseQueued': '策略已暂停，平仓订单已提交',
+  'strategyV2.stoppedAndVirtualCloseCompleted': '策略已暂停，全部虚拟持仓已完成结算',
+  'strategyV2.commandNotFound': '未找到该策略对应的运行指令。',
+  'strategyV2.commandStatusUnavailable': '暂时无法查询运行指令状态。',
   'accountRisk.grossNotionalExceeded': '账户总名义仓位超过限制。',
   'accountRisk.symbolGrossNotionalExceeded': '该标的总名义仓位超过限制。',
   'accountRisk.marginEstimateExceeded': '账户预估保证金超过限制。',
@@ -329,7 +439,10 @@ const zhCN = {
   'accountRisk.positionPriceMissing': '当前持仓缺少可用价格，已阻止新增开仓。',
   'accountRisk.proposedPriceMissing': '开仓订单缺少可用参考价格，已阻止提交。'
   , 'strategyCenter.gridOrders.tab': '交易所挂单'
+  , 'strategyCenter.gridOrders.tabVirtual': '虚拟挂单'
   , 'strategyCenter.gridOrders.title': '交易所常驻网格挂单'
+  , 'strategyCenter.gridOrders.virtualTitle': '虚拟账户网格挂单'
+  , 'strategyCenter.gridOrders.virtualDescription': '策略会在最大同时挂单数内保留多档独立限价单；对应虚拟持仓形成后才会出现平仓档位，全程不会向交易所提交订单。'
   , 'strategyCenter.gridOrders.description': '按订单号核对绑定账户的当前交易所挂单，价格和数量以交易所回报为准。核验不会下单或撤单。'
   , 'strategyCenter.gridOrders.errors.grid_exchange_snapshot_failed': '未能完整读取交易所挂单，当前状态待核验，请稍后重试。'
   , 'strategyCenter.gridOrders.exchangeStatus.open': '已确认挂单'
@@ -337,12 +450,19 @@ const zhCN = {
   , 'strategyCenter.gridOrders.exchangeStatus.not_open': '未在当前挂单中'
   , 'strategyCenter.gridOrders.exchangeStatus.unverified': '待核验'
   , 'strategyCenter.gridOrders.reconcile': '立即核验'
+  , 'strategyCenter.gridOrders.refresh': '刷新'
   , 'strategyCenter.gridOrders.syncFailed': '交易所挂单核验失败'
   , 'strategyCenter.gridOrders.errors.grid_runner_not_available': '当前网格运行实例不可用，暂时无法核验挂单。'
   , 'strategyCenter.gridOrders.errors.grid_exchange_client_unavailable': '无法创建交易所连接，暂时无法核验挂单。'
   , 'strategyCenter.gridOrders.errors.grid_exchange_audit_rate_limited': '本次核验触发请求频率限制，未能检查全部挂单。'
   , 'strategyCenter.gridOrders.errors.grid_exchange_orders_unverified': '部分本地跟踪订单未能从交易所确认。'
   , 'strategyCenter.gridOrders.open': '跟踪中挂单'
+  , 'strategyCenter.gridOrders.source': '执行来源'
+  , 'strategyCenter.gridOrders.virtualAccount': '虚拟账户'
+  , 'strategyCenter.gridOrders.matching': '成交模型'
+  , 'strategyCenter.gridOrders.priceTrigger': '最新价触及限价'
+  , 'strategyCenter.gridOrders.virtualOpen': '等待行情触价'
+  , 'strategyCenter.gridOrders.lastEvaluated': '最近检查'
   , 'strategyCenter.gridOrders.verified': '交易所已确认'
   , 'strategyCenter.gridOrders.unverified': '未确认仍在挂单'
   , 'strategyCenter.gridOrders.lastSync': '最近核验'
@@ -354,14 +474,19 @@ const zhCN = {
   , 'strategyCenter.gridOrders.filled': '已成交'
   , 'strategyCenter.gridOrders.status': '状态'
   , 'strategyCenter.gridOrders.exchangeOrderId': '交易所订单号'
+  , 'strategyCenter.gridOrders.virtualOrderId': '虚拟订单号'
   , 'strategyCenter.gridOrders.updatedAt': '更新时间'
   , 'strategyCenter.gridOrders.notVerified': '未核验'
+  , 'strategyCenter.gridOrders.notAvailable': '暂无'
   , 'strategyCenter.gridOrders.empty': '没有查到交易所常驻挂单'
   , 'strategyCenter.gridOrders.emptyHint': '运行中的网格通常应存在买入挂单；请先执行核验并检查运行健康，不要默认它正在正常挂单。'
+  , 'strategyCenter.gridOrders.virtualEmpty': '当前没有虚拟挂单'
+  , 'strategyCenter.gridOrders.virtualEmptyHint': '策略可能正在等待初始持仓或下一轮网格，下一次行情更新后可刷新查看。'
 }
 
 const zhTW = {
   ...zhCN,
+  'strategyCenter.console.strategyTotalPnl': '策略總盈虧',
   'strategyCenter.editor.leverageAutoTitle': '永續合約槓桿',
   'strategyCenter.editor.leverageAutoHint': '已根據永續合約自動啟用。直接填寫 1× 至 {max}×；1× 表示不放大曝險。',
   'strategyRuntime.fillContractMetadataUnavailable': '合約規格暫不可用，成交入帳將重試，不會猜測成交數量。',
@@ -369,6 +494,14 @@ const zhTW = {
   'strategyRuntime.invalidFillQuantity': '交易所成交數量無效，已暫緩入帳。',
   'strategyRuntime.inconsistentFillSnapshot': '累計成交金額不一致，需要對帳。',
   'strategyRuntime.fillSnapshotNotReady': '交易所成交快照尚未就緒，入帳將重試。',
+  'strategyRuntime.virtualFillFailed': '虛擬交易未能入帳，請檢查策略日誌後重試。',
+  'strategyRuntime.virtualFillCompleted': '訊號已記入虛擬帳戶，並已傳送通知。',
+  'strategyRuntime.virtualFillNotificationFailed': '虛擬交易已入帳，但通知傳送失敗。',
+  'strategyRuntime.virtualLimitOrderOpened': '虛擬限價單已掛出，將在行情觸及委託價後成交。',
+  'strategyRuntime.virtualLimitOrderOpenedNotificationFailed': '虛擬限價單已掛出，但通知傳送失敗。',
+  'strategyV2.stopBeforeDelete': '策略仍在執行或停止處理中，請先暫停並等待執行完成後再刪除。',
+  'strategyV2.virtualCloseSettlementFailed': '暫停並平倉時有虛擬持倉未能完成結算。',
+  'strategyV2.stoppedAndVirtualCloseCompleted': '策略已暫停，全部虛擬持倉已完成結算',
   'strategyRuntime.spotBalanceUnavailable': '無法確認現貨可用餘額，未提交賣單。請重新整理帳戶餘額後重試。',
   'strategyRuntime.spotBalanceInsufficient': '現貨可賣餘額為零，或數量低於交易最小要求。請檢查凍結餘額和未完成訂單後重試。',
   'strategyRuntime.spotCloseQuantityInvalid': '現貨賣出數量或精度調整結果無效，未提交訂單。',
@@ -389,10 +522,40 @@ const zhTW = {
   'trading-assistant.logs.level.signal': '訊號',
   'trading-assistant.logs.autoRefresh': '自動重新整理',
   'trading-assistant.logs.noLogs': '暫無日誌',
+  'trading-assistant.logs.action.open_long': '開多',
+  'trading-assistant.logs.action.open_short': '開空',
+  'trading-assistant.logs.action.close_long': '平多',
+  'trading-assistant.logs.action.close_short': '平空',
+  'trading-assistant.logs.message.runtimeScheduled': '策略執行工作已排程，正在等待執行。',
+  'trading-assistant.logs.message.runtimeReady': '策略執行環境已就緒：{instruments} 個標的，週期 {timeframe}，模式 {mode}，觸發方式 {trigger}。',
+  'trading-assistant.logs.message.orderQueued': '訂單已進入本機執行佇列，尚未確認提交至交易所：{action} {symbol}，數量 {quantity}，待執行編號 #{pendingId}。',
+  'trading-assistant.logs.message.invalidSymbol': '所選 Binance 合約市場無法識別 {symbol}（錯誤 -1121），訂單未提交。請檢查交易對及現貨／永續合約市場類型。',
+  'trading-assistant.logs.message.accountSetupFailed': '無法為 {symbol} 設定槓桿或保證金模式，訂單未提交。請檢查帳戶、市場類型與交易所設定。',
+  'trading-assistant.logs.message.exchangeClientFailed': '無法連線至 {exchange}，訂單未提交。請檢查 API 憑證、交易權限與網路連線。',
+  'trading-assistant.logs.message.positionSnapshotFailed': '無法確認 {symbol} 的交易所目前持倉；基於安全考量，訂單已被攔截。',
+  'trading-assistant.logs.message.spotShortRejected': '現貨市場不支援做空，訂單已被攔截（{context}）。',
+  'trading-assistant.logs.message.exchangeOrderFailed': '交易所拒絕了訂單（{context}）。請檢查餘額、下單精度、帳戶權限與技術詳情。',
+  'trading-assistant.logs.message.runtimeCycleFailed': '本次策略執行週期失敗。請查看技術詳情；連續失敗可能導致策略停止。',
+  'trading-assistant.logs.exchangeError.credentialsStopped': '{exchange} API 驗證失敗，策略已自動停止。請核對 API Key/Secret、正式／測試環境、IP 白名單及交易權限，再重新啟動策略。',
+  'trading-assistant.logs.exchangeError.credentials': '{exchange} API 驗證失敗。請核對 API Key/Secret、正式／測試環境、IP 白名單及交易權限。',
+  'trading-assistant.logs.exchangeError.clock_skew': '{exchange} 因伺服器時間或請求時間戳不同步而拒絕請求。請同步執行主機的系統時間後重試。',
+  'trading-assistant.logs.exchangeError.rate_limit': '{exchange} 對請求進行限頻（{context}），訂單未被接受。請稍後重試並避免重複提交。',
+  'trading-assistant.logs.exchangeError.invalid_symbol': '{exchange} 在所選市場中無法識別此標的（{context}），訂單未提交。請檢查交易對及現貨／永續合約市場類型。',
+  'trading-assistant.logs.exchangeError.price_band': '{exchange} 的價格保護拒絕了訂單（{context}）。可成交價超出允許範圍，訂單未成交；重試前請先核對目前持倉。',
+  'trading-assistant.logs.exchangeError.insufficient_funds': '{exchange} 可用餘額或保證金不足（{context}）。請降低策略資金配置／訂單數量，或釋放並劃轉保證金後重試。',
+  'trading-assistant.logs.exchangeError.order_size': '{exchange} 拒絕了訂單數量或精度（{context}）。請檢查最小名義金額、步長、小數精度及合約單位。',
+  'trading-assistant.logs.exchangeError.account_configuration': '{exchange} 帳戶設定與此訂單不匹配（{context}）。請檢查持倉模式、保證金模式、槓桿及帳戶類型。',
+  'trading-assistant.logs.exchangeError.position_conflict': '{exchange} 因目前持倉或掛單衝突而拒絕訂單（{context}）。請檢查持倉方向、只減倉訂單及剩餘數量。',
+  'trading-assistant.logs.exchangeError.risk_limit': '{exchange} 風控拒絕了訂單（{context}）。請檢查槓桿、風險限額級別、強平狀態及持倉上限。',
+  'trading-assistant.logs.exchangeError.market_unavailable': '{exchange} 目前市場或交易服務暫不可用（{context}）。請查看交易所狀態後稍後重試。',
+  'trading-assistant.logs.exchangeError.transport': '請求 {exchange} 時發生網路或交易所服務異常（{context}）。提交結果可能不確定，重試前請先核對未完成訂單。',
+  'trading-assistant.logs.exchangeError.exchange_rejected': '{exchange} 拒絕了請求（{context}）。請查看技術詳情並檢查交易所帳戶後再重試。',
   'strategyCenter.console.pauseOnly': '僅暫停',
   'strategyCenter.console.pauseConfirm': '暫停策略執行並保留目前持倉嗎？',
   'strategyCenter.console.stopAndClose': '暫停並平倉',
   'strategyCenter.console.stopAndCloseConfirm': '暫停策略，並為此策略持有的全部倉位提交只減倉訂單嗎？',
+  'strategyCenter.console.settleVirtualPositions': '結算虛擬持倉',
+  'strategyCenter.console.settleVirtualPositionsConfirm': '立即結算全部保留的虛擬持倉嗎？此操作只會更新系統內建虛擬帳戶，不會向交易所提交訂單。',
   'strategyCenter.console.pauseSuccess': '策略已暫停，目前持倉繼續保留',
   'strategyCenter.console.runtimeStatus': '執行狀態',
   'strategyCenter.console.financialOverview': '資金與風險',
@@ -409,15 +572,35 @@ const zhTW = {
   'strategyCenter.console.todayPnlEstimatedHint': '使用者本地零點附近暫時沒有淨值快照，目前以交易帳本重建日初基準；連續採樣跨過下一個零點後將自動轉為精確值。',
   'strategyCenter.console.netPnlBasis': '已實現與未實現收益，扣除已記錄手續費',
   'strategyCenter.console.liveFinancialUnavailable': '僅通知模式不提供實盤資金指標',
+  'strategyCenter.console.virtualAccount': '虛擬帳戶',
+  'strategyCenter.console.virtualAccountBasis': '依訊號模擬成交與盈虧，不會向券商提交訂單',
+  'strategyCenter.console.virtualPositionsHint': '依策略訊號價格、手續費與滑價產生的虛擬持倉，不會向券商提交訂單。',
+  'trading-assistant.costs.slippage': '內含滑價成本',
+  'trading-assistant.execution.virtualFeeBasis': '虛擬成交固定手續費：{rate}%；依成交名義金額計費（{leverage}× 槓桿已反映於名義金額）。',
+  'trading-assistant.execution.virtualSlippageBasis': '虛擬成交固定單邊滑價：{rate}%。',
   'strategyCenter.console.spotMarket': '現貨',
   'strategyCenter.console.swapMarket': '永續合約',
   'strategyCenter.editor.positionSide': '持倉方向',
   'strategyCenter.editor.positionSideLong': '做多腿',
-  'strategyCenter.editor.positionSideShort': '做空腿'
+  'strategyCenter.editor.positionSideShort': '做空腿',
+  'strategyCenter.gridOrders.tabVirtual': '虛擬掛單',
+  'strategyCenter.gridOrders.virtualTitle': '虛擬帳戶網格掛單',
+  'strategyCenter.gridOrders.virtualDescription': '策略會在最大同時掛單數內保留多檔獨立限價單；對應虛擬持倉形成後才會出現平倉檔位，全程不會向交易所提交訂單。',
+  'strategyCenter.gridOrders.source': '執行來源',
+  'strategyCenter.gridOrders.virtualAccount': '虛擬帳戶',
+  'strategyCenter.gridOrders.matching': '成交模型',
+  'strategyCenter.gridOrders.priceTrigger': '最新價觸及限價',
+  'strategyCenter.gridOrders.virtualOpen': '等待行情觸價',
+  'strategyCenter.gridOrders.lastEvaluated': '最近檢查',
+  'strategyCenter.gridOrders.virtualOrderId': '虛擬訂單號',
+  'strategyCenter.gridOrders.notAvailable': '暫無',
+  'strategyCenter.gridOrders.virtualEmpty': '目前沒有虛擬掛單',
+  'strategyCenter.gridOrders.virtualEmptyHint': '策略可能正在等待初始持倉或下一輪網格，下一次行情更新後可重新整理查看。'
 }
 
 const ja = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': '戦略累計損益',
   'trading-assistant.logs.level.all': 'すべて',
   'trading-assistant.logs.level.info': '情報',
   'trading-assistant.logs.level.warning': '警告',
@@ -427,6 +610,34 @@ const ja = {
   'trading-assistant.logs.level.signal': 'シグナル',
   'trading-assistant.logs.autoRefresh': '自動更新',
   'trading-assistant.logs.noLogs': 'ログはありません',
+  'trading-assistant.logs.action.open_long': 'ロング開始',
+  'trading-assistant.logs.action.open_short': 'ショート開始',
+  'trading-assistant.logs.action.close_long': 'ロング決済',
+  'trading-assistant.logs.action.close_short': 'ショート決済',
+  'trading-assistant.logs.message.runtimeScheduled': 'ストラテジー実行がスケジュールされ、開始待ちです。',
+  'trading-assistant.logs.message.runtimeReady': '実行環境の準備完了：銘柄数 {instruments}、時間足 {timeframe}、モード {mode}、トリガー {trigger}。',
+  'trading-assistant.logs.message.orderQueued': 'ローカル実行キューに追加されました。取引所での受付は未確認です：{action} {symbol}、数量 {quantity}、待機番号 #{pendingId}。',
+  'trading-assistant.logs.message.invalidSymbol': '選択した Binance デリバティブ市場では {symbol} を認識できません（エラー -1121）。注文は送信されていません。銘柄と現物／無期限市場の種類を確認してください。',
+  'trading-assistant.logs.message.accountSetupFailed': '{symbol} のレバレッジまたは証拠金モードを設定できず、注文は送信されませんでした。口座、市場種別、取引所設定を確認してください。',
+  'trading-assistant.logs.message.exchangeClientFailed': '{exchange} に接続できず、注文は送信されませんでした。API 認証情報、権限、ネットワークを確認してください。',
+  'trading-assistant.logs.message.positionSnapshotFailed': '{symbol} の取引所ポジションを確認できなかったため、安全上の理由で注文を停止しました。',
+  'trading-assistant.logs.message.spotShortRejected': '現物市場ではショートできないため、注文を停止しました（{context}）。',
+  'trading-assistant.logs.message.exchangeOrderFailed': '取引所が注文を拒否しました（{context}）。残高、注文精度、権限、技術詳細を確認してください。',
+  'trading-assistant.logs.message.runtimeCycleFailed': '今回のストラテジー実行サイクルに失敗しました。技術詳細を確認してください。失敗が続くとストラテジーが停止する場合があります。',
+  'trading-assistant.logs.exchangeError.credentialsStopped': '{exchange} の API 認証に失敗したため、ストラテジーを自動停止しました。API キー、シークレット、本番／テスト環境、IP 許可リスト、取引権限を確認して再起動してください。',
+  'trading-assistant.logs.exchangeError.credentials': '{exchange} の API 認証に失敗しました。API キー、シークレット、本番／テスト環境、IP 許可リスト、取引権限を確認してください。',
+  'trading-assistant.logs.exchangeError.clock_skew': '{exchange} は時刻のずれによりリクエストを拒否しました。実行ホストのシステム時刻を同期して再試行してください。',
+  'trading-assistant.logs.exchangeError.rate_limit': '{exchange} のレート制限に達しました（{context}）。注文は受け付けられていません。少し待ち、重複送信を避けてください。',
+  'trading-assistant.logs.exchangeError.invalid_symbol': '{exchange} の選択市場では銘柄を認識できません（{context}）。注文は送信されていません。銘柄と現物／無期限市場の種類を確認してください。',
+  'trading-assistant.logs.exchangeError.price_band': '{exchange} の価格保護により注文が拒否されました（{context}）。許容価格範囲外のため未約定です。再試行前にポジションを確認してください。',
+  'trading-assistant.logs.exchangeError.insufficient_funds': '{exchange} の利用可能残高または証拠金が不足しています（{context}）。配分や注文数量を減らすか、担保を解放・振替してください。',
+  'trading-assistant.logs.exchangeError.order_size': '{exchange} が注文数量または精度を拒否しました（{context}）。最小注文金額、ロット、桁数、契約単位を確認してください。',
+  'trading-assistant.logs.exchangeError.account_configuration': '{exchange} の口座設定が注文と一致しません（{context}）。ポジションモード、証拠金モード、レバレッジ、口座種別を確認してください。',
+  'trading-assistant.logs.exchangeError.position_conflict': '{exchange} が現在のポジションまたは未約定注文との競合により拒否しました（{context}）。方向、Reduce-only、残数量を確認してください。',
+  'trading-assistant.logs.exchangeError.risk_limit': '{exchange} のリスク管理により注文が拒否されました（{context}）。レバレッジ、リスク階層、清算状態、ポジション上限を確認してください。',
+  'trading-assistant.logs.exchangeError.market_unavailable': '{exchange} の市場または取引サービスは一時的に利用できません（{context}）。取引所の状態を確認し、後で再試行してください。',
+  'trading-assistant.logs.exchangeError.transport': '{exchange} への通信またはサービスで障害が発生しました（{context}）。送信結果が不明な可能性があるため、再試行前に未約定注文を確認してください。',
+  'trading-assistant.logs.exchangeError.exchange_rejected': '{exchange} がリクエストを拒否しました（{context}）。技術詳細と取引所口座を確認してから再試行してください。',
   'strategyCenter.console.pauseOnly': '一時停止のみ',
   'strategyCenter.console.pauseConfirm': 'ポジションを維持したまま戦略を一時停止しますか？',
   'strategyCenter.console.stopAndClose': '停止して決済',
@@ -441,6 +652,7 @@ const ja = {
 
 const ko = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': '전략 총 손익',
   'trading-assistant.logs.level.all': '전체',
   'trading-assistant.logs.level.info': '정보',
   'trading-assistant.logs.level.warning': '경고',
@@ -450,6 +662,34 @@ const ko = {
   'trading-assistant.logs.level.signal': '신호',
   'trading-assistant.logs.autoRefresh': '자동 새로고침',
   'trading-assistant.logs.noLogs': '로그 없음',
+  'trading-assistant.logs.action.open_long': '롱 진입',
+  'trading-assistant.logs.action.open_short': '숏 진입',
+  'trading-assistant.logs.action.close_long': '롱 청산',
+  'trading-assistant.logs.action.close_short': '숏 청산',
+  'trading-assistant.logs.message.runtimeScheduled': '전략 실행이 예약되어 시작을 기다리고 있습니다.',
+  'trading-assistant.logs.message.runtimeReady': '실행 준비 완료: 종목 {instruments}개, 주기 {timeframe}, 모드 {mode}, 트리거 {trigger}.',
+  'trading-assistant.logs.message.orderQueued': '로컬 실행 대기열에 추가되었습니다. 거래소 접수는 아직 확인되지 않았습니다: {action} {symbol}, 수량 {quantity}, 대기 번호 #{pendingId}.',
+  'trading-assistant.logs.message.invalidSymbol': '선택한 Binance 파생상품 시장에서 {symbol}을 인식하지 못했습니다(오류 -1121). 주문은 제출되지 않았습니다. 종목과 현물/무기한 시장 유형을 확인하세요.',
+  'trading-assistant.logs.message.accountSetupFailed': '{symbol}의 레버리지 또는 마진 모드를 설정하지 못해 주문이 제출되지 않았습니다. 계정, 시장 유형, 거래소 설정을 확인하세요.',
+  'trading-assistant.logs.message.exchangeClientFailed': '{exchange}에 연결하지 못해 주문이 제출되지 않았습니다. API 자격 증명, 권한, 네트워크를 확인하세요.',
+  'trading-assistant.logs.message.positionSnapshotFailed': '{symbol}의 현재 거래소 포지션을 확인할 수 없어 안전을 위해 주문을 차단했습니다.',
+  'trading-assistant.logs.message.spotShortRejected': '현물 시장에서는 숏 포지션을 지원하지 않아 주문을 차단했습니다({context}).',
+  'trading-assistant.logs.message.exchangeOrderFailed': '거래소가 주문을 거부했습니다({context}). 잔액, 주문 정밀도, 권한 및 기술 세부 정보를 확인하세요.',
+  'trading-assistant.logs.message.runtimeCycleFailed': '이번 전략 실행 주기가 실패했습니다. 기술 세부 정보를 확인하세요. 실패가 반복되면 전략이 중지될 수 있습니다.',
+  'trading-assistant.logs.exchangeError.credentialsStopped': '{exchange} API 인증이 거부되어 전략이 자동 중지되었습니다. API 키와 시크릿, 실거래/테스트 환경, IP 허용 목록, 거래 권한을 확인한 뒤 다시 시작하세요.',
+  'trading-assistant.logs.exchangeError.credentials': '{exchange} API 인증이 거부되었습니다. API 키와 시크릿, 실거래/테스트 환경, IP 허용 목록, 거래 권한을 확인하세요.',
+  'trading-assistant.logs.exchangeError.clock_skew': '{exchange}가 서버 시간 또는 요청 타임스탬프 불일치로 요청을 거부했습니다. 실행 호스트의 시간을 동기화한 뒤 다시 시도하세요.',
+  'trading-assistant.logs.exchangeError.rate_limit': '{exchange} 요청 한도에 도달했습니다({context}). 주문이 접수되지 않았습니다. 잠시 기다리고 중복 재시도를 피하세요.',
+  'trading-assistant.logs.exchangeError.invalid_symbol': '{exchange}의 선택된 시장에서 해당 종목을 찾을 수 없습니다({context}). 주문은 제출되지 않았습니다. 종목과 현물/무기한 시장 유형을 확인하세요.',
+  'trading-assistant.logs.exchangeError.price_band': '{exchange} 가격 보호로 주문이 거부되었습니다({context}). 허용 가격 범위를 벗어나 체결되지 않았으므로 재시도 전에 포지션을 확인하세요.',
+  'trading-assistant.logs.exchangeError.insufficient_funds': '{exchange}의 사용 가능 잔액 또는 마진이 부족합니다({context}). 배정액이나 주문 수량을 줄이거나 담보를 확보·이체하세요.',
+  'trading-assistant.logs.exchangeError.order_size': '{exchange}가 주문 수량 또는 정밀도를 거부했습니다({context}). 최소 주문 금액, 단위, 소수점 정밀도, 계약 단위를 확인하세요.',
+  'trading-assistant.logs.exchangeError.account_configuration': '{exchange} 계정 설정이 주문과 맞지 않습니다({context}). 포지션 모드, 마진 모드, 레버리지, 계정 유형을 확인하세요.',
+  'trading-assistant.logs.exchangeError.position_conflict': '{exchange}가 현재 포지션 또는 미체결 주문과의 충돌로 주문을 거부했습니다({context}). 방향, reduce-only 주문, 잔여 수량을 확인하세요.',
+  'trading-assistant.logs.exchangeError.risk_limit': '{exchange} 위험 관리로 주문이 거부되었습니다({context}). 레버리지, 위험 한도 단계, 청산 상태, 포지션 한도를 확인하세요.',
+  'trading-assistant.logs.exchangeError.market_unavailable': '{exchange} 시장 또는 거래 서비스가 일시적으로 사용할 수 없습니다({context}). 거래소 상태를 확인하고 나중에 다시 시도하세요.',
+  'trading-assistant.logs.exchangeError.transport': '{exchange} 요청 중 네트워크 또는 거래소 서비스 문제가 발생했습니다({context}). 제출 결과가 불확실할 수 있으니 재시도 전에 미체결 주문을 확인하세요.',
+  'trading-assistant.logs.exchangeError.exchange_rejected': '{exchange}가 요청을 거부했습니다({context}). 기술 세부 정보와 거래소 계정을 확인한 뒤 다시 시도하세요.',
   'strategyCenter.console.pauseOnly': '일시 중지만',
   'strategyCenter.console.stopAndClose': '중지 후 청산',
   'strategyCenter.editor.positionSide': '포지션 방향',
@@ -460,6 +700,7 @@ const ko = {
 
 const de = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'Gesamtgewinn/-verlust der Strategie',
   'trading-assistant.logs.level.all': 'Alle',
   'trading-assistant.logs.level.info': 'Info',
   'trading-assistant.logs.level.warning': 'Warnung',
@@ -478,6 +719,7 @@ const de = {
 
 const fr = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'P&L total de la stratégie',
   'trading-assistant.logs.level.all': 'Tous',
   'trading-assistant.logs.level.info': 'Information',
   'trading-assistant.logs.level.warning': 'Avertissement',
@@ -496,6 +738,7 @@ const fr = {
 
 const ru = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'Общая прибыль/убыток стратегии',
   'trading-assistant.logs.level.all': 'Все',
   'trading-assistant.logs.level.info': 'Информация',
   'trading-assistant.logs.level.warning': 'Предупреждение',
@@ -514,6 +757,7 @@ const ru = {
 
 const vi = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'Tổng lãi/lỗ chiến lược',
   'trading-assistant.logs.level.all': 'Tất cả',
   'trading-assistant.logs.level.info': 'Thông tin',
   'trading-assistant.logs.level.warning': 'Cảnh báo',
@@ -532,6 +776,7 @@ const vi = {
 
 const th = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'กำไรขาดทุนรวมของกลยุทธ์',
   'trading-assistant.logs.level.all': 'ทั้งหมด',
   'trading-assistant.logs.level.info': 'ข้อมูล',
   'trading-assistant.logs.level.warning': 'คำเตือน',
@@ -550,6 +795,7 @@ const th = {
 
 const ar = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'إجمالي ربح وخسارة الاستراتيجية',
   'trading-assistant.logs.level.all': 'الكل',
   'trading-assistant.logs.level.info': 'معلومات',
   'trading-assistant.logs.level.warning': 'تحذير',

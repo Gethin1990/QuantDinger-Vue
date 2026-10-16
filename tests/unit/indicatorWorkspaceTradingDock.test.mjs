@@ -17,8 +17,8 @@ test('indicator workspace keeps account mode balances and records in the trading
   assert.match(source, /quickTrade\.swapAvailable/)
   assert.match(source, /activeDockTab === 'positions'/)
   assert.match(source, /quickTrade\.openOrders/)
-  assert.match(source, /quickTrade\.orderHistory/)
-  assert.match(source, /quickTrade\.tradeHistory/)
+  assert.match(source, /quickTrade\.tradeRecords/)
+  assert.match(source, /\['openOrders', 'tradeRecords'\]\.includes\(activeDockTab\)/)
   assert.match(source, /dockTpslEnabled: false/)
   assert.match(source, /class="qt-dock-trade-settings"/)
   assert.match(source, /class="qt-dock-segmented qt-dock-margin-segmented"/)
@@ -49,7 +49,8 @@ test('indicator workspace keeps account mode balances and records in the trading
 test('spot trading cannot submit a sell without a current holding', () => {
   const source = read('src/components/QuickTradePanel/QuickTradePanel.vue')
 
-  assert.match(source, /:disabled="!canSubmit \|\| \(!isSwapMode && currentPositions\.length === 0\)"/)
+  assert.match(source, /:disabled="!canSubmitSell"/)
+  assert.match(source, /requested > 0 && requested <= this\.spotSellAvailable/)
 })
 
 test('exchange position values are not overwritten by the chart price source', () => {

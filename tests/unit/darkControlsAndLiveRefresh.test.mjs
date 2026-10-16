@@ -27,13 +27,29 @@ test('saving a live strategy forces a fresh list and selects the saved instance'
   assert.match(center, /operationsTable\.selectStrategy\(savedStrategy\)/)
 })
 
-test('exchange resting orders are visible only for live grid strategies', () => {
+test('live operations keep daily detail pnl separate from lifetime list pnl', () => {
   const operations = read('src/views/strategy-center/components/LiveOperationsTable.vue')
 
-  assert.match(operations, /if \(this\.executionMode\(strategy\) !== 'live'\) return false/)
+  assert.match(operations, /strategyPnl \(strategy\)[\s\S]*?strategy\.today_pnl/)
+  assert.match(operations, /strategyTotalPnl \(strategy\)[\s\S]*?strategy\.total_pnl/)
+  assert.match(operations, /strategyPnl\(selectedStrategy\)/)
+  assert.match(operations, /strategyTotalPnl\(strategy\)/)
+})
+
+test('grid resting orders are visible for live and virtual grid strategies', () => {
+  const operations = read('src/views/strategy-center/components/LiveOperationsTable.vue')
+  const restingOrders = read('src/views/strategy-center/components/GridRestingOrders.vue')
+
   assert.match(operations, /type === 'grid'/)
   assert.match(operations, /hasGridParameters/)
   assert.match(operations, /template\.includes\('robot_v2_grid'\)/)
   assert.match(operations, /triggerMode === 'exchange_resting_orders'/)
+  assert.match(operations, /strategyCenter\.gridOrders\.tabVirtual/)
+  assert.match(restingOrders, /summary\.virtual_mode/)
+  assert.match(restingOrders, /strategyCenter\.gridOrders\.virtualTitle/)
+  assert.match(restingOrders, /displayUnits/)
+  assert.match(restingOrders, /formatPrice/)
+  assert.match(restingOrders, /formatQuantity/)
+  assert.match(restingOrders, /maximumFractionDigits: 8/)
   assert.match(operations, /strategyCenter\.console\.pendingSignals/)
 })

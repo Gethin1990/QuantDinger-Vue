@@ -20,6 +20,13 @@
           {{ $t('strategyCenter.positionOwnership.openRepair') }}
         </a-button>
       </div>
+      <a-alert
+        v-else-if="executionMode === 'signal'"
+        class="virtual-account-alert"
+        type="info"
+        show-icon
+        :message="$t('strategyCenter.console.virtualPositionsHint')"
+      />
       <div v-if="positions.length === 0 && !loading" class="empty-state strategy-tab-empty" :class="{ 'is-compact': compact }">
         <template v-if="compact">
           <a-icon type="inbox" />
@@ -421,7 +428,10 @@ export default {
   methods: {
     async openOwnershipRepair () {
       this.ownershipVisible = true
-      await this.loadOwnership()
+      if (await this.loadOwnership()) {
+        await this.loadPositions()
+        this.$emit('ownership-reconciled')
+      }
     },
     async loadOwnership () {
       if (!this.strategyId) return
@@ -436,10 +446,12 @@ export default {
           ...row,
           rowKey: `${row.symbol || ''}:${row.side || ''}`
         }))
+        return true
       } catch (error) {
         this.ownershipExchangeId = ''
         this.ownershipRows = []
         this.$message.error((error && error.message) || this.$t('strategyCenter.positionOwnership.loadFailed'))
+        return false
       } finally {
         this.ownershipLoading = false
       }
@@ -455,7 +467,9 @@ export default {
         })
         if (res.code !== 1) throw new Error(res.msg ? this.$t(res.msg) : this.$t('strategyCenter.positionOwnership.repairFailed'))
         this.$message.success(this.$t('strategyCenter.positionOwnership.repairSuccess'))
-        await Promise.all([this.loadOwnership(), this.loadPositions()])
+        await this.loadOwnership()
+        await this.loadPositions()
+        this.$emit('ownership-reconciled')
       } catch (error) {
         this.$message.error((error && error.message) || this.$t('strategyCenter.positionOwnership.repairFailed'))
       } finally {
@@ -632,7 +646,8 @@ export default {
     border-color: rgba(255, 255, 255, 0.08);
   }
 
-  .position-reconciliation-alert {
+  .position-reconciliation-alert,
+  .virtual-account-alert {
     margin-bottom: 12px;
     border-radius: 6px;
   }

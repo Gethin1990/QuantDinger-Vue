@@ -1,5 +1,5 @@
 <template>
-  <div class="profile-page" :class="{ 'theme-dark': isDarkTheme }">
+  <div class="profile-page qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
     <div class="page-header">
       <h2 class="page-title">
         <a-icon type="user" />
@@ -8,14 +8,13 @@
       <p class="page-desc">{{ $t('profile.description') || 'Manage your account settings and preferences' }}</p>
     </div>
 
-    <a-row :gutter="24" class="profile-cards-row">
-      <!-- Left Column: Profile Card -->
-      <a-col :xs="24" :md="8" class="profile-card-col">
-        <a-card :bordered="false" class="profile-card">
-          <div class="avatar-section">
-            <a-avatar :size="100" :src="profile.avatar || '/avatar2.jpg'" />
+    <div class="profile-overview-grid">
+      <a-card :bordered="false" class="profile-card">
+        <div class="profile-identity">
+          <a-avatar :size="72" :src="profile.avatar || '/avatar2.jpg'" />
+          <div class="profile-identity-copy">
             <h3 class="username">{{ profile.nickname || profile.username }}</h3>
-            <p class="user-role">
+            <div class="user-role">
               <a-tag :color="getRoleColor(profile.role)">
                 {{ getRoleLabel(profile.role) }}
               </a-tag>
@@ -23,409 +22,461 @@
                 <a-icon type="crown" />
                 VIP
               </a-tag>
-            </p>
-          </div>
-          <a-divider />
-          <div class="profile-info">
-            <div class="info-item">
-              <a-icon type="user" />
-              <span class="label">{{ $t('profile.username') || 'Username' }}:</span>
-              <span class="value">{{ profile.username }}</span>
-            </div>
-            <div class="info-item">
-              <a-icon type="mail" />
-              <span class="label">{{ $t('profile.email') || 'Email' }}:</span>
-              <span class="value">{{ profile.email || '-' }}</span>
-            </div>
-            <div class="info-item">
-              <a-icon type="calendar" />
-              <span class="label">{{ $t('profile.lastLogin') || 'Last Login' }}:</span>
-              <span class="value">{{ formatTime(profile.last_login_at) || '-' }}</span>
             </div>
           </div>
-        </a-card>
-      </a-col>
+        </div>
+        <div class="profile-account-meta">
+          <div class="info-item">
+            <a-icon type="user" />
+            <span class="label">{{ $t('profile.username') || 'Username' }}</span>
+            <span class="value">{{ profile.username }}</span>
+          </div>
+          <div class="info-item">
+            <a-icon type="mail" />
+            <span class="label">{{ $t('profile.email') || 'Email' }}</span>
+            <span class="value">{{ profile.email || '-' }}</span>
+          </div>
+          <div class="info-item">
+            <a-icon type="calendar" />
+            <span class="label">{{ $t('profile.lastLogin') || 'Last Login' }}</span>
+            <span class="value">{{ formatTime(profile.last_login_at) || '-' }}</span>
+          </div>
+        </div>
+      </a-card>
 
-      <!-- Right Column: Credits and Referral Cards -->
-      <a-col :xs="24" :md="16" class="right-cards-col">
-        <a-row :gutter="16" class="right-cards-row">
-          <a-col :xs="24" :md="12">
-            <a-card :bordered="false" class="credits-card">
-              <div class="credits-header">
-                <h3 class="credits-title">
-                  <a-icon type="wallet" />
-                  {{ $t('profile.credits.title') || '我的积分' }}
-                </h3>
-              </div>
-              <div class="credits-body">
-                <div class="credits-amount">
-                  <span class="amount-value">{{ formatCredits(billing.credits) }}</span>
-                  <span class="amount-label">{{ $t('profile.credits.unit') || '积分' }}</span>
-                </div>
-                <div class="vip-status" v-if="billing.vip_expires_at">
-                  <a-icon type="crown" :style="{ color: isVip ? '#faad14' : '#999' }" />
-                  <span v-if="isVip" class="vip-active">
-                    {{ $t('profile.credits.vipExpires') || 'VIP有效期至' }}: {{ formatDate(billing.vip_expires_at) }}
-                  </span>
-                  <span v-else class="vip-expired">
-                    {{ $t('profile.credits.vipExpired') || 'VIP已过期' }}
-                  </span>
-                </div>
-                <div class="vip-status" v-else-if="!billing.is_vip">
-                  <span class="no-vip">{{ $t('profile.credits.noVip') || '非VIP用户' }}</span>
-                </div>
-              </div>
-              <a-divider />
-              <div class="credits-actions">
-                <a-button class="credits-recharge-btn" icon="shopping" @click="handleRecharge">
-                  {{ $t('profile.credits.recharge') || '开通/充值' }}
+      <a-card :bordered="false" class="credits-card">
+        <div class="credits-header">
+          <h3 class="credits-title">
+            <a-icon type="wallet" />
+            {{ $t('profile.credits.title') || '我的积分' }}
+          </h3>
+        </div>
+        <div class="credits-body">
+          <div class="credits-amount">
+            <span class="amount-value">{{ formatCredits(billing.credits) }}</span>
+            <span class="amount-label">{{ $t('profile.credits.unit') || '积分' }}</span>
+          </div>
+          <div class="vip-status" v-if="billing.vip_expires_at">
+            <a-icon type="crown" :style="{ color: isVip ? '#faad14' : '#999' }" />
+            <span v-if="isVip" class="vip-active">
+              {{ $t('profile.credits.vipExpires') || 'VIP有效期至' }}: {{ formatDate(billing.vip_expires_at) }}
+            </span>
+            <span v-else class="vip-expired">
+              {{ $t('profile.credits.vipExpired') || 'VIP已过期' }}
+            </span>
+          </div>
+          <div class="vip-status" v-else-if="!billing.is_vip">
+            <span class="no-vip">{{ $t('profile.credits.noVip') || '非VIP用户' }}</span>
+          </div>
+        </div>
+        <div class="credits-footer">
+          <div class="credits-hint" v-if="billing.billing_enabled">
+            <a-icon type="info-circle" />
+            <span>{{ $t('profile.credits.hint') || '使用AI分析/回测/监控等功能会消耗积分；VIP仅可免费使用VIP免费指标。' }}</span>
+          </div>
+          <a-button class="credits-recharge-btn" icon="shopping" @click="handleRecharge">
+            {{ $t('profile.credits.recharge') || '开通/充值' }}
+          </a-button>
+        </div>
+      </a-card>
+
+      <a-card :bordered="false" class="referral-card">
+        <div class="referral-card-heading">
+          <h3 class="referral-title">
+            <a-icon type="team" />
+            {{ $t('profile.referral.title') || '邀请好友' }}
+          </h3>
+          <div class="referral-mini-stats">
+            <div class="referral-mini-stat">
+              <strong>{{ referralData.total || 0 }}</strong>
+              <span>{{ $t('profile.referral.totalInvited') || '已邀请' }}</span>
+            </div>
+            <div v-if="referralData.referral_bonus > 0" class="referral-mini-stat">
+              <strong>+{{ referralData.referral_bonus }}</strong>
+              <span>{{ $t('profile.referral.bonusPerInvite') || '每邀请获得' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="referral-body">
+          <div class="referral-link-section">
+            <div class="link-label">{{ $t('profile.referral.yourLink') || '您的邀请链接' }}</div>
+            <div class="link-box">
+              <a-input :value="referralLink" readonly size="small">
+                <a-tooltip slot="suffix" :title="$t('profile.referral.copyLink') || '复制链接'">
+                  <a-icon type="copy" style="cursor: pointer" @click="copyReferralLink" />
+                </a-tooltip>
+              </a-input>
+            </div>
+          </div>
+          <div class="referral-benefits">
+            <div class="referral-benefit" v-if="referralData.register_bonus > 0">
+              <a-icon type="gift" />
+              <span>{{ $t('profile.referral.newUserBonus') || '新用户注册获得' }} {{ referralData.register_bonus }} {{ $t('profile.credits.unit') || '积分' }}</span>
+            </div>
+            <div class="referral-benefit referral-benefit-membership" v-if="rewardData.enabled && maxReferralRewardRate > 0">
+              <a-icon type="crown" />
+              <span>{{ $t('profile.referralRewards.membershipRewardHint', { rate: formatRewardRate(maxReferralRewardRate) }) }}</span>
+            </div>
+          </div>
+          <div v-if="rewardData.enabled" class="referral-balance-strip">
+            <div class="referral-balance-item referral-balance-primary">
+              <span>{{ $t('profile.referralRewards.available') }}</span>
+              <strong>{{ formatRewardAmount(rewardData.account.available_balance) }} <small>USD</small></strong>
+            </div>
+            <div class="referral-balance-item">
+              <span>{{ $t('profile.referralRewards.pending') }}</span>
+              <strong>{{ formatRewardAmount(rewardData.account.pending_reward_balance) }} USD</strong>
+            </div>
+            <a-tooltip :title="!rewardData.channels.length ? $t('profile.referralRewards.noEnabledCurrency') : ''">
+              <span>
+                <a-button class="reward-withdraw-btn" type="primary" size="small" :disabled="!rewardData.channels.length" @click="openRewardWithdrawal">
+                  {{ $t('profile.referralRewards.withdraw') }}
                 </a-button>
-              </div>
-              <div class="credits-hint" v-if="billing.billing_enabled">
-                <a-icon type="info-circle" />
-                <span>{{ $t('profile.credits.hint') || '使用AI分析/回测/监控等功能会消耗积分；VIP仅可免费使用VIP免费指标。' }}</span>
-              </div>
-            </a-card>
-          </a-col>
+              </span>
+            </a-tooltip>
+          </div>
+        </div>
+      </a-card>
 
-          <a-col :xs="24" :md="12">
-            <a-card :bordered="false" class="referral-card">
-              <div class="referral-header">
-                <h3 class="referral-title">
-                  <a-icon type="team" />
-                  {{ $t('profile.referral.title') || '邀请好友' }}
-                </h3>
-              </div>
-              <div class="referral-body">
-                <div class="referral-stats">
-                  <div class="stat-item">
-                    <span class="stat-value">{{ referralData.total || 0 }}</span>
-                    <span class="stat-label">{{ $t('profile.referral.totalInvited') || '已邀请' }}</span>
-                  </div>
-                  <div class="stat-item" v-if="referralData.referral_bonus > 0">
-                    <span class="stat-value">+{{ referralData.referral_bonus }}</span>
-                    <span class="stat-label">{{ $t('profile.referral.bonusPerInvite') || '每邀请获得' }}</span>
-                  </div>
-                </div>
-                <a-divider style="margin: 12px 0" />
-                <div class="referral-link-section">
-                  <div class="link-label">{{ $t('profile.referral.yourLink') || '您的邀请链接' }}</div>
-                  <div class="link-box">
+      <a-modal
+        v-if="rewardData.enabled"
+        v-model="rewardWithdrawalVisible"
+        :title="$t('profile.referralRewards.withdrawTitle')"
+        :confirmLoading="rewardWithdrawalSubmitting"
+        @ok="submitRewardWithdrawal"
+      >
+        <a-alert type="warning" show-icon :message="$t('profile.referralRewards.withdrawNotice')" />
+        <a-form layout="vertical" class="reward-withdrawal-form">
+          <a-form-item :label="$t('profile.referralRewards.currency')">
+            <a-select v-model="rewardWithdrawal.currency" @change="handleRewardWithdrawalCurrencyChange">
+              <a-select-option v-for="currency in withdrawalCurrencies" :key="currency" :value="currency">
+                {{ currency }}
+              </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item :label="$t('profile.referralRewards.network')">
+            <a-select v-model="rewardWithdrawal.chain">
+              <a-select-option v-for="channel in withdrawalChains" :key="`${channel.currency}:${channel.code}`" :value="channel.code">
+                {{ channel.label }}
+              </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item :label="$t('profile.referralRewards.address')">
+            <a-input v-model.trim="rewardWithdrawal.address" />
+          </a-form-item>
+          <a-form-item :label="$t('profile.referralRewards.amount')">
+            <a-input-number v-model="rewardWithdrawal.amount" :min="rewardData.minimum_withdrawal" :max="rewardData.account.available_balance" :precision="2" style="width: 100%" />
+            <div class="field-hint">{{ $t('profile.referralRewards.minimum') }}: {{ formatRewardAmount(rewardData.minimum_withdrawal) }} USD</div>
+          </a-form-item>
+        </a-form>
+      </a-modal>
+    </div>
+
+    <div class="profile-settings-shell">
+      <a-card :bordered="false" class="edit-card">
+        <a-tabs v-model="activeTab" :tab-position="profileTabsPosition" class="profile-tabs">
+          <!-- Basic Info Tab -->
+          <a-tab-pane key="basic">
+            <span slot="tab"><a-icon type="idcard" />{{ $t('profile.basicInfo') || 'Basic Info' }}</span>
+            <a-form :form="profileForm" layout="vertical" class="profile-form">
+              <a-form-item :label="$t('profile.nickname') || 'Nickname'">
+                <a-input
+                  v-decorator="['nickname', { initialValue: profile.nickname }]"
+                  :placeholder="$t('profile.nicknamePlaceholder') || 'Enter your nickname'"
+                >
+                  <a-icon slot="prefix" type="smile" />
+                </a-input>
+              </a-form-item>
+
+              <a-form-item :label="$t('profile.email') || 'Email'">
+                <a-input
+                  :value="profile.email || '-'"
+                  disabled
+                >
+                  <a-icon slot="prefix" type="mail" />
+                  <a-tooltip slot="suffix" :title="$t('profile.emailCannotChange') || 'Email cannot be changed after registration'">
+                    <a-icon type="info-circle" style="color: rgba(0,0,0,.45)" />
+                  </a-tooltip>
+                </a-input>
+              </a-form-item>
+
+              <a-form-item :label="$t('profile.timezone') || '时区'">
+                <a-select
+                  v-decorator="['timezone', { initialValue: profile.timezone || '' }]"
+                  :placeholder="$t('profile.timezonePlaceholder') || '跟随浏览器/系统'"
+                  show-search
+                  allow-clear
+                  option-filter-prop="children"
+                >
+                  <a-select-option value="">
+                    {{ $t('profile.timezoneBrowser') || '跟随浏览器' }}
+                  </a-select-option>
+                  <a-select-option v-for="z in timezoneIanaList" :key="z" :value="z">
+                    {{ z }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+
+              <a-form-item>
+                <a-button type="primary" :loading="saving" @click="handleSaveProfile">
+                  <a-icon type="save" />
+                  {{ $t('common.save') || 'Save' }}
+                </a-button>
+              </a-form-item>
+            </a-form>
+          </a-tab-pane>
+
+          <!-- My Agent Token -->
+          <a-tab-pane key="agentTokens">
+            <span slot="tab"><a-icon type="api" />{{ $t('profile.agentTokens.tab') || '我的 Agent Token' }}</span>
+            <profile-agent-tokens :is-dark-theme="isDarkTheme" />
+          </a-tab-pane>
+
+          <!-- Change Password Tab -->
+          <a-tab-pane key="password">
+            <span slot="tab"><a-icon type="key" />{{ $t('profile.changePassword') || 'Change Password' }}</span>
+            <a-form :form="passwordForm" layout="vertical" class="password-form">
+              <a-alert
+                :message="$t('profile.passwordHintNew') || 'For security, email verification is required to change password. Password must be at least 8 characters with uppercase, lowercase, and number.'"
+                type="info"
+                showIcon
+                style="margin-bottom: 24px"
+              />
+
+              <!-- Email Display & Verification Code -->
+              <a-form-item :label="$t('profile.verificationCode') || 'Verification Code'">
+                <a-row :gutter="12">
+                  <a-col :span="16">
                     <a-input
-                      :value="referralLink"
-                      readonly
-                      size="small"
+                      v-decorator="['code', {
+                        rules: [{ required: true, message: $t('profile.codeRequired') || 'Please enter verification code' }]
+                      }]"
+                      :placeholder="$t('profile.codePlaceholder') || 'Enter verification code'"
                     >
-                      <a-tooltip slot="suffix" :title="$t('profile.referral.copyLink') || '复制链接'">
-                        <a-icon type="copy" style="cursor: pointer" @click="copyReferralLink" />
-                      </a-tooltip>
+                      <a-icon slot="prefix" type="safety-certificate" />
                     </a-input>
-                  </div>
+                  </a-col>
+                  <a-col :span="8">
+                    <a-button
+                      block
+                      :loading="sendingPwdCode"
+                      :disabled="sendingPwdCode || pwdCodeCountdown > 0 || !profile.email"
+                      @click="handleSendPwdCode"
+                    >
+                      {{ pwdCodeCountdown > 0 ? `${pwdCodeCountdown}s` : ($t('profile.sendCode') || 'Send Code') }}
+                    </a-button>
+                  </a-col>
+                </a-row>
+                <div class="email-hint" v-if="profile.email">
+                  {{ $t('profile.codeWillSendTo') || 'Code will be sent to' }}: {{ profile.email }}
                 </div>
-                <div class="referral-hint" v-if="referralData.register_bonus > 0">
-                  <a-icon type="gift" />
-                  <span>{{ $t('profile.referral.newUserBonus') || '新用户注册获得' }} {{ referralData.register_bonus }} {{ $t('profile.credits.unit') || '积分' }}</span>
+                <div class="email-hint email-warning" v-else>
+                  {{ $t('profile.noEmailWarning') || 'Please set your email first in Basic Info tab' }}
                 </div>
-              </div>
-            </a-card>
-          </a-col>
-        </a-row>
-      </a-col>
-    </a-row>
+              </a-form-item>
 
-    <!-- Edit Profile Tabs (Below Cards) -->
-    <a-row :gutter="24" style="margin-top: 24px">
-      <a-col :xs="24">
-        <a-card :bordered="false" class="edit-card">
-          <a-tabs v-model="activeTab">
-            <!-- Basic Info Tab -->
-            <a-tab-pane key="basic" :tab="$t('profile.basicInfo') || 'Basic Info'">
-              <a-form :form="profileForm" layout="vertical" class="profile-form">
-                <a-form-item :label="$t('profile.nickname') || 'Nickname'">
-                  <a-input
-                    v-decorator="['nickname', { initialValue: profile.nickname }]"
-                    :placeholder="$t('profile.nicknamePlaceholder') || 'Enter your nickname'"
-                  >
-                    <a-icon slot="prefix" type="smile" />
-                  </a-input>
-                </a-form-item>
+              <a-form-item :label="$t('profile.newPassword') || 'New Password'">
+                <a-input-password
+                  v-decorator="['new_password', {
+                    rules: [
+                      { required: true, message: $t('profile.newPasswordRequired') || 'Please enter new password' },
+                      { validator: validateNewPassword }
+                    ]
+                  }]"
+                  :placeholder="$t('profile.newPasswordPlaceholder') || 'Enter new password'"
+                >
+                  <a-icon slot="prefix" type="lock" />
+                </a-input-password>
+              </a-form-item>
 
-                <a-form-item :label="$t('profile.email') || 'Email'">
-                  <a-input
-                    :value="profile.email || '-'"
-                    disabled
-                  >
-                    <a-icon slot="prefix" type="mail" />
-                    <a-tooltip slot="suffix" :title="$t('profile.emailCannotChange') || 'Email cannot be changed after registration'">
-                      <a-icon type="info-circle" style="color: rgba(0,0,0,.45)" />
-                    </a-tooltip>
-                  </a-input>
-                </a-form-item>
+              <a-form-item :label="$t('profile.confirmPassword') || 'Confirm Password'">
+                <a-input-password
+                  v-decorator="['confirm_password', {
+                    rules: [
+                      { required: true, message: $t('profile.confirmPasswordRequired') || 'Please confirm password' },
+                      { validator: validateConfirmPassword }
+                    ]
+                  }]"
+                  :placeholder="$t('profile.confirmPasswordPlaceholder') || 'Confirm new password'"
+                >
+                  <a-icon slot="prefix" type="lock" />
+                </a-input-password>
+              </a-form-item>
 
-                <a-form-item :label="$t('profile.timezone') || '时区'">
-                  <a-select
-                    v-decorator="['timezone', { initialValue: profile.timezone || '' }]"
-                    :placeholder="$t('profile.timezonePlaceholder') || '跟随浏览器/系统'"
-                    show-search
-                    allow-clear
-                    option-filter-prop="children"
-                  >
-                    <a-select-option value="">
-                      {{ $t('profile.timezoneBrowser') || '跟随浏览器' }}
-                    </a-select-option>
-                    <a-select-option v-for="z in timezoneIanaList" :key="z" :value="z">
-                      {{ z }}
-                    </a-select-option>
-                  </a-select>
-                </a-form-item>
+              <a-form-item>
+                <a-button type="primary" :loading="changingPassword" @click="handleChangePassword" :disabled="!profile.email">
+                  <a-icon type="key" />
+                  {{ $t('profile.changePassword') || 'Change Password' }}
+                </a-button>
+              </a-form-item>
+            </a-form>
+          </a-tab-pane>
 
-                <a-form-item>
-                  <a-button type="primary" :loading="saving" @click="handleSaveProfile">
-                    <a-icon type="save" />
-                    {{ $t('common.save') || 'Save' }}
-                  </a-button>
-                </a-form-item>
-              </a-form>
-            </a-tab-pane>
-
-            <!-- My Agent Token -->
-            <a-tab-pane key="agentTokens" :tab="$t('profile.agentTokens.tab') || '我的 Agent Token'">
-              <profile-agent-tokens :is-dark-theme="isDarkTheme" />
-            </a-tab-pane>
-
-            <!-- Change Password Tab -->
-            <a-tab-pane key="password" :tab="$t('profile.changePassword') || 'Change Password'">
-              <a-form :form="passwordForm" layout="vertical" class="password-form">
-                <a-alert
-                  :message="$t('profile.passwordHintNew') || 'For security, email verification is required to change password. Password must be at least 8 characters with uppercase, lowercase, and number.'"
-                  type="info"
-                  showIcon
-                  style="margin-bottom: 24px"
-                />
-
-                <!-- Email Display & Verification Code -->
-                <a-form-item :label="$t('profile.verificationCode') || 'Verification Code'">
-                  <a-row :gutter="12">
-                    <a-col :span="16">
-                      <a-input
-                        v-decorator="['code', {
-                          rules: [{ required: true, message: $t('profile.codeRequired') || 'Please enter verification code' }]
-                        }]"
-                        :placeholder="$t('profile.codePlaceholder') || 'Enter verification code'"
-                      >
-                        <a-icon slot="prefix" type="safety-certificate" />
-                      </a-input>
-                    </a-col>
-                    <a-col :span="8">
-                      <a-button
-                        block
-                        :loading="sendingPwdCode"
-                        :disabled="sendingPwdCode || pwdCodeCountdown > 0 || !profile.email"
-                        @click="handleSendPwdCode"
-                      >
-                        {{ pwdCodeCountdown > 0 ? `${pwdCodeCountdown}s` : ($t('profile.sendCode') || 'Send Code') }}
-                      </a-button>
-                    </a-col>
-                  </a-row>
-                  <div class="email-hint" v-if="profile.email">
-                    {{ $t('profile.codeWillSendTo') || 'Code will be sent to' }}: {{ profile.email }}
+          <a-tab-pane key="security">
+            <span slot="tab"><a-icon type="safety-certificate" />{{ $t('profile.security.title') }}</span>
+            <div class="security-section">
+              <a-alert
+                v-if="!mfaStatus.system_enabled"
+                type="warning"
+                showIcon
+                :message="$t('profile.mfa.systemDisabled')"
+                style="margin-bottom: 16px"
+              />
+              <div class="mfa-card">
+                <div class="mfa-card-main">
+                  <div class="mfa-icon">
+                    <a-icon type="safety-certificate" />
                   </div>
-                  <div class="email-hint email-warning" v-else>
-                    {{ $t('profile.noEmailWarning') || 'Please set your email first in Basic Info tab' }}
-                  </div>
-                </a-form-item>
-
-                <a-form-item :label="$t('profile.newPassword') || 'New Password'">
-                  <a-input-password
-                    v-decorator="['new_password', {
-                      rules: [
-                        { required: true, message: $t('profile.newPasswordRequired') || 'Please enter new password' },
-                        { validator: validateNewPassword }
-                      ]
-                    }]"
-                    :placeholder="$t('profile.newPasswordPlaceholder') || 'Enter new password'"
-                  >
-                    <a-icon slot="prefix" type="lock" />
-                  </a-input-password>
-                </a-form-item>
-
-                <a-form-item :label="$t('profile.confirmPassword') || 'Confirm Password'">
-                  <a-input-password
-                    v-decorator="['confirm_password', {
-                      rules: [
-                        { required: true, message: $t('profile.confirmPasswordRequired') || 'Please confirm password' },
-                        { validator: validateConfirmPassword }
-                      ]
-                    }]"
-                    :placeholder="$t('profile.confirmPasswordPlaceholder') || 'Confirm new password'"
-                  >
-                    <a-icon slot="prefix" type="lock" />
-                  </a-input-password>
-                </a-form-item>
-
-                <a-form-item>
-                  <a-button type="primary" :loading="changingPassword" @click="handleChangePassword" :disabled="!profile.email">
-                    <a-icon type="key" />
-                    {{ $t('profile.changePassword') || 'Change Password' }}
-                  </a-button>
-                </a-form-item>
-              </a-form>
-            </a-tab-pane>
-
-            <a-tab-pane key="security" :tab="$t('profile.security.title')">
-              <div class="security-section">
-                <a-alert
-                  v-if="!mfaStatus.system_enabled"
-                  type="warning"
-                  showIcon
-                  :message="$t('profile.mfa.systemDisabled')"
-                  style="margin-bottom: 16px"
-                />
-                <div class="mfa-card">
-                  <div class="mfa-card-main">
-                    <div class="mfa-icon">
-                      <a-icon type="safety-certificate" />
+                  <div class="mfa-copy">
+                    <div class="mfa-title">
+                      <span>{{ $t('profile.mfa.title') }}</span>
+                      <a-tag
+                        class="mfa-status-tag"
+                        :class="mfaStatus.enabled ? 'is-enabled' : 'is-disabled'"
+                      >
+                        {{ mfaStatus.enabled ? $t('profile.mfa.enabled') : $t('profile.mfa.disabled') }}
+                      </a-tag>
                     </div>
-                    <div class="mfa-copy">
-                      <div class="mfa-title">
-                        <span>{{ $t('profile.mfa.title') }}</span>
-                        <a-tag
-                          class="mfa-status-tag"
-                          :class="mfaStatus.enabled ? 'is-enabled' : 'is-disabled'"
-                        >
-                          {{ mfaStatus.enabled ? $t('profile.mfa.enabled') : $t('profile.mfa.disabled') }}
-                        </a-tag>
-                      </div>
-                      <div class="mfa-desc">
-                        {{ $t('profile.mfa.desc') }}
-                      </div>
-                      <div v-if="mfaStatus.enabled && mfaStatus.confirmed_at" class="mfa-meta">
-                        <a-icon type="clock-circle" />
-                        {{ $t('profile.mfa.boundAt') }}: {{ formatTime(mfaStatus.confirmed_at) }}
-                      </div>
-                      <div class="mfa-feature-list">
-                        <span><a-icon type="mobile" />{{ $t('profile.mfa.featureApp') }}</span>
-                        <span><a-icon type="environment" />{{ $t('profile.mfa.featureRisk') }}</span>
-                        <span><a-icon type="key" />{{ $t('profile.mfa.featureRecovery') }}</span>
-                      </div>
+                    <div class="mfa-desc">
+                      {{ $t('profile.mfa.desc') }}
+                    </div>
+                    <div v-if="mfaStatus.enabled && mfaStatus.confirmed_at" class="mfa-meta">
+                      <a-icon type="clock-circle" />
+                      {{ $t('profile.mfa.boundAt') }}: {{ formatTime(mfaStatus.confirmed_at) }}
+                    </div>
+                    <div class="mfa-feature-list">
+                      <span><a-icon type="mobile" />{{ $t('profile.mfa.featureApp') }}</span>
+                      <span><a-icon type="environment" />{{ $t('profile.mfa.featureRisk') }}</span>
+                      <span><a-icon type="key" />{{ $t('profile.mfa.featureRecovery') }}</span>
                     </div>
                   </div>
-                  <div class="mfa-actions">
-                    <a-button
-                      v-if="!mfaStatus.enabled"
-                      type="primary"
-                      icon="qrcode"
-                      :disabled="!mfaStatus.system_enabled"
-                      :loading="mfaLoading"
-                      @click="handleStartMfaSetup"
-                    >
-                      {{ $t('profile.mfa.enable') }}
-                    </a-button>
-                    <a-button
-                      v-else
-                      type="danger"
-                      ghost
-                      icon="stop"
-                      :loading="mfaLoading"
-                      @click="showDisableMfaModal = true"
-                    >
-                      {{ $t('profile.mfa.disable') }}
-                    </a-button>
-                  </div>
+                </div>
+                <div class="mfa-actions">
+                  <a-button
+                    v-if="!mfaStatus.enabled"
+                    type="primary"
+                    icon="qrcode"
+                    :disabled="!mfaStatus.system_enabled"
+                    :loading="mfaLoading"
+                    @click="handleStartMfaSetup"
+                  >
+                    {{ $t('profile.mfa.enable') }}
+                  </a-button>
+                  <a-button
+                    v-else
+                    type="danger"
+                    ghost
+                    icon="stop"
+                    :loading="mfaLoading"
+                    @click="showDisableMfaModal = true"
+                  >
+                    {{ $t('profile.mfa.disable') }}
+                  </a-button>
                 </div>
               </div>
-            </a-tab-pane>
+            </div>
+          </a-tab-pane>
 
-            <a-tab-pane key="credits" :tab="$t('profile.creditsLog') || '消费记录'">
-              <a-table
-                :columns="creditsLogColumns"
-                :dataSource="creditsLog"
-                :loading="creditsLogLoading"
-                :pagination="creditsLogPagination"
-                :rowKey="record => record.id"
-                size="small"
-                @change="handleCreditsLogChange"
-              >
-                <!-- Action Column -->
-                <template slot="action" slot-scope="text">
-                  <a-tag :color="getActionColor(text)">
-                    {{ getActionLabel(text) }}
-                  </a-tag>
-                </template>
+          <a-tab-pane key="credits">
+            <span slot="tab"><a-icon type="wallet" />{{ $t('profile.creditsLog') || '消费记录' }}</span>
+            <a-table
+              :columns="creditsLogColumns"
+              :dataSource="creditsLog"
+              :loading="creditsLogLoading"
+              :pagination="creditsLogPagination"
+              :rowKey="record => record.id"
+              size="small"
+              @change="handleCreditsLogChange"
+            >
+              <!-- Action Column -->
+              <template slot="action" slot-scope="text">
+                <a-tag :color="getActionColor(text)">
+                  {{ getActionLabel(text) }}
+                </a-tag>
+              </template>
 
-                <!-- Amount Column -->
-                <template slot="amount" slot-scope="text">
-                  <span :class="text >= 0 ? 'amount-positive' : 'amount-negative'">
-                    {{ text >= 0 ? '+' : '' }}{{ text }}
+              <!-- Amount Column -->
+              <template slot="amount" slot-scope="text">
+                <span :class="text >= 0 ? 'amount-positive' : 'amount-negative'">
+                  {{ text >= 0 ? '+' : '' }}{{ text }}
+                </span>
+              </template>
+
+              <!-- Time Column -->
+              <template slot="created_at" slot-scope="text">
+                {{ formatCreditsLogTime(text) }}
+              </template>
+            </a-table>
+          </a-tab-pane>
+
+          <a-tab-pane key="notifications">
+            <span slot="tab"><a-icon type="bell" />{{ $t('profile.notifications.title') || '通知设置' }}</span>
+            <div class="notification-settings-form">
+              <a-alert
+                :message="$t('profile.notifications.hint') || '配置您的默认通知方式，在创建资产监控和预警时将自动使用这些设置'"
+                type="info"
+                showIcon
+                style="margin-bottom: 24px"
+              />
+
+              <a-form :form="notificationForm" layout="vertical" class="notification-settings-fields">
+                <!-- Default Channels -->
+                <a-form-item class="notification-field-wide">
+                  <span slot="label" class="notification-field-label">
+                    <a-icon type="bell" />
+                    {{ $t('profile.notifications.defaultChannels') || '默认通知渠道' }}
                   </span>
-                </template>
+                  <a-checkbox-group
+                    v-decorator="['default_channels', { initialValue: notificationSettings.default_channels || ['browser', 'email'] }]"
+                  >
+                    <a-row :gutter="16">
+                      <a-col :span="8">
+                        <a-checkbox value="browser">
+                          <a-icon type="bell" /> {{ $t('profile.notifications.browser') || '站内通知' }}
+                        </a-checkbox>
+                      </a-col>
+                      <a-col :span="8">
+                        <a-checkbox value="telegram">
+                          <a-icon type="send" /> Telegram
+                        </a-checkbox>
+                      </a-col>
+                      <a-col :span="8">
+                        <a-checkbox value="email">
+                          <a-icon type="mail" /> {{ $t('profile.notifications.email') || '邮件' }}
+                        </a-checkbox>
+                      </a-col>
+                    </a-row>
+                    <a-row :gutter="16" style="margin-top: 8px">
+                      <a-col :span="8">
+                        <a-checkbox value="phone">
+                          <a-icon type="phone" /> {{ $t('profile.notifications.phone') || '短信' }}
+                        </a-checkbox>
+                      </a-col>
+                      <a-col :span="8">
+                        <a-checkbox value="discord">
+                          <a-icon type="message" /> Discord
+                        </a-checkbox>
+                      </a-col>
+                      <a-col :span="8">
+                        <a-checkbox value="webhook">
+                          <a-icon type="api" /> Webhook
+                        </a-checkbox>
+                      </a-col>
+                    </a-row>
+                  </a-checkbox-group>
+                </a-form-item>
 
-                <!-- Time Column -->
-                <template slot="created_at" slot-scope="text">
-                  {{ formatCreditsLogTime(text) }}
-                </template>
-              </a-table>
-            </a-tab-pane>
-
-            <a-tab-pane key="notifications" :tab="$t('profile.notifications.title') || '通知设置'">
-              <div class="notification-settings-form">
-                <a-alert
-                  :message="$t('profile.notifications.hint') || '配置您的默认通知方式，在创建资产监控和预警时将自动使用这些设置'"
-                  type="info"
-                  showIcon
-                  style="margin-bottom: 24px"
-                />
-
-                <a-form :form="notificationForm" layout="vertical" style="max-width: 600px;">
-                  <!-- Default Channels -->
-                  <a-form-item :label="$t('profile.notifications.defaultChannels') || '默认通知渠道'">
-                    <a-checkbox-group
-                      v-decorator="['default_channels', { initialValue: notificationSettings.default_channels || ['browser', 'email'] }]"
-                    >
-                      <a-row :gutter="16">
-                        <a-col :span="8">
-                          <a-checkbox value="browser">
-                            <a-icon type="bell" /> {{ $t('profile.notifications.browser') || '站内通知' }}
-                          </a-checkbox>
-                        </a-col>
-                        <a-col :span="8">
-                          <a-checkbox value="telegram">
-                            <a-icon type="send" /> Telegram
-                          </a-checkbox>
-                        </a-col>
-                        <a-col :span="8">
-                          <a-checkbox value="email">
-                            <a-icon type="mail" /> {{ $t('profile.notifications.email') || '邮件' }}
-                          </a-checkbox>
-                        </a-col>
-                      </a-row>
-                      <a-row :gutter="16" style="margin-top: 8px">
-                        <a-col :span="8">
-                          <a-checkbox value="phone">
-                            <a-icon type="phone" /> {{ $t('profile.notifications.phone') || '短信' }}
-                          </a-checkbox>
-                        </a-col>
-                        <a-col :span="8">
-                          <a-checkbox value="discord">
-                            <a-icon type="message" /> Discord
-                          </a-checkbox>
-                        </a-col>
-                        <a-col :span="8">
-                          <a-checkbox value="webhook">
-                            <a-icon type="api" /> Webhook
-                          </a-checkbox>
-                        </a-col>
-                      </a-row>
-                    </a-checkbox-group>
-                  </a-form-item>
-
+                <div class="notification-fields-grid">
                   <!-- Telegram Bot Token -->
-                  <a-form-item :label="$t('profile.notifications.telegramBotToken') || 'Telegram Bot Token'">
+                  <a-form-item>
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="robot" />
+                      {{ $t('profile.notifications.telegramBotToken') || 'Telegram Bot Token' }}
+                    </span>
                     <a-input-password
                       v-decorator="['telegram_bot_token', { initialValue: notificationSettings.telegram_bot_token }]"
                       :placeholder="$t('profile.notifications.telegramBotTokenPlaceholder') || '请输入您的 Telegram Bot Token'"
                     >
-                      <a-icon slot="prefix" type="robot" />
                     </a-input-password>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
@@ -437,12 +488,15 @@
                   </a-form-item>
 
                   <!-- Telegram Chat ID -->
-                  <a-form-item :label="$t('profile.notifications.telegramChatId') || 'Telegram Chat ID'">
+                  <a-form-item>
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="message" />
+                      {{ $t('profile.notifications.telegramChatId') || 'Telegram Chat ID' }}
+                    </span>
                     <a-input
                       v-decorator="['telegram_chat_id', { initialValue: notificationSettings.telegram_chat_id }]"
                       :placeholder="$t('profile.notifications.telegramPlaceholder') || '请输入您的 Telegram Chat ID（如 123456789）'"
                     >
-                      <a-icon slot="prefix" type="message" />
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
@@ -451,12 +505,15 @@
                   </a-form-item>
 
                   <!-- Notification Email -->
-                  <a-form-item :label="$t('profile.notifications.notifyEmail') || '通知邮箱'">
+                  <a-form-item>
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="mail" />
+                      {{ $t('profile.notifications.notifyEmail') || '通知邮箱' }}
+                    </span>
                     <a-input
                       v-decorator="['email', { initialValue: notificationSettings.email || profile.email }]"
                       :placeholder="$t('profile.notifications.emailPlaceholder') || '接收通知的邮箱地址'"
                     >
-                      <a-icon slot="prefix" type="mail" />
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
@@ -465,12 +522,15 @@
                   </a-form-item>
 
                   <!-- Phone Number (SMS) -->
-                  <a-form-item :label="$t('profile.notifications.phone') || '手机号（短信通知）'">
+                  <a-form-item>
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="phone" />
+                      {{ $t('profile.notifications.phone') || '手机号（短信通知）' }}
+                    </span>
                     <a-input
                       v-decorator="['phone', { initialValue: notificationSettings.phone }]"
                       :placeholder="$t('profile.notifications.phonePlaceholder') || '请输入手机号（如 +8613800138000）'"
                     >
-                      <a-icon slot="prefix" type="phone" />
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
@@ -479,12 +539,15 @@
                   </a-form-item>
 
                   <!-- Discord Webhook -->
-                  <a-form-item :label="$t('profile.notifications.discordWebhook') || 'Discord Webhook'">
+                  <a-form-item>
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="message" />
+                      {{ $t('profile.notifications.discordWebhook') || 'Discord Webhook' }}
+                    </span>
                     <a-input
                       v-decorator="['discord_webhook', { initialValue: notificationSettings.discord_webhook }]"
                       :placeholder="$t('profile.notifications.discordPlaceholder') || 'https://discord.com/api/webhooks/...'"
                     >
-                      <a-icon slot="prefix" type="message" />
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
@@ -493,13 +556,16 @@
                   </a-form-item>
 
                   <!-- Webhook URL -->
-                  <a-form-item :label="$t('profile.notifications.webhookUrl') || 'Webhook URL'">
+                  <a-form-item class="notification-field-wide">
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="api" />
+                      {{ $t('profile.notifications.webhookUrl') || 'Webhook URL' }}
+                    </span>
                     <a-input
                       v-decorator="['webhook_url', { initialValue: notificationSettings.webhook_url }]"
                       :placeholder="$t('profile.notifications.webhookPlaceholder') || 'https://your-server.com/webhook'"
                       @change="handleWebhookUrlChange"
                     >
-                      <a-icon slot="prefix" type="api" />
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
@@ -527,13 +593,15 @@
                   <!-- Webhook Token -->
                   <a-form-item
                     v-if="webhookDialect === 'generic' || !notificationSettings.webhook_url"
-                    :label="$t('profile.notifications.webhookToken') || 'Webhook Token（可选）'"
                   >
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="key" />
+                      {{ $t('profile.notifications.webhookToken') || 'Webhook Token（可选）' }}
+                    </span>
                     <a-input-password
                       v-decorator="['webhook_token', { initialValue: notificationSettings.webhook_token }]"
                       :placeholder="$t('profile.notifications.webhookTokenPlaceholder') || '用于验证请求的 Bearer Token'"
                     >
-                      <a-icon slot="prefix" type="key" />
                     </a-input-password>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
@@ -544,98 +612,134 @@
                   <!-- Webhook Signing Secret (Feishu / DingTalk / Generic) -->
                   <a-form-item
                     v-if="webhookSupportsSigning"
-                    :label="webhookSigningSecretLabel"
                   >
+                    <span slot="label" class="notification-field-label">
+                      <a-icon type="safety" />
+                      {{ webhookSigningSecretLabel }}
+                    </span>
                     <a-input-password
                       v-decorator="['webhook_signing_secret', { initialValue: notificationSettings.webhook_signing_secret }]"
                       :placeholder="$t('profile.notifications.webhookSigningSecretPlaceholder') || '加签密钥（可选）'"
                     >
-                      <a-icon slot="prefix" type="safety" />
                     </a-input-password>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
                       <span>{{ webhookSigningSecretHint }}</span>
                     </div>
                   </a-form-item>
+                </div>
 
-                  <a-form-item>
-                    <a-button type="primary" :loading="savingNotifications" @click="handleSaveNotifications">
-                      <a-icon type="save" />
-                      {{ $t('common.save') || '保存' }}
-                    </a-button>
-                    <a-button style="margin-left: 12px" @click="handleTestNotification" :loading="testingNotification">
-                      <a-icon type="experiment" />
-                      {{ $t('profile.notifications.testBtn') || '发送测试通知' }}
-                    </a-button>
-                  </a-form-item>
-                </a-form>
-              </div>
-            </a-tab-pane>
+                <a-form-item class="notification-field-wide notification-form-actions">
+                  <a-button type="primary" :loading="savingNotifications" @click="handleSaveNotifications">
+                    <a-icon type="save" />
+                    {{ $t('common.save') || '保存' }}
+                  </a-button>
+                  <a-button style="margin-left: 12px" @click="handleTestNotification" :loading="testingNotification">
+                    <a-icon type="experiment" />
+                    {{ $t('profile.notifications.testBtn') || '发送测试通知' }}
+                  </a-button>
+                </a-form-item>
+              </a-form>
+            </div>
+          </a-tab-pane>
 
-            <a-tab-pane key="referrals" :tab="$t('profile.referral.listTab') || '邀请列表'">
-              <a-table
-                :columns="referralColumns"
-                :dataSource="referralData.list || []"
-                :loading="referralLoading"
-                :pagination="referralPagination"
-                :rowKey="record => record.id"
-                :locale="{ emptyText: $t('profile.referral.noReferrals') || '暂无邀请记录' }"
-                size="small"
-                @change="handleReferralChange"
-              >
-                <!-- Avatar & Name Column -->
-                <template slot="user" slot-scope="text, record">
-                  <div class="referral-user-cell">
-                    <a-avatar :size="32" :src="record.avatar || '/avatar2.jpg'" />
-                    <div class="user-info">
-                      <span class="nickname">{{ record.nickname || record.username }}</span>
-                      <span class="username">@{{ record.username }}</span>
+          <a-tab-pane key="referrals">
+            <span slot="tab"><a-icon type="team" />{{ $t('profile.referral.listTab') || '邀请列表' }}</span>
+            <a-tabs v-model="referralRecordTab" class="referral-record-tabs">
+              <a-tab-pane key="promotions" :tab="$t('profile.referralRewards.promotionRecords')">
+                <a-table
+                  :columns="referralColumns"
+                  :dataSource="referralData.list || []"
+                  :loading="referralLoading"
+                  :pagination="referralPagination"
+                  :rowKey="record => record.id"
+                  :locale="{ emptyText: $t('profile.referral.noReferrals') || '暂无邀请记录' }"
+                  size="small"
+                  @change="handleReferralChange"
+                >
+                  <template slot="user" slot-scope="text, record">
+                    <div class="referral-user-cell">
+                      <a-avatar :size="32" :src="record.avatar || '/avatar2.jpg'" />
+                      <div class="user-info">
+                        <span class="nickname">{{ record.nickname || record.username }}</span>
+                        <span class="username">@{{ record.username }}</span>
+                      </div>
                     </div>
-                  </div>
-                </template>
+                  </template>
+                  <template slot="created_at" slot-scope="text">
+                    {{ formatTime(text) }}
+                  </template>
+                </a-table>
+              </a-tab-pane>
+              <a-tab-pane v-if="rewardData.enabled" key="rewards" :tab="$t('profile.referralRewards.rewardRecords')">
+                <a-table
+                  :columns="rewardLedgerColumns"
+                  :dataSource="rewardData.ledger"
+                  :rowKey="record => record.id"
+                  :pagination="false"
+                  :locale="{ emptyText: $t('profile.referralRewards.noRewardRecords') }"
+                  size="small"
+                >
+                  <template slot="rewardAction" slot-scope="text">
+                    {{ getRewardActionLabel(text) }}
+                  </template>
+                  <template slot="rewardStatus" slot-scope="text">
+                    <a-tag :color="getRewardStatusColor(text)">{{ getRewardStatusLabel(text) }}</a-tag>
+                  </template>
+                </a-table>
+              </a-tab-pane>
+              <a-tab-pane v-if="rewardData.enabled" key="withdrawals" :tab="$t('profile.referralRewards.withdrawalRecords')">
+                <a-table
+                  :columns="rewardWithdrawalColumns"
+                  :dataSource="rewardData.withdrawals"
+                  :rowKey="record => record.id"
+                  :pagination="false"
+                  :locale="{ emptyText: $t('profile.referralRewards.noWithdrawalRecords') }"
+                  size="small"
+                >
+                  <template slot="withdrawalStatus" slot-scope="text">
+                    <a-tag :color="getRewardStatusColor(text)">{{ getRewardStatusLabel(text) }}</a-tag>
+                  </template>
+                </a-table>
+              </a-tab-pane>
+            </a-tabs>
+          </a-tab-pane>
 
-                <!-- Time Column -->
-                <template slot="created_at" slot-scope="text">
-                  {{ formatTime(text) }}
-                </template>
-              </a-table>
-            </a-tab-pane>
-
-            <!-- Login Logs Tab (last) -->
-            <a-tab-pane key="loginLogs" :tab="$t('profile.loginLogs.title') || '账户登录日志'">
-              <a-alert
-                :message="$t('profile.loginLogs.hint') || '记录密码、验证码与第三方登录；新设备或新地区登录时会通过邮件与站内通知提醒您。'"
-                type="info"
-                showIcon
-                style="margin-bottom: 16px"
-              />
-              <a-table
-                :columns="loginLogColumns"
-                :dataSource="loginLogs"
-                :loading="loginLogsLoading"
-                :pagination="loginLogsPagination"
-                :rowKey="record => record.id"
-                size="small"
-                @change="handleLoginLogsChange"
-              >
-                <template slot="flags" slot-scope="text, record">
-                  <a-tag v-if="record.is_new_device" color="orange" style="margin-right: 4px;">
-                    {{ $t('profile.loginLogs.newDevice') || '新设备' }}
-                  </a-tag>
-                  <a-tag v-if="record.is_new_region" color="red">
-                    {{ $t('profile.loginLogs.newRegion') || '新地区' }}
-                  </a-tag>
-                  <span v-if="!record.is_new_device && !record.is_new_region">—</span>
-                </template>
-                <template slot="created_at" slot-scope="text">
-                  {{ formatTime(text) }}
-                </template>
-              </a-table>
-            </a-tab-pane>
-          </a-tabs>
-        </a-card>
-      </a-col>
-    </a-row>
+          <!-- Login Logs Tab (last) -->
+          <a-tab-pane key="loginLogs">
+            <span slot="tab"><a-icon type="history" />{{ $t('profile.loginLogs.title') || '账户登录日志' }}</span>
+            <a-alert
+              :message="$t('profile.loginLogs.hint') || '记录密码、验证码与第三方登录；新设备或新地区登录时会通过邮件与站内通知提醒您。'"
+              type="info"
+              showIcon
+              style="margin-bottom: 16px"
+            />
+            <a-table
+              :columns="loginLogColumns"
+              :dataSource="loginLogs"
+              :loading="loginLogsLoading"
+              :pagination="loginLogsPagination"
+              :rowKey="record => record.id"
+              size="small"
+              @change="handleLoginLogsChange"
+            >
+              <template slot="flags" slot-scope="text, record">
+                <a-tag v-if="record.is_new_device" color="orange" style="margin-right: 4px;">
+                  {{ $t('profile.loginLogs.newDevice') || '新设备' }}
+                </a-tag>
+                <a-tag v-if="record.is_new_region" color="red">
+                  {{ $t('profile.loginLogs.newRegion') || '新地区' }}
+                </a-tag>
+                <span v-if="!record.is_new_device && !record.is_new_region">—</span>
+              </template>
+              <template slot="created_at" slot-scope="text">
+                {{ formatTime(text) }}
+              </template>
+            </a-table>
+          </a-tab-pane>
+        </a-tabs>
+      </a-card>
+    </div>
 
     <a-modal
       v-model="showMfaSetupModal"
@@ -744,6 +848,7 @@
 
 <script>
 import { getProfile, updateProfile, getLoginLogs, getMyCreditsLog, getMyReferrals, getNotificationSettings, updateNotificationSettings, testNotificationSettings, getMfaStatus, startMfaSetup, confirmMfaSetup, disableMfa } from '@/api/user'
+import { createReferralWithdrawal, getReferralRewards } from '@/api/billing'
 import { getSettingsValues } from '@/api/settings'
 import { baseMixin } from '@/store/app-mixin'
 import ProfileAgentTokens from '@/views/profile/components/ProfileAgentTokens.vue'
@@ -767,6 +872,7 @@ export default {
       pwdCodeCountdown: 0,
       pwdCodeTimer: null,
       activeTab: 'basic',
+      profileViewportWidth: 1280,
       profile: {
         id: null,
         username: '',
@@ -825,11 +931,24 @@ export default {
         register_bonus: 0
       },
       referralLoading: false,
+      referralRecordTab: 'promotions',
       referralPagination: {
         current: 1,
         pageSize: 10,
         total: 0
       },
+      rewardData: {
+        enabled: false,
+        account: { available_balance: 0, pending_reward_balance: 0, pending_withdrawal_balance: 0 },
+        ledger: [],
+        withdrawals: [],
+        channels: [],
+        rates: [],
+        minimum_withdrawal: 0
+      },
+      rewardWithdrawalVisible: false,
+      rewardWithdrawalSubmitting: false,
+      rewardWithdrawal: { currency: '', chain: '', address: '', amount: null },
       billing: {
         credits: 0,
         is_vip: false,
@@ -871,6 +990,9 @@ export default {
     }
   },
   computed: {
+    profileTabsPosition () {
+      return this.profileViewportWidth >= 960 ? 'left' : 'top'
+    },
     isDarkTheme () {
       return this.navTheme === 'dark' || this.navTheme === 'realdark'
     },
@@ -966,6 +1088,33 @@ export default {
           scopedSlots: { customRender: 'created_at' }
         }
       ]
+    },
+    rewardLedgerColumns () {
+      return [
+        { title: this.$t('profile.referralRewards.time'), dataIndex: 'created_at', width: 180, customRender: text => this.formatTime(text) },
+        { title: this.$t('profile.referralRewards.type'), dataIndex: 'action', width: 180, scopedSlots: { customRender: 'rewardAction' } },
+        { title: this.$t('profile.referralRewards.amount'), dataIndex: 'amount', width: 120, customRender: text => `${this.formatRewardAmount(text)} USD` },
+        { title: this.$t('profile.referralRewards.status'), dataIndex: 'status', width: 120, scopedSlots: { customRender: 'rewardStatus' } }
+      ]
+    },
+    rewardWithdrawalColumns () {
+      return [
+        { title: this.$t('profile.referralRewards.time'), dataIndex: 'created_at', width: 180, customRender: text => this.formatTime(text) },
+        { title: this.$t('profile.referralRewards.channel'), dataIndex: 'chain', width: 150, customRender: (text, row) => `${row.currency} · ${text}` },
+        { title: this.$t('profile.referralRewards.amount'), dataIndex: 'amount', width: 120, customRender: text => `${this.formatRewardAmount(text)} USD` },
+        { title: this.$t('profile.referralRewards.status'), dataIndex: 'status', width: 120, scopedSlots: { customRender: 'withdrawalStatus' } },
+        { title: this.$t('profile.referralRewards.txHash'), dataIndex: 'tx_hash', ellipsis: true }
+      ]
+    },
+    maxReferralRewardRate () {
+      const rates = Array.isArray(this.rewardData.rates) ? this.rewardData.rates : []
+      return rates.reduce((max, value) => Math.max(max, Number(value) || 0), 0)
+    },
+    withdrawalCurrencies () {
+      return [...new Set(this.rewardData.channels.map(channel => channel.currency).filter(Boolean))]
+    },
+    withdrawalChains () {
+      return this.rewardData.channels.filter(channel => channel.currency === this.rewardWithdrawal.currency)
     },
     referralLink () {
       const baseUrl = window.location.origin + window.location.pathname
@@ -1083,18 +1232,25 @@ export default {
     this.notificationForm = this.$form.createForm(this, { name: 'notification' })
   },
   mounted () {
+    this.syncProfileViewport()
+    window.addEventListener('resize', this.syncProfileViewport)
     // Honour deep links — sets activeTab before any data loads so we can
     // jump straight to a specific tab.
     this.applyTabFromQuery(this.$route.query.tab)
     this.loadProfile()
     this.loadReferrals()
+    this.loadReferralRewards()
   },
   beforeDestroy () {
+    window.removeEventListener('resize', this.syncProfileViewport)
     if (this.pwdCodeTimer) {
       clearInterval(this.pwdCodeTimer)
     }
   },
   methods: {
+    syncProfileViewport () {
+      this.profileViewportWidth = window.innerWidth
+    },
     // Whitelist of tabs we accept from ``?tab=xxx``. Anything else is a no-op
     // so a malformed link can't put the page in a weird state.
     applyTabFromQuery (rawTab) {
@@ -1471,6 +1627,101 @@ export default {
         this.$message.error('Failed to load referral data')
       } finally {
         this.referralLoading = false
+      }
+    },
+
+    async loadReferralRewards () {
+      try {
+        const res = await getReferralRewards({ page: 1, page_size: 50 })
+        if (res && res.code === 1) {
+          this.rewardData = {
+            ...this.rewardData,
+            ...(res.data || {}),
+            account: { ...this.rewardData.account, ...((res.data && res.data.account) || {}) },
+            ledger: (res.data && res.data.ledger) || [],
+            withdrawals: (res.data && res.data.withdrawals) || [],
+            channels: (res.data && res.data.channels) || []
+          }
+        }
+      } catch (e) {
+        this.rewardData.enabled = false
+      }
+    },
+
+    formatRewardAmount (value) {
+      return Number(value || 0).toFixed(2)
+    },
+
+    formatRewardRate (value) {
+      const rate = Number(value || 0)
+      return Number.isInteger(rate) ? String(rate) : rate.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+    },
+
+    getRewardStatusColor (status) {
+      return {
+        pending: 'orange',
+        released: 'blue',
+        posted: 'green',
+        processing: 'blue',
+        paid: 'green',
+        rejected: 'red'
+      }[status] || 'default'
+    },
+
+    getRewardStatusLabel (status) {
+      const key = `profile.referralRewards.statusLabels.${status}`
+      const translated = this.$t(key)
+      return translated === key ? status : translated
+    },
+
+    getRewardActionLabel (action) {
+      const key = `profile.referralRewards.actionLabels.${action}`
+      const translated = this.$t(key)
+      return translated === key ? action : translated
+    },
+
+    openRewardWithdrawal () {
+      const first = this.rewardData.channels[0]
+      this.rewardWithdrawal = {
+        currency: first ? first.currency : '',
+        chain: first ? first.code : '',
+        address: '',
+        amount: this.rewardData.minimum_withdrawal || null
+      }
+      this.rewardWithdrawalVisible = true
+    },
+
+    handleRewardWithdrawalCurrencyChange (currency) {
+      const first = this.rewardData.channels.find(channel => channel.currency === currency)
+      this.rewardWithdrawal.chain = first ? first.code : ''
+    },
+
+    async submitRewardWithdrawal () {
+      const { currency, chain } = this.rewardWithdrawal
+      if (!currency || !chain || !this.rewardWithdrawal.address || !this.rewardWithdrawal.amount) {
+        this.$message.warning(this.$t('profile.referralRewards.completeFields'))
+        return
+      }
+      this.rewardWithdrawalSubmitting = true
+      try {
+        const res = await createReferralWithdrawal({
+          currency,
+          chain,
+          address: this.rewardWithdrawal.address,
+          amount: this.rewardWithdrawal.amount
+        })
+        if (res && res.code === 1) {
+          this.$message.success(this.$t('profile.referralRewards.submitted'))
+          this.rewardWithdrawalVisible = false
+          await this.loadReferralRewards()
+        } else {
+          this.$message.error((res && res.msg) || this.$t('profile.referralRewards.submitFailed'))
+        }
+      } catch (e) {
+        const message = e && e.response && e.response.data && e.response.data.msg
+        this.$message.error(message || this.$t('profile.referralRewards.submitFailed'))
+      } finally {
+        this.rewardWithdrawalSubmitting = false
       }
     },
 
@@ -1882,6 +2133,54 @@ export default {
         .value {
           color: #1e3a5f;
           font-weight: 500;
+        }
+      }
+    }
+
+    .profile-account-meta {
+      display: flex !important;
+      flex-direction: column;
+      align-items: flex-start !important;
+      justify-content: flex-start !important;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 8px 0 0 !important;
+      padding: 0 !important;
+      text-align: left !important;
+
+      .info-item {
+        display: flex !important;
+        align-items: center;
+        justify-content: flex-start !important;
+        width: 100% !important;
+        min-height: 34px;
+        padding: 5px 0;
+        border: 0;
+        text-align: left !important;
+
+        .anticon {
+          flex: 0 0 18px;
+          margin: 0 8px 0 0 !important;
+          color: var(--primary-color, #1890ff);
+          font-size: 14px;
+        }
+
+        .label {
+          flex: 0 0 86px;
+          margin: 0 !important;
+          color: var(--qd-text-muted);
+          font-size: 12px;
+        }
+
+        .value {
+          flex: 0 1 220px;
+          overflow: hidden;
+          color: var(--qd-text);
+          font-size: 12px;
+          font-weight: 600;
+          text-align: left !important;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
     }
@@ -2804,10 +3103,499 @@ export default {
   }
 }
 
+/* Compact account overview and task-oriented settings navigation. */
+.profile-page {
+  .profile-overview-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(280px, 0.82fr) minmax(360px, 1.12fr);
+    gap: 12px;
+    margin-bottom: 12px;
+
+    > .ant-card {
+      min-width: 0;
+      min-height: 210px;
+      border: 1px solid var(--qd-border);
+      border-radius: 8px;
+      background: var(--qd-surface);
+      color: var(--qd-text);
+      box-shadow: none;
+
+      ::v-deep .ant-card-body {
+        height: 100%;
+        padding: 16px;
+        background: transparent;
+      }
+    }
+  }
+
+  .profile-card {
+    text-align: left;
+
+    ::v-deep .ant-card-body {
+      display: block;
+      width: 100%;
+      text-align: left;
+    }
+
+    .profile-identity {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--qd-border);
+
+      .ant-avatar {
+        flex: 0 0 72px;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
+      }
+    }
+
+    .profile-identity-copy {
+      min-width: 0;
+    }
+
+    .username {
+      overflow: hidden;
+      margin: 0 0 7px;
+      color: var(--qd-text);
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-role {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+
+      .ant-tag {
+        margin: 0;
+      }
+    }
+
+    .profile-info {
+      display: grid;
+      align-self: stretch;
+      width: 100% !important;
+      max-width: none !important;
+      gap: 0;
+      margin: 8px 0 0 !important;
+      justify-self: stretch;
+      text-align: left;
+
+      .info-item {
+        display: grid;
+        grid-template-columns: 18px 86px minmax(0, 220px);
+        align-items: center;
+        justify-content: start;
+        gap: 8px;
+        min-height: 34px;
+        padding: 5px 0;
+        border: 0;
+
+        .anticon {
+          margin: 0;
+          color: var(--primary-color, #1890ff);
+          font-size: 14px;
+        }
+
+        .label {
+          margin: 0;
+          color: var(--qd-text-muted);
+          font-size: 12px;
+        }
+
+        .value {
+          overflow: hidden;
+          color: var(--qd-text);
+          font-size: 12px;
+          font-weight: 600;
+          text-align: left;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+
+  .profile-overview-grid .credits-card,
+  .profile-overview-grid .referral-card {
+    background: var(--qd-surface);
+    color: var(--qd-text);
+
+    .credits-title,
+    .referral-title {
+      margin: 0;
+      color: var(--qd-text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+  }
+
+  .profile-overview-grid .credits-card {
+    .credits-body {
+      align-items: flex-start;
+      justify-content: center;
+      padding: 16px 0 12px;
+      text-align: left;
+    }
+
+    .credits-amount {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+
+      .amount-value {
+        color: var(--qd-text);
+        font-size: 32px;
+        font-weight: 750;
+        line-height: 1.15;
+        text-shadow: none;
+      }
+
+      .amount-label {
+        margin: 0;
+        color: var(--qd-text-muted);
+        font-size: 12px;
+      }
+    }
+
+    .vip-status {
+      justify-content: flex-start;
+      margin-top: 8px;
+
+      .no-vip,
+      .vip-expired {
+        color: var(--qd-text-muted);
+      }
+    }
+
+    .credits-footer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--qd-border);
+    }
+
+    .credits-hint {
+      justify-content: flex-start;
+      min-width: 0;
+      margin: 0;
+      color: var(--qd-text-muted);
+      text-align: left;
+    }
+
+    .credits-recharge-btn {
+      flex: 0 0 auto;
+      height: 32px;
+      padding: 0 13px;
+      border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 45%, var(--qd-border));
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, var(--qd-surface));
+      box-shadow: none;
+      color: var(--primary-color, #1890ff);
+    }
+  }
+
+  .profile-overview-grid .referral-card {
+    .referral-card-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .referral-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding-top: 2px;
+
+      .anticon { color: var(--primary-color, #1890ff); }
+    }
+
+    .referral-mini-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .referral-mini-stat {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      white-space: nowrap;
+
+      strong {
+        color: var(--qd-text);
+        font-size: 18px;
+        line-height: 1;
+      }
+
+      span {
+        color: var(--qd-text-muted);
+        font-size: 11px;
+      }
+    }
+
+    .referral-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 9px;
+      padding: 12px 0 0;
+    }
+
+    .referral-link-section {
+      min-width: 0;
+
+      .link-label {
+        color: var(--qd-text-muted);
+      }
+
+      .link-box ::v-deep .ant-input {
+        border-color: var(--qd-border);
+        background: var(--qd-surface-subtle);
+        color: var(--qd-text);
+      }
+
+      .link-box ::v-deep .anticon-copy {
+        color: var(--primary-color, #1890ff);
+      }
+    }
+
+    .referral-benefits {
+      display: grid;
+      gap: 4px;
+      min-height: 22px;
+    }
+
+    .referral-benefit {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--qd-text-muted);
+      font-size: 11px;
+      line-height: 1.4;
+
+      .anticon { color: #d89614; }
+    }
+
+    .referral-benefit-membership .anticon {
+      color: var(--primary-color, #1890ff);
+    }
+  }
+
+  .profile-settings-shell {
+    min-width: 0;
+  }
+
+  .profile-settings-shell .edit-card {
+    overflow: hidden;
+    border: 1px solid var(--qd-border);
+    border-radius: 8px;
+    background: var(--qd-surface);
+    box-shadow: none;
+
+    ::v-deep > .ant-card-body {
+      padding: 0;
+    }
+
+    ::v-deep .ant-tabs-left-bar {
+      width: 196px;
+      min-height: 560px;
+      margin: 0;
+      padding: 12px 8px;
+      border-right: 1px solid var(--qd-border);
+      background: var(--qd-surface-subtle);
+    }
+
+    ::v-deep .ant-tabs-left-bar .ant-tabs-nav-container,
+    ::v-deep .ant-tabs-left-bar .ant-tabs-nav-wrap,
+    ::v-deep .ant-tabs-left-bar .ant-tabs-nav-scroll,
+    ::v-deep .ant-tabs-left-bar .ant-tabs-nav {
+      width: 100%;
+      height: auto !important;
+    }
+
+    ::v-deep .ant-tabs-left-bar .ant-tabs-nav {
+      display: block;
+      float: none;
+      white-space: normal;
+    }
+
+    ::v-deep .ant-tabs-left-bar .ant-tabs-tab {
+      display: flex !important;
+      justify-content: flex-start;
+      width: 100%;
+      height: 38px;
+      min-width: 0;
+      margin: 0 0 4px;
+      padding: 0 12px;
+      border-radius: 6px;
+      color: var(--qd-text-secondary);
+      text-align: left;
+    }
+
+    ::v-deep .ant-tabs-left-bar .ant-tabs-tab-active {
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 11%, var(--qd-surface));
+      color: var(--primary-color, #1890ff);
+    }
+
+    ::v-deep .ant-tabs-left-bar .ant-tabs-ink-bar {
+      display: none !important;
+    }
+
+    ::v-deep .ant-tabs-left-content {
+      min-height: 560px;
+      padding: 20px 24px 24px;
+      border: 0;
+    }
+
+    ::v-deep .ant-tabs-tab .anticon {
+      width: 16px;
+      margin-right: 9px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .profile-form,
+    .password-form {
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .notification-settings-form {
+      max-width: 780px;
+    }
+
+    .notification-settings-fields {
+      width: 100%;
+      max-width: 780px;
+    }
+
+    .notification-field-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      .anticon {
+        color: var(--primary-color, #1890ff) !important;
+        font-size: 13px;
+      }
+    }
+
+    .notification-fields-grid {
+      display: block;
+      width: 100%;
+      padding-top: 4px;
+
+      ::v-deep .ant-form-item {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 0 20px !important;
+      }
+
+      ::v-deep .ant-form-item-label,
+      ::v-deep .ant-form-item-control-wrapper,
+      ::v-deep .ant-form-item-control,
+      ::v-deep .ant-input-affix-wrapper,
+      ::v-deep .ant-input {
+        width: 100% !important;
+        max-width: none !important;
+        float: none !important;
+      }
+
+      .field-hint {
+        align-items: flex-start;
+        max-width: 100%;
+        margin-top: 7px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+      }
+    }
+
+    .notification-form-actions {
+      margin-top: 4px;
+      padding-top: 16px;
+      border-top: 1px solid var(--qd-border);
+    }
+  }
+
+  &.theme-dark {
+    .profile-overview-grid > .ant-card,
+    .profile-settings-shell .edit-card {
+      border-color: var(--qd-border);
+      background: var(--qd-surface);
+      color: var(--qd-text);
+      box-shadow: none;
+    }
+
+    .profile-settings-shell .edit-card ::v-deep .ant-tabs-left-bar {
+      border-right-color: var(--qd-border);
+      background: var(--qd-surface-subtle);
+    }
+  }
+}
+
+@media screen and (max-width: 1280px) {
+  .profile-page {
+    .profile-overview-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      .referral-card {
+        grid-column: 1 / -1;
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 960px) {
+  .profile-page {
+    .profile-settings-shell .edit-card {
+      ::v-deep .ant-tabs-top-bar {
+        margin: 0;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--qd-border);
+        background: var(--qd-surface-subtle);
+      }
+
+      ::v-deep .ant-tabs-top-content {
+        padding: 18px;
+      }
+
+      .notification-fields-grid {
+        display: block;
+      }
+    }
+  }
+}
+
 // ==================== Mobile Responsive Styles ====================
 @media screen and (max-width: 768px) {
   .profile-page {
     padding: 12px;
+
+    .profile-overview-grid {
+      grid-template-columns: minmax(0, 1fr);
+
+      .referral-card {
+        grid-column: auto;
+      }
+
+      > .ant-card {
+        min-height: 0;
+      }
+    }
+
+    .profile-overview-grid .referral-card .referral-body {
+      grid-template-columns: minmax(0, 1fr);
+    }
 
     .page-header {
       margin-bottom: 16px;
@@ -3477,4 +4265,67 @@ export default {
     }
   }
 }
+
+.referral-balance-strip {
+  display: grid;
+  grid-template-columns: minmax(145px, 1fr) minmax(112px, auto) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 1px;
+  padding-top: 9px;
+  border-top: 1px solid var(--qd-border);
+
+  .referral-balance-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    white-space: nowrap;
+
+    > span {
+      color: var(--qd-text-muted);
+      font-size: 11px;
+    }
+
+    strong {
+      color: var(--qd-text);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+  }
+
+  .referral-balance-primary strong {
+    font-size: 16px;
+
+    small {
+      color: var(--qd-text-muted);
+      font-size: 10px;
+      font-weight: 600;
+    }
+  }
+
+  .reward-withdraw-btn {
+    height: 30px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .referral-balance-strip {
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    .referral-balance-item:nth-child(2) {
+      display: none;
+    }
+  }
+}
+
+.referral-record-tabs {
+  ::v-deep .ant-tabs-bar { margin-bottom: 16px; }
+  ::v-deep .ant-tabs-tab { padding-top: 0; }
+}
+
+.reward-withdrawal-form { margin-top: 18px; }
 </style>

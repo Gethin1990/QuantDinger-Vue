@@ -287,6 +287,7 @@
                 <div class="template-card__meta">
                   <span>{{ (tpl.params || []).length }} {{ $t('trading-assistant.editor.paramsTab') }}</span>
                   <span>{{ $t('strategyV2.apiBadge') }}</span>
+                  <span v-if="templateTaLibLabel(tpl)">{{ templateTaLibLabel(tpl) }}</span>
                 </div>
                 <div class="template-card__foot">
                   <span class="template-card__action">
@@ -453,6 +454,7 @@
           <div class="template-card__meta">
             <span>{{ (tpl.params || []).length }} {{ $t('trading-assistant.editor.paramsTab') }}</span>
             <span>{{ $t('strategyV2.apiBadge') }}</span>
+            <span v-if="templateTaLibLabel(tpl)">{{ templateTaLibLabel(tpl) }}</span>
           </div>
           <div class="template-card__foot">
             <span class="template-card__action">
@@ -493,6 +495,7 @@ import {
   strategyParameterOptionLabel
 } from '@/utils/strategyParameterPresentation'
 import { ratioPercentInputFormatter, ratioPercentInputParser } from '@/utils/numberFormat'
+import { applyCodeEditsToCodeMirror, setCodeMirrorValueWithHighlight } from '@/utils/codeEdits'
 
 export default {
   name: 'StrategyEditor',
@@ -962,6 +965,22 @@ export default {
       this.scheduleEditorRefresh()
     },
 
+    applyCodeEdits (operations) {
+      if (this.readonly || this.hiddenSource || !this.editor) return null
+      const nextCode = applyCodeEditsToCodeMirror(this.editor, operations)
+      this.$emit('input', nextCode)
+      this.scheduleEditorRefresh()
+      return nextCode
+    },
+
+    setCodeWithHighlight (code) {
+      if (this.readonly || this.hiddenSource || !this.editor) return null
+      const nextCode = setCodeMirrorValueWithHighlight(this.editor, code)
+      this.$emit('input', nextCode)
+      this.scheduleEditorRefresh()
+      return nextCode
+    },
+
     applySelectedTemplateToCode ({ silent = false } = {}) {
       if (this.hiddenSource) {
         this.templateDirty = false
@@ -1109,6 +1128,12 @@ export default {
       const key = `trading-assistant.template.${template.key}Desc`
       const translated = this.$t(key)
       return translated === key ? (template.desc || '') : translated
+    },
+
+    templateTaLibLabel (template) {
+      const metadata = (template && template.metadata) || {}
+      const version = String(metadata.taLibVersion || metadata.ta_lib_version || '').trim()
+      return version ? this.$t('strategyV2.taLibBadge', { version }) : ''
     },
 
     getParamPrecision (param) {
@@ -1457,6 +1482,21 @@ export default {
   ::v-deep .CodeMirror-cursor {
     border-left: 2px solid var(--primary-color, #1890ff);
   }
+
+  ::v-deep .CodeMirror-linebackground.ai-code-edit-line {
+    background: rgba(24, 144, 255, 0.14);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 18%, transparent);
+    animation: strategy-ai-code-edit-highlight 8s ease-out forwards;
+  }
+
+  ::v-deep .ai-code-edit-wrap {
+    box-shadow: inset 3px 0 0 var(--primary-color, #1890ff);
+  }
+}
+
+@keyframes strategy-ai-code-edit-highlight {
+  0%, 72% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .code-hidden-mask {
