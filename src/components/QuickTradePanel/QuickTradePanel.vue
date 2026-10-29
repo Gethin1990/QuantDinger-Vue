@@ -1090,7 +1090,7 @@
 <script>
 import { mapState } from 'vuex'
 import { listExchangeCredentials } from '@/api/credentials'
-import { formatExchangeCredentialLabel, isQuickTradeExchangeCredential } from '@/utils/exchangeCredential'
+import { formatExchangeCredentialLabel, isQuickTradeExchangeCredential, US_STOCK_EXCHANGE_IDS, HK_STOCK_EXCHANGE_IDS } from '@/utils/exchangeCredential'
 import ExchangeAccountModal from '@/components/ExchangeAccountModal/ExchangeAccountModal.vue'
 import PositionActivity from './PositionActivity.vue'
 import { updateQuickPositionProtection, placeQuickOrder, getQuickTradeBalance, getQuickTradePosition, getQuickTradeHistory, closeQuickTradePosition, cancelQuickTradeOrder } from '@/api/quick-trade'
@@ -1211,7 +1211,7 @@ export default {
       return String(this.market || '').trim() || 'Crypto'
     },
     isStockMarket () {
-      return ['USStock', 'Stock', 'Stocks'].includes(this.normalizedMarket)
+      return ['USStock', 'HKStock', 'Stock', 'Stocks'].includes(this.normalizedMarket)
     },
     isCryptoMarket () {
       return this.normalizedMarket === 'Crypto'
@@ -1220,9 +1220,11 @@ export default {
       return this.isCryptoMarket || this.isStockMarket
     },
     priceMarketParam () {
+      if (this.normalizedMarket === 'HKStock') return 'HKStock'
       return this.isStockMarket ? 'USStock' : 'Crypto'
     },
     orderCurrency () {
+      if (this.normalizedMarket === 'HKStock') return 'HKD'
       return this.isStockMarket ? 'USD' : 'USDT'
     },
     amountLabel () {
@@ -1445,6 +1447,12 @@ export default {
     },
     selectedCredential () {
       return this.credentials.find(c => c.id === this.selectedCredentialId)
+    },
+    selectedStockBrokerId () {
+      return String((this.selectedCredential && this.selectedCredential.exchange_id) || 'alpaca').trim().toLowerCase()
+    },
+    selectedStockBrokerClient () {
+      return broker[this.selectedStockBrokerId] || broker.alpaca
     },
     priceChangeClass () {
       return ''
@@ -1824,7 +1832,7 @@ export default {
       return !!(res && (res.success === true || res.code === 1 || (res.data && res.data.success === true)))
     },
     normalizeBrokerSymbol (symbol) {
-      return String(symbol || '').replace(/^USStock:/i, '').trim()
+      return String(symbol || '').replace(/^(?:USStock|HKStock):/i, '').trim()
     },
     resetBalance () {
       this.balance = {
@@ -2082,14 +2090,14 @@ export default {
           this.applyNewPrice(res.data.price || res.data.latest || res.data.last)
           return
         }
-        if (this.isStockMarket) {
+        if (this.isStockMarket && this.selectedStockBrokerId === 'alpaca') {
           const quote = await broker.alpaca.quote(this.normalizeBrokerSymbol(this.currentSymbol), { marketType: 'USStock', credential_id: this.selectedCredentialId })
           const data = this.apiPayload(quote)
           this.applyNewPrice(data.price || data.latest || data.last || data.ask || data.bid)
         }
       } catch (e) {
         console.warn('loadPrice error:', e)
-        if (this.isStockMarket) {
+        if (this.isStockMarket && this.selectedStockBrokerId === 'alpaca') {
           try {
             const quote = await broker.alpaca.quote(this.normalizeBrokerSymbol(this.currentSymbol), { marketType: 'USStock', credential_id: this.selectedCredentialId })
             const data = this.apiPayload(quote)
@@ -2111,16 +2119,21 @@ export default {
       this.credLoading = true
       try {
         if (this.isStockMarket) {
-          const response = await broker.alpaca.accounts()
+          const response = await listExchangeCredentials()
           const payload = this.apiPayload(response)
-          this.credentials = (Array.isArray(payload) ? payload : []).map(account => ({
-            id: Number(account.id),
-            type: 'broker',
-            broker_id: 'alpaca',
-            exchange_id: 'alpaca',
-            name: `${account.name} · ${account.api_key_hint} · #${account.id}`,
-            market_type: 'USStock'
-          }))
+          const items = Array.isArray(payload) ? payload : (payload.items || [])
+          const supportedBrokers = this.normalizedMarket === 'HKStock' ? HK_STOCK_EXCHANGE_IDS : US_STOCK_EXCHANGE_IDS
+          this.credentials = items
+            .filter(account => supportedBrokers.has(String(account.exchange_id || '').trim().toLowerCase()))
+            .map(account => ({
+              ...account,
+              id: Number(account.id),
+              type: 'broker',
+              broker_id: String(account.exchange_id || '').trim().toLowerCase(),
+              exchange_id: String(account.exchange_id || '').trim().toLowerCase(),
+              name: formatExchangeCredentialLabel(account, { unnamed: this.$t('brokerAccounts.cryptoSection.unnamed') }),
+              market_type: this.priceMarketParam
+            }))
           if (this.selectedCredentialId && !this.credentials.some(c => c.id === this.selectedCredentialId)) {
             this.selectedCredentialId = undefined
             this.resetBalance()
@@ -2188,7 +2201,7 @@ export default {
       this.balanceLoading = true
       try {
         if (this.isStockMarket) {
-          const res = await broker.alpaca.account({ credential_id: credentialId, include_counts: false })
+          const res = await (this.selectedStockBrokerClient || broker.alpaca).account({ credential_id: credentialId, include_counts: false })
           if (!isCurrent()) return
           const d = this.apiPayload(res)
           const available = parseFloat(d.buying_power || d.buyingPower || d.cash || 0) || 0
@@ -2264,7 +2277,7 @@ export default {
       if (!credentialId || !symbol) return
       try {
         if (this.isStockMarket) {
-          const res = await broker.alpaca.positions({ credential_id: credentialId })
+          const res = await (this.selectedStockBrokerClient || broker.alpaca).positions({ credential_id: credentialId })
           if (!isCurrent()) return
           const payload = this.apiPayload(res)
           const items = Array.isArray(payload) ? payload : (payload.positions || payload.items || payload.data || [])
@@ -2308,8 +2321,8 @@ export default {
           if (!credentialId) return
           const symbol = this.normalizeBrokerSymbol(this.currentSymbol)
           const [ordersResult, fillsResult] = await Promise.allSettled([
-            broker.alpaca.orders({ limit: 100, status: 'open', credential_id: credentialId }),
-            broker.alpaca.tradeHistory({ limit: 100, symbol, credential_id: credentialId })
+            (this.selectedStockBrokerClient || broker.alpaca).orders({ limit: 100, status: 'open', credential_id: credentialId }),
+            (this.selectedStockBrokerClient || broker.alpaca).tradeHistory({ limit: 100, symbol, credential_id: credentialId })
           ])
           if (
             this.selectedCredentialId !== credentialId ||
@@ -2418,7 +2431,7 @@ export default {
       this.cancellingTradeId = trade.id
       try {
         const res = this.isStockMarket
-          ? await broker.alpaca.cancelOrder(trade.id, { credential_id: this.selectedCredentialId })
+          ? await (this.selectedStockBrokerClient || broker.alpaca).cancelOrder(trade.id, { credential_id: this.selectedCredentialId })
           : await cancelQuickTradeOrder({ trade_id: trade.id })
         const succeeded = this.isStockMarket
           ? !!(res && (res.success || (res.data && res.data.success)))
@@ -2500,7 +2513,7 @@ export default {
       this.submittingSide = side
       try {
         if (this.isStockMarket) {
-          await this.submitAlpacaOrder(side)
+          await this.submitStockOrder(side)
           return
         }
         const useProtectionPrices = this.floatingConsole ? this.supportsNativeProtection : (!this.embeddedDock || this.dockTpslEnabled)
@@ -2566,7 +2579,7 @@ export default {
         this.submittingSide = ''
       }
     },
-    async submitAlpacaOrder (side) {
+    async submitStockOrder (side) {
       const price = this.orderType === 'limit' ? parseFloat(this.limitPrice || 0) : parseFloat(this.currentPrice || 0)
       if (!(price > 0)) {
         this.tradeFeedback = { type: 'error', text: this.$t('quickTrade.enterPrice') }
@@ -2586,13 +2599,17 @@ export default {
       const useProtectionPrices = this.floatingConsole ? this.supportsNativeProtection : (!this.embeddedDock || this.dockTpslEnabled)
       const useTp = useProtectionPrices && (!this.floatingConsole || this.consoleTpEnabled)
       const useSl = useProtectionPrices && (!this.floatingConsole || this.consoleSlEnabled)
+      const supportsNotional = this.selectedStockBrokerId === 'alpaca'
+      const brokerQuantity = quantity > 0
+        ? quantity
+        : (!supportsNotional && notional > 0 ? Number((notional / price).toFixed(6)) : 0)
       const payload = {
         credential_id: this.selectedCredentialId,
         symbol: this.normalizeBrokerSymbol(this.currentSymbol),
         side,
-        quantity: quantity > 0 ? quantity : undefined,
-        notional: notional > 0 ? notional : undefined,
-        marketType: 'USStock',
+        quantity: brokerQuantity > 0 ? brokerQuantity : undefined,
+        notional: supportsNotional && notional > 0 ? notional : undefined,
+        marketType: this.priceMarketParam,
         orderType: this.orderType,
         price: this.orderType === 'limit' ? price : undefined,
         reference_price: price,
@@ -2600,7 +2617,7 @@ export default {
         stop_loss_price: useSl ? Number(this.slPrice || 0) : 0,
         source: this.source
       }
-      const res = await broker.alpaca.placeOrder(payload)
+      const res = await (this.selectedStockBrokerClient || broker.alpaca).placeOrder(payload)
       if (this.apiSuccess(res)) {
         this.$emit('order-success', this.apiPayload(res))
         await this.loadBalance()
@@ -2672,12 +2689,12 @@ export default {
         if (this.isStockMarket) {
           const qty = parseFloat(pos.size || pos.qty || 0) || 0
           if (!(qty > 0)) return
-          const res = await broker.alpaca.placeOrder({
+          const res = await (this.selectedStockBrokerClient || broker.alpaca).placeOrder({
             credential_id: this.selectedCredentialId,
             symbol: this.normalizeBrokerSymbol(this.currentSymbol),
             side: 'sell',
             quantity: Number(qty.toFixed(6)),
-            marketType: 'USStock',
+            marketType: this.priceMarketParam,
             orderType: 'market',
             source: 'manual'
           })

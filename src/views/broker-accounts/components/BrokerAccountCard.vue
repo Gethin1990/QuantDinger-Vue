@@ -76,7 +76,12 @@ export default {
           { key: 'account', label: this.$t('brokerAccounts.kpi.account'), value: String(i.account || i.AccountCode || '--') }
         ]
       }
-      return []
+      return [
+        { key: 'equity', label: this.$t('brokerAccounts.kpi.equity'), value: money(i.equity != null ? i.equity : (i.net_liquidation != null ? i.net_liquidation : i.total_assets), ccy) },
+        { key: 'cash', label: this.$t('brokerAccounts.kpi.cash'), value: money(i.cash != null ? i.cash : (i.cash_balance != null ? i.cash_balance : i.available_funds), ccy) },
+        { key: 'bp', label: this.$t('brokerAccounts.kpi.buyingPower'), value: money(i.buying_power != null ? i.buying_power : i.available_funds, ccy), tone: 'accent' },
+        { key: 'account', label: this.$t('brokerAccounts.kpi.account'), value: String(i.account || i.account_id || '--') }
+      ]
     }
   },
   mounted () {

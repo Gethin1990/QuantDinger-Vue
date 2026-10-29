@@ -44,6 +44,9 @@ import aiSkillsTaxonomyMessages from './lang/ai-skills-taxonomy'
 import factorResearchUniverseMessages from './lang/factor-research-universe'
 import aiAnalysisWorkbenchMessages from './ai-analysis-workbench-overrides'
 import settingsUniverseManagementMessages from './settings-universe-management-overrides'
+import tradingVenueSettingsMessages from './lang/trading-venue-settings'
+import indicatorWorkspaceLayoutMessages from './lang/indicator-workspace-layout'
+import venueResearchCopyOverrides from './venue-research-copy-overrides'
 
 Vue.use(VueI18n)
 
@@ -92,7 +95,10 @@ const messages = {
     ...(generatedLocaleOverrides[defaultLang] || {}),
     ...(factorResearchUniverseMessages[defaultLang] || {}),
     ...(aiAnalysisWorkbenchMessages[defaultLang] || {}),
-    ...(settingsUniverseManagementMessages[defaultLang] || {})
+    ...(settingsUniverseManagementMessages[defaultLang] || {}),
+    ...(tradingVenueSettingsMessages[defaultLang] || {}),
+    ...(indicatorWorkspaceLayoutMessages[defaultLang] || {}),
+    ...(venueResearchCopyOverrides[defaultLang] || {})
   }
 }
 
@@ -200,7 +206,10 @@ function mergeLocaleOverrides (lang) {
     ...(generatedLocaleOverrides[lang] || {}),
     ...(factorResearchUniverseMessages[lang] || {}),
     ...(aiAnalysisWorkbenchMessages[lang] || {}),
-    ...(settingsUniverseManagementMessages[lang] || {})
+    ...(settingsUniverseManagementMessages[lang] || {}),
+    ...(tradingVenueSettingsMessages[lang] || {}),
+    ...(indicatorWorkspaceLayoutMessages[lang] || {}),
+    ...(venueResearchCopyOverrides[lang] || {})
   }
   i18n.setLocaleMessage(lang, {
     ...(i18n.getLocaleMessage(lang) || {}),
@@ -259,7 +268,10 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(generatedLocaleOverrides[lang] || {}),
       ...(factorResearchUniverseMessages[lang] || {}),
       ...(aiAnalysisWorkbenchMessages[lang] || {}),
-      ...(settingsUniverseManagementMessages[lang] || {})
+      ...(settingsUniverseManagementMessages[lang] || {}),
+      ...(tradingVenueSettingsMessages[lang] || {}),
+      ...(indicatorWorkspaceLayoutMessages[lang] || {}),
+      ...(venueResearchCopyOverrides[lang] || {})
     })
     i18n.setLocaleMessage(lang, locale)
     loadedLanguages.push(lang)

@@ -205,7 +205,34 @@
                         </div>
                       </a-checkbox-group>
                     </template>
-                    <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password'">
+                    <template v-else-if="entry.item.type === 'venue_multiselect'">
+                      <a-alert
+                        class="trading-venue-alert"
+                        type="info"
+                        show-icon
+                        :message="$t('settings.venues.title')"
+                        :description="$t('settings.venues.description')"
+                      />
+                      <a-checkbox-group
+                        v-decorator="[entry.item.key, { initialValue: getCsvListValue(entry.groupKey, entry.item.key, entry.item.default) }]"
+                        class="trading-venue-selector"
+                      >
+                        <section v-for="group in tradingVenueGroups(entry.item)" :key="group.key" class="trading-venue-group">
+                          <h4>{{ group.title }}</h4>
+                          <div class="trading-venue-grid">
+                            <label v-for="venue in group.items" :key="venue.id" class="trading-venue-card">
+                              <a-checkbox :value="venue.id" />
+                              <provider-logo :provider="venue.id" :size="30" />
+                              <span class="trading-venue-copy">
+                                <strong>{{ venue.name }}</strong>
+                                <small>{{ venue.description }}</small>
+                              </span>
+                            </label>
+                          </div>
+                        </section>
+                      </a-checkbox-group>
+                    </template>
+                    <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password' && entry.item.type !== 'venue_multiselect'">
                       {{ $t('settings.default') }}: {{ entry.item.default }}
                     </div>
                   </a-form-item>
@@ -692,7 +719,34 @@
                             </div>
                           </a-checkbox-group>
                         </template>
-                        <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password'">
+                        <template v-else-if="entry.item.type === 'venue_multiselect'">
+                          <a-alert
+                            class="trading-venue-alert"
+                            type="info"
+                            show-icon
+                            :message="$t('settings.venues.title')"
+                            :description="$t('settings.venues.description')"
+                          />
+                          <a-checkbox-group
+                            v-decorator="[entry.item.key, { initialValue: getCsvListValue(activeGroupKey, entry.item.key, entry.item.default) }]"
+                            class="trading-venue-selector"
+                          >
+                            <section v-for="group in tradingVenueGroups(entry.item)" :key="group.key" class="trading-venue-group">
+                              <h4>{{ group.title }}</h4>
+                              <div class="trading-venue-grid">
+                                <label v-for="venue in group.items" :key="venue.id" class="trading-venue-card">
+                                  <a-checkbox :value="venue.id" />
+                                  <provider-logo :provider="venue.id" :size="30" />
+                                  <span class="trading-venue-copy">
+                                    <strong>{{ venue.name }}</strong>
+                                    <small>{{ venue.description }}</small>
+                                  </span>
+                                </label>
+                              </div>
+                            </section>
+                          </a-checkbox-group>
+                        </template>
+                        <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password' && entry.item.type !== 'venue_multiselect'">
                           {{ $t('settings.default') }}: {{ entry.item.default }}
                         </div>
                       </a-form-item>
@@ -703,13 +757,21 @@
 
               <div v-else>
                 <a-alert
-                  v-if="activeGroupKey === 'data_source'"
+                  v-if="researchSettingsIntro"
                   class="research-data-intro"
-                  type="success"
+                  :type="researchSettingsIntro.type"
                   show-icon
-                  :message="tOr('settings.research.zeroConfigTitle', 'The base report works without extra data API keys')"
-                  :description="tOr('settings.research.zeroConfigDesc', 'Built-in public sources cover the base workflow. Add providers only when needed.')"
+                  :message="researchSettingsIntro.title"
+                  :description="researchSettingsIntro.description"
                 />
+                <div v-if="activeGroupKey === 'data_source'" class="research-market-map">
+                  <span class="research-market-map-label">{{ tOr('settings.research.marketMap', 'Configure only the markets you use') }}</span>
+                  <div class="research-market-tags">
+                    <a-tag v-for="market in researchMarketGuide" :key="market.key" :color="market.color">
+                      <a-icon :type="market.icon" /> {{ market.label }}
+                    </a-tag>
+                  </div>
+                </div>
                 <a-row :gutter="24">
                   <a-col
                     v-for="entry in currentDisplayEntries"
@@ -719,9 +781,9 @@
                     :md="entry.type !== 'field' ? 24 : 12"
                     :lg="entry.type !== 'field' ? 24 : 12"
                   >
-                    <div v-if="entry.type === 'heading'" class="settings-subsection-heading">
+                    <div v-if="entry.type === 'heading'" class="settings-subsection-heading" :class="`subsection-${entry.tone || 'default'}`">
                       <div class="settings-subsection-title-row">
-                        <span>{{ entry.title }}</span>
+                        <span><a-icon v-if="entry.icon" :type="entry.icon" /> {{ entry.title }}</span>
                         <a-tag v-if="entry.badge" :color="entry.badgeColor || 'blue'">{{ entry.badge }}</a-tag>
                       </div>
                       <small>{{ entry.description }}</small>
@@ -861,7 +923,34 @@
                           </div>
                         </a-checkbox-group>
                       </template>
-                      <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password'">
+                      <template v-else-if="entry.item.type === 'venue_multiselect'">
+                        <a-alert
+                          class="trading-venue-alert"
+                          type="info"
+                          show-icon
+                          :message="$t('settings.venues.title')"
+                          :description="$t('settings.venues.description')"
+                        />
+                        <a-checkbox-group
+                          v-decorator="[entry.item.key, { initialValue: getCsvListValue(activeGroupKey, entry.item.key, entry.item.default) }]"
+                          class="trading-venue-selector"
+                        >
+                          <section v-for="group in tradingVenueGroups(entry.item)" :key="group.key" class="trading-venue-group">
+                            <h4>{{ group.title }}</h4>
+                            <div class="trading-venue-grid">
+                              <label v-for="venue in group.items" :key="venue.id" class="trading-venue-card">
+                                <a-checkbox :value="venue.id" />
+                                <provider-logo :provider="venue.id" :size="30" />
+                                <span class="trading-venue-copy">
+                                  <strong>{{ venue.name }}</strong>
+                                  <small>{{ venue.description }}</small>
+                                </span>
+                              </label>
+                            </div>
+                          </section>
+                        </a-checkbox-group>
+                      </template>
+                      <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password' && entry.item.type !== 'venue_multiselect'">
                         {{ $t('settings.default') }}: {{ entry.item.default }}
                       </div>
                     </a-form-item>
@@ -988,11 +1077,12 @@ import {
 import { deleteAdminMembershipPlan, getAdminMembershipPlans, saveAdminMembershipPlans } from '@/api/billing'
 import { baseMixin } from '@/store/app-mixin'
 import FundamentalSyncPanel from './FundamentalSyncPanel.vue'
+import ProviderLogo from '@/components/ProviderLogo/ProviderLogo.vue'
 import moment from 'moment'
 
 export default {
   name: 'Settings',
-  components: { FundamentalSyncPanel },
+  components: { FundamentalSyncPanel, ProviderLogo },
   mixins: [baseMixin],
   data () {
     return {
@@ -1136,7 +1226,44 @@ export default {
       if (this.activeGroupKey === 'search') {
         return this.buildCategorizedEntries(items, this.searchSectionDefinitions(), 'search')
       }
+      if (this.activeGroupKey === 'agent') {
+        return this.buildCategorizedEntries(items, this.agentSectionDefinitions(), 'agent')
+      }
       return this.buildSettingEntries(items, this.activeGroupKey)
+    },
+    researchSettingsIntro () {
+      if (this.activeGroupKey === 'data_source') {
+        return {
+          type: 'success',
+          title: this.tOr('settings.research.zeroConfigTitle', 'The base report works without extra data API keys'),
+          description: this.tOr('settings.research.zeroConfigDesc', 'Built-in public sources cover the base workflow. Configure shared settings, then only the markets you use.')
+        }
+      }
+      if (this.activeGroupKey === 'search') {
+        return {
+          type: 'info',
+          title: this.tOr('settings.search.sharedTitle', 'Search is shared by every market'),
+          description: this.tOr('settings.search.sharedDesc', 'Choose one provider. US stocks, Hong Kong stocks, crypto, futures and FX all reuse it.')
+        }
+      }
+      if (this.activeGroupKey === 'agent') {
+        return {
+          type: 'info',
+          title: this.tOr('settings.agent.optionalTitle', 'Agent and calibration are optional'),
+          description: this.tOr('settings.agent.optionalDesc', 'Self-hosted users can keep the defaults until enough validated reports exist for calibration.')
+        }
+      }
+      return null
+    },
+    researchMarketGuide () {
+      return [
+        { key: 'shared', icon: 'share-alt', color: 'blue', label: this.tOr('settings.research.market.shared', 'Shared') },
+        { key: 'us', icon: 'stock', color: 'geekblue', label: this.tOr('settings.research.market.us', 'US stocks') },
+        { key: 'hk', icon: 'bank', color: 'cyan', label: this.tOr('settings.research.market.hk', 'Hong Kong stocks') },
+        { key: 'crypto', icon: 'block', color: 'purple', label: this.tOr('settings.research.market.crypto', 'Crypto') },
+        { key: 'futures', icon: 'line-chart', color: 'orange', label: this.tOr('settings.research.market.futures', 'Futures') },
+        { key: 'forex', icon: 'swap', color: 'green', label: this.tOr('settings.research.market.forex', 'FX') }
+      ]
     },
     // Flattened, filtered search hits. Match is case-insensitive against the
     // localized label, the localized description and the raw ENV key, so
@@ -1859,44 +1986,116 @@ export default {
     dataSourceSectionDefinitions () {
       return [
         {
-          key: 'preferences',
-          title: this.tOr('settings.research.section.preferences', 'Report behavior'),
-          description: this.tOr('settings.research.section.preferencesDesc', 'Report-level choices for data tier and risk budgeting.'),
-          badge: this.tOr('settings.option.PROFESSIONAL_REPORT_DATA_TIER.community', 'Free / low-cost (recommended)'),
+          key: 'shared',
+          title: this.tOr('settings.research.market.shared', 'Shared settings'),
+          description: this.tOr('settings.research.market.sharedDesc', 'Used by every professional report. Local deployments can keep the recommended defaults.'),
+          badge: this.tOr('settings.research.badge.recommended', 'Recommended defaults'),
           badgeColor: 'green',
+          icon: 'share-alt',
+          tone: 'shared',
           keys: [
             'PROFESSIONAL_REPORT_DATA_TIER',
-            'PROFESSIONAL_REPORT_RISK_BUDGET_PCT'
-          ]
+            'PROFESSIONAL_REPORT_RISK_BUDGET_PCT',
+            'FAST_ANALYSIS_INCLUDE_GLOBAL_NEWS'
+          ],
+          advancedKeys: []
         },
         {
-          key: 'community',
-          title: this.tOr('settings.research.section.community', 'Free / simple setup'),
-          description: this.tOr('settings.research.section.communityDesc', 'Optional low-friction sources for US stocks, Hong Kong stocks, crypto, and macro data.'),
-          badge: 'US · HK · Crypto',
+          key: 'macro',
+          title: this.tOr('settings.research.market.macro', 'Shared macro and event data'),
+          description: this.tOr('settings.research.market.macroDesc', 'Optional shared inputs for equities, futures and FX. Configure only services you already use.'),
+          badge: this.tOr('settings.research.badge.optional', 'Optional'),
           badgeColor: 'blue',
-          keys: [
-            'CRYPTO_PUBLIC_DEFAULT_EXCHANGE',
-            'FINNHUB_API_KEY',
-            'FINNHUB_FREE_ONLY',
-            'TWELVE_DATA_API_KEY',
-            'FRED_API_KEY',
-            'BLS_API_KEY',
-            'BEA_API_KEY'
-          ]
-        },
-        {
-          key: 'professional',
-          title: this.tOr('settings.research.section.professional', 'Professional data'),
-          description: this.tOr('settings.research.section.professionalDesc', 'Configure only providers covered by your paid plan and data-use rights.'),
-          badge: this.tOr('settings.option.PROFESSIONAL_REPORT_DATA_TIER.professional', 'Professional'),
-          badgeColor: 'purple',
+          icon: 'global',
+          tone: 'macro',
           keys: [
             'TRADING_ECONOMICS_CLIENT',
             'TRADING_ECONOMICS_KEY',
+            'FRED_API_KEY',
+            'BLS_API_KEY',
+            'BEA_API_KEY'
+          ],
+          advancedKeys: [
+            'TRADING_ECONOMICS_BASE_URL',
+            'TRADING_ECONOMICS_TIMEOUT',
+            'FRED_BASE_URL',
+            'FRED_TIMEOUT',
+            'BLS_BASE_URL',
+            'BLS_TIMEOUT',
+            'BEA_BASE_URL',
+            'BEA_TIMEOUT'
+          ]
+        },
+        {
+          key: 'us',
+          title: this.tOr('settings.research.market.us', 'US stock data'),
+          description: this.tOr('settings.research.market.usDesc', 'Finnhub enhances quotes, profiles and company news. Sentiment integration is optional.'),
+          badge: this.tOr('settings.research.badge.keyOptional', 'API key optional'),
+          badgeColor: 'geekblue',
+          icon: 'stock',
+          tone: 'us',
+          keys: [
+            'FINNHUB_API_KEY',
+            'FINNHUB_FREE_ONLY',
+            'ALPHA_VANTAGE_API_KEY'
+          ],
+          advancedKeys: [
+            'ALPHA_VANTAGE_BASE_URL',
+            'ALPHA_VANTAGE_TIMEOUT',
+            'ALPHA_VANTAGE_NEWS_LIMIT',
+            'ADANOS_API_KEY',
+            'ADANOS_SENTIMENT_SOURCE',
+            'ADANOS_API_BASE_URL'
+          ]
+        },
+        {
+          key: 'hk',
+          title: this.tOr('settings.research.market.hk', 'Hong Kong stock data'),
+          description: this.tOr('settings.research.market.hkDesc', 'Twelve Data is an optional K-line enhancement. Built-in public sources remain available.'),
+          badge: this.tOr('settings.research.badge.keyOptional', 'API key optional'),
+          badgeColor: 'cyan',
+          icon: 'bank',
+          tone: 'hk',
+          keys: ['TWELVE_DATA_API_KEY'],
+          advancedKeys: []
+        },
+        {
+          key: 'crypto',
+          title: this.tOr('settings.research.market.crypto', 'Crypto data'),
+          description: this.tOr('settings.research.market.cryptoDesc', 'Public exchange data works without a key. CoinGlass and CryptoQuant add derivatives and on-chain depth.'),
+          badge: this.tOr('settings.research.badge.publicReady', 'Public data ready'),
+          badgeColor: 'purple',
+          icon: 'block',
+          tone: 'crypto',
+          keys: [
+            'CRYPTO_PUBLIC_DEFAULT_EXCHANGE',
             'COINGLASS_API_KEY',
             'CRYPTOQUANT_API_KEY'
-          ]
+          ],
+          advancedKeys: []
+        },
+        {
+          key: 'futures',
+          title: this.tOr('settings.research.market.futures', 'Futures data'),
+          description: this.tOr('settings.research.market.futuresDesc', 'CFTC positioning and public contract data are built in. Add shared macro providers above only when needed.'),
+          badge: this.tOr('settings.research.badge.noSetup', 'No setup required'),
+          badgeColor: 'orange',
+          icon: 'line-chart',
+          tone: 'futures',
+          keys: [],
+          advancedKeys: [],
+          alwaysVisible: true
+        },
+        {
+          key: 'forex',
+          title: this.tOr('settings.research.market.forex', 'FX data'),
+          description: this.tOr('settings.research.market.forexDesc', 'Tiingo is an optional quote source. Shared FRED and event data above add policy and macro context.'),
+          badge: this.tOr('settings.research.badge.keyOptional', 'API key optional'),
+          badgeColor: 'green',
+          icon: 'swap',
+          tone: 'forex',
+          keys: ['TIINGO_API_KEY'],
+          advancedKeys: []
         }
       ]
     },
@@ -1908,18 +2107,76 @@ export default {
           description: this.tOr('settings.search.section.primaryDesc', 'Choose one primary provider. Keyless fallbacks remain available.'),
           badge: this.tOr('settings.research.section.community', 'Free / simple setup'),
           badgeColor: 'green',
-          keys: ['SEARCH_PROVIDER', 'TAVILY_API_KEYS', 'SEARCH_SEARXNG_BASE_URL']
+          icon: 'search',
+          tone: 'shared',
+          keys: ['SEARCH_PROVIDER', 'TAVILY_API_KEYS'],
+          advancedKeys: [
+            'SEARCH_MAX_RESULTS',
+            'SEARCH_TIMEOUT',
+            'SEARCH_SEARXNG_BASE_URL',
+            'SEARCH_GDELT_BASE_URL',
+            'SEARCH_DDG_BASE_URL'
+          ]
         },
         {
           key: 'optional',
           title: this.tOr('settings.search.section.optional', 'Optional news providers'),
           description: this.tOr('settings.search.section.optionalDesc', 'Add only the service you already use.'),
+          icon: 'read',
+          tone: 'macro',
           keys: [
-            'ALPHA_VANTAGE_API_KEY',
             'SERPAPI_KEYS',
             'SEARCH_GOOGLE_API_KEY',
             'SEARCH_GOOGLE_CX',
             'SEARCH_BING_API_KEY'
+          ],
+          advancedKeys: []
+        }
+      ]
+    },
+    agentSectionDefinitions () {
+      return [
+        {
+          key: 'deployment',
+          title: this.tOr('settings.agent.section.deployment', 'Deployment and permissions'),
+          description: this.tOr('settings.agent.section.deploymentDesc', 'Self-hosted is the safe default. Live trading remains off unless explicitly enabled.'),
+          badge: this.tOr('settings.agent.badge.shared', 'Cross-market'),
+          badgeColor: 'blue',
+          icon: 'deployment-unit',
+          tone: 'shared',
+          keys: ['QUANTDINGER_DEPLOYMENT_MODE', 'AGENT_LIVE_TRADING_ENABLED'],
+          advancedKeys: ['AGENT_JOBS_MAX_WORKERS']
+        },
+        {
+          key: 'quality',
+          title: this.tOr('settings.agent.section.quality', 'Analysis stability'),
+          description: this.tOr('settings.agent.section.qualityDesc', 'Multi-model voting can improve stability but increases latency and LLM cost.'),
+          badge: this.tOr('settings.research.badge.optional', 'Optional'),
+          badgeColor: 'purple',
+          icon: 'cluster',
+          tone: 'crypto',
+          keys: ['ENABLE_AI_ENSEMBLE', 'AI_ENSEMBLE_MODELS'],
+          advancedKeys: []
+        },
+        {
+          key: 'calibration',
+          title: this.tOr('settings.agent.section.calibration', 'Validation and calibration'),
+          description: this.tOr('settings.agent.section.calibrationDesc', 'Enable only after enough historical reports have matured and can be validated.'),
+          badge: this.tOr('settings.agent.badge.needsSamples', 'Requires samples'),
+          badgeColor: 'orange',
+          icon: 'experiment',
+          tone: 'futures',
+          keys: [
+            'ENABLE_REFLECTION_WORKER',
+            'ENABLE_CONFIDENCE_CALIBRATION',
+            'AI_CALIBRATION_MARKETS'
+          ],
+          advancedKeys: [
+            'REFLECTION_WORKER_INTERVAL_SEC',
+            'REFLECTION_MIN_AGE_DAYS',
+            'REFLECTION_VALIDATE_LIMIT',
+            'AI_CALIBRATION_LOOKBACK_DAYS',
+            'AI_CALIBRATION_MIN_SAMPLES'
           ]
         }
       ]
@@ -1930,21 +2187,46 @@ export default {
       const entries = []
       definitions.forEach(section => {
         const sectionItems = section.keys.map(key => byKey.get(key)).filter(Boolean)
-        if (!sectionItems.length) return
-        sectionItems.forEach(item => claimed.add(item.key))
+        const sectionAdvancedItems = (section.advancedKeys || []).map(key => byKey.get(key)).filter(Boolean)
+        if (!sectionItems.length && !sectionAdvancedItems.length && !section.alwaysVisible) return
+        const claimedSectionItems = [...sectionItems, ...sectionAdvancedItems]
+        claimedSectionItems.forEach(item => claimed.add(item.key))
         entries.push({
           type: 'heading',
           key: `${scope}-${section.key}-heading`,
           title: section.title,
           description: section.description,
           badge: section.badge,
-          badgeColor: section.badgeColor
+          badgeColor: section.badgeColor,
+          icon: section.icon,
+          tone: section.tone
         })
         entries.push(...sectionItems.map(item => ({
           type: 'field',
           key: `${scope}-${section.key}-${item.key}`,
           item
         })))
+        if (sectionAdvancedItems.length) {
+          const advancedScope = `${scope}:${section.key}:advanced`
+          const expanded = this.isAdvancedExpanded(advancedScope)
+          entries.push({
+            type: 'advanced-toggle',
+            key: `${scope}-${section.key}-advanced-toggle`,
+            scope: advancedScope,
+            expanded,
+            label: expanded
+              ? this.tOr('settings.advanced.hide', 'Hide advanced settings')
+              : this.formatMessage('settings.advanced.show', 'Show advanced settings ({count})', { count: String(sectionAdvancedItems.length) }),
+            description: this.tOr('settings.advanced.description', 'Endpoints, timeouts, and tuning controls normally do not need to be changed.')
+          })
+          if (expanded) {
+            entries.push(...sectionAdvancedItems.map(item => ({
+              type: 'field',
+              key: `${scope}-${section.key}-advanced-${item.key}`,
+              item
+            })))
+          }
+        }
       })
 
       const advancedItems = (items || []).filter(item => !claimed.has(item.key))
@@ -2234,6 +2516,31 @@ export default {
       })
     },
 
+    tradingVenueGroups (item) {
+      const brokerIds = new Set(['alpaca', 'ibkr', 'tiger', 'webull'])
+      const options = this.getSelectOptions(item)
+      const rows = options.map(option => {
+        const id = String(option.value || '').trim().toLowerCase()
+        return {
+          id,
+          name: this.$t(`settings.venues.name.${id}`),
+          description: this.$t(`settings.venues.desc.${id}`)
+        }
+      })
+      return [
+        {
+          key: 'brokers',
+          title: this.$t('settings.venues.brokers'),
+          items: rows.filter(row => brokerIds.has(row.id))
+        },
+        {
+          key: 'crypto',
+          title: this.$t('settings.venues.crypto'),
+          items: rows.filter(row => !brokerIds.has(row.id))
+        }
+      ].filter(group => group.items.length)
+    },
+
     marketStatusColor (status) {
       const map = {
         ready: 'green',
@@ -2355,7 +2662,7 @@ export default {
                 }
                 if (item.type === 'boolean') {
                   value = value ? 'True' : 'False'
-                } else if (item.type === 'market_multiselect') {
+                } else if (item.type === 'market_multiselect' || item.type === 'venue_multiselect') {
                   value = Array.isArray(value) ? value.join(',') : String(value || '')
                 }
                 data[groupKey][item.key] = value
@@ -2560,8 +2867,11 @@ export default {
 
     .settings-subsection-heading {
       margin: 6px 0 16px;
-      padding-top: 18px;
+      padding: 18px 14px 14px;
       border-top: 1px solid #f1f5f9;
+      border-left: 4px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
 
       .settings-subsection-title-row {
         display: flex;
@@ -2575,6 +2885,10 @@ export default {
         color: #1e3a5f;
         font-size: 14px;
         font-weight: 700;
+
+        .anticon {
+          margin-right: 6px;
+        }
       }
 
       small {
@@ -2584,11 +2898,48 @@ export default {
         font-size: 12px;
         line-height: 1.6;
       }
+
+      &.subsection-shared { border-left-color: #1890ff; }
+      &.subsection-macro { border-left-color: #13c2c2; }
+      &.subsection-us { border-left-color: #2f54eb; }
+      &.subsection-hk { border-left-color: #08979c; }
+      &.subsection-crypto { border-left-color: #722ed1; }
+      &.subsection-futures { border-left-color: #fa8c16; }
+      &.subsection-forex { border-left-color: #52c41a; }
     }
 
     .research-data-intro {
       margin-bottom: 18px;
       border-radius: 8px;
+    }
+
+    .research-market-map {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .research-market-map-label {
+      color: #334155;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .research-market-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+
+      .ant-tag {
+        margin: 0;
+      }
     }
 
     .advanced-settings-toggle {
@@ -2920,6 +3271,73 @@ export default {
         background: #fff7ed;
       }
     }
+
+    .trading-venue-alert {
+      margin-bottom: 14px;
+    }
+
+    .trading-venue-selector {
+      width: 100%;
+    }
+
+    .trading-venue-group + .trading-venue-group {
+      margin-top: 18px;
+    }
+
+    .trading-venue-group h4 {
+      margin: 0 0 10px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .trading-venue-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .trading-venue-card {
+      display: flex;
+      min-width: 0;
+      min-height: 76px;
+      align-items: center;
+      gap: 11px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+
+      &:hover {
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 48%, #e2e8f0);
+        background: #fff;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+      }
+    }
+
+    .trading-venue-copy {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 3px;
+
+      strong {
+        overflow: hidden;
+        color: #1e293b;
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        color: #64748b;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+    }
   }
 
   .settings-footer {
@@ -3005,6 +3423,7 @@ export default {
 
       .settings-subsection-heading {
         border-top-color: rgba(255, 255, 255, 0.08);
+        background: #202020;
 
         span {
           color: #e0e6ed;
@@ -3037,6 +3456,15 @@ export default {
           color: #d2a8ff !important;
           background: rgba(179, 127, 235, 0.12) !important;
         }
+      }
+
+      .research-market-map {
+        border-color: rgba(255, 255, 255, 0.1);
+        background: #202020;
+      }
+
+      .research-market-map-label {
+        color: #c9d1d9;
       }
 
       .advanced-settings-toggle {
@@ -3205,6 +3633,26 @@ export default {
           background: rgba(187, 128, 9, 0.12);
         }
       }
+
+      .trading-venue-group h4 {
+        color: #c9d1d9;
+      }
+
+      .trading-venue-card {
+        border-color: rgba(255, 255, 255, 0.09);
+        background: #161b22;
+
+        &:hover {
+          border-color: color-mix(in srgb, var(--primary-color, #1890ff) 48%, transparent);
+          background: #1f2630;
+          box-shadow: none;
+        }
+      }
+
+      .trading-venue-copy {
+        strong { color: #e0e6ed; }
+        small { color: #8b949e; }
+      }
     }
 
     .settings-footer {
@@ -3230,6 +3678,10 @@ export default {
       position: static;
       width: 100%;
       max-height: 280px;
+    }
+
+    .trading-venue-grid {
+      grid-template-columns: 1fr;
     }
 
     .settings-detail {

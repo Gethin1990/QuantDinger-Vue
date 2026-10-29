@@ -2,7 +2,11 @@ const ACTIVE_ORDER_STATUSES = new Set([
   'accepted',
   'new',
   'partially_filled',
-  'pending_new'
+  'pending_new',
+  'submitted',
+  'working',
+  'partiallyfilled',
+  'filled_part'
 ])
 
 const NEUTRAL_FINAL_ORDER_STATUSES = new Set([
@@ -26,6 +30,6 @@ export function brokerOrderCanCancel (record, brokerId = 'alpaca') {
   const status = String(record.status || '').trim().toLowerCase()
   const statuses = brokerId === 'ibkr'
     ? ['submitted', 'presubmitted', 'pendingsubmit', 'pending_submit']
-    : ['new', 'accepted', 'pending_new', 'partially_filled', 'accepted_for_bidding']
+    : ['new', 'accepted', 'pending_new', 'partially_filled', 'partiallyfilled', 'filled_part', 'accepted_for_bidding', 'submitted', 'working']
   return statuses.includes(status)
 }

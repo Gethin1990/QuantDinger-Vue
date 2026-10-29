@@ -27,7 +27,7 @@
             <a-icon type="plus" /> {{ $t('brokerAccounts.addAccount') }}
           </a-button>
           <a-menu slot="overlay" @click="handleAddAccountMenu">
-            <a-menu-item key="crypto"><a-icon type="api" /> {{ $t('brokerAccounts.cryptoAccounts') }}</a-menu-item>
+            <a-menu-item v-if="cryptoProviders.length" key="crypto"><a-icon type="api" /> {{ $t('brokerAccounts.cryptoAccounts') }}</a-menu-item>
             <a-menu-item v-for="brokerItem in availableBrokers" :key="brokerItem.id">
               <provider-logo class="ba-menu-provider-logo" :provider="brokerItem.id" :size="15" />
               {{ $t('brokerAccounts.' + brokerItem.id + '.name') }}
@@ -70,7 +70,7 @@
           </button>
         </div>
 
-        <div class="ba-rail-group ba-rail-group--crypto">
+        <div v-if="cryptoProviders.length" class="ba-rail-group ba-rail-group--crypto">
           <div class="ba-rail-label">
             <span>{{ $t('brokerAccounts.cryptoAccounts') }}</span>
             <strong>{{ cryptoProviders.length }}</strong>
@@ -108,10 +108,10 @@
         <broker-panel
           v-if="selectedBroker"
           ref="brokerPanel"
-          :key="selectedBroker.id + ':' + (alpacaCredentialId || '')"
+          :key="selectedBroker.id + ':' + (selectedCredentialId || '')"
           :broker="selectedBroker"
-          :accounts="alpacaAccounts"
-          :credential-id="selectedBroker.id === 'alpaca' ? alpacaCredentialId : null"
+          :accounts="selectedBrokerAccounts"
+          :credential-id="selectedCredentialId"
           :refresh-version="refreshVersion"
           :status="connectionMap[selectedBroker.id]"
           :loading="loadingMap[selectedBroker.id]"
@@ -120,7 +120,7 @@
           @connect="payload => handleConnect(selectedBroker.id, payload)"
           @disconnect="() => handleDisconnect(selectedBroker.id)"
           @refresh="() => loadOne(selectedBroker.id)"
-          @select-account="selectAlpacaAccount"
+          @select-account="selectBrokerAccount"
           @place-order="payload => handlePlaceOrder(selectedBroker.id, payload)"
         />
         <crypto-exchange-accounts-card
@@ -143,11 +143,15 @@
 <script>
 import { broker, BROKER_IDS, BROKER_META } from '@/api/broker'
 import { getDesktopBrokersPolicy, listExchangeCredentials } from '@/api/credentials'
+import { getPublicSettingsConfig } from '@/api/settings'
 import BrokerPanel from './components/BrokerPanel.vue'
 import CryptoExchangeAccountsCard from './components/CryptoExchangeAccountsCard.vue'
 import ExchangeSignupModal from '@/components/ExchangeSignupModal/ExchangeSignupModal.vue'
 import ProviderLogo from '@/components/ProviderLogo/ProviderLogo.vue'
 import { baseMixin } from '@/store/app-mixin'
+import { normalizeEnabledTradingVenues } from '@/utils/tradingVenueConfig'
+
+const ALL_TRADING_VENUE_IDS = ['alpaca', 'ibkr', 'tiger', 'webull', 'binance', 'okx', 'bybit', 'bitget', 'gate', 'htx']
 
 const CRYPTO_PROVIDERS = [
   { id: 'binance', name: 'Binance', color: '#f0b90b' },
@@ -167,8 +171,8 @@ export default {
       activeBroker: 'alpaca',
       activeProvider: 'alpaca',
       connectionMap: {},
-      alpacaAccounts: [],
-      alpacaCredentialId: null,
+      brokerAccounts: {},
+      brokerCredentialIds: {},
       refreshVersion: 0,
       loadingMap: {},
       requestVersions: {},
@@ -176,7 +180,8 @@ export default {
       refreshing: false,
       signupModalVisible: false,
       desktopBrokersAllowed: true,
-      desktopBrokersAllowedLoading: true
+      desktopBrokersAllowedLoading: true,
+      enabledTradingVenues: [...ALL_TRADING_VENUE_IDS]
     }
   },
   computed: {
@@ -185,22 +190,30 @@ export default {
       return theme === 'dark' || theme === 'realdark'
     },
     availableBrokers () {
-      return BROKER_IDS.map(id => BROKER_META[id])
+      const enabled = new Set(this.enabledTradingVenues)
+      return BROKER_IDS.filter(id => enabled.has(id)).map(id => BROKER_META[id])
     },
     cryptoProviders () {
-      return CRYPTO_PROVIDERS
+      const enabled = new Set(this.enabledTradingVenues)
+      return CRYPTO_PROVIDERS.filter(provider => enabled.has(provider.id))
     },
     selectedBroker () {
       return BROKER_META[this.activeProvider] || null
     },
+    selectedBrokerAccounts () {
+      return this.selectedBroker ? (this.brokerAccounts[this.selectedBroker.id] || []) : []
+    },
+    selectedCredentialId () {
+      return this.selectedBroker ? (this.brokerCredentialIds[this.selectedBroker.id] || null) : null
+    },
     selectedCryptoExchangeId () {
       const prefix = 'crypto:'
-      return this.activeProvider.startsWith(prefix)
+      return String(this.activeProvider || '').startsWith(prefix)
         ? this.activeProvider.slice(prefix.length).trim().toLowerCase()
         : ''
     },
     connectedCount () {
-      return BROKER_IDS.filter(id => this.isBrokerConnected(id)).length + this.cryptoCredentialItems.length
+      return this.availableBrokers.filter(item => this.isBrokerConnected(item.id)).length + this.cryptoCredentialItems.length
     }
   },
   async mounted () {
@@ -208,10 +221,27 @@ export default {
     // /api/ibkr/status requests. On SaaS deployments those endpoints
     // intentionally return a long bilingual rejection message which used to
     // surface as a misleading toast/console error during the initial load.
-    await this.loadDesktopPolicy()
+    await Promise.all([this.loadDesktopPolicy(), this.loadTradingVenueConfig()])
     this.refreshAll()
   },
   methods: {
+    async loadTradingVenueConfig () {
+      try {
+        const res = await getPublicSettingsConfig()
+        const payload = (res && res.data) || {}
+        this.enabledTradingVenues = normalizeEnabledTradingVenues(payload.enabled_trading_venues)
+      } catch (_) {
+        this.enabledTradingVenues = [...ALL_TRADING_VENUE_IDS]
+      }
+      const availableIds = [
+        ...this.availableBrokers.map(item => item.id),
+        ...this.cryptoProviders.map(item => `crypto:${item.id}`)
+      ]
+      if (!availableIds.includes(this.activeProvider)) {
+        this.activeProvider = availableIds[0] || ''
+        this.activeBroker = this.availableBrokers[0] ? this.availableBrokers[0].id : ''
+      }
+    },
     isBrokerConnected (id) {
       return !!(this.connectionMap[id] && this.connectionMap[id].connected)
     },
@@ -236,7 +266,9 @@ export default {
       })
     },
     openCryptoAdd () {
-      this.activeProvider = 'crypto:binance'
+      const firstProvider = this.cryptoProviders[0]
+      if (!firstProvider) return
+      this.activeProvider = `crypto:${firstProvider.id}`
       this.$nextTick(() => {
         if (this.$refs.cryptoCard) this.$refs.cryptoCard.openAddModal()
       })
@@ -287,7 +319,7 @@ export default {
     async refreshAll () {
       this.refreshing = true
       try {
-        await Promise.all([...BROKER_IDS.map(id => this.loadOne(id)), this.loadCryptoSummary()])
+        await Promise.all([...this.availableBrokers.map(item => this.loadOne(item.id)), this.loadCryptoSummary()])
       } finally {
         this.refreshing = false
       }
@@ -305,13 +337,15 @@ export default {
       }
       this.$set(this.loadingMap, id, true)
       try {
-        if (id === 'alpaca') {
-          const response = await broker.alpaca.accounts()
+        if (BROKER_META[id] && id !== 'ibkr') {
+          const response = await broker[id].accounts()
           if (this.requestVersions[id] !== version) return
           const payload = response && response.data
-          this.alpacaAccounts = Array.isArray(payload) ? payload : (payload && payload.data) || []
-          if (!this.alpacaAccounts.some(item => Number(item.id) === this.alpacaCredentialId)) {
-            this.alpacaCredentialId = this.alpacaAccounts.length ? Number(this.alpacaAccounts[0].id) : null
+          const items = Array.isArray(payload) ? payload : (payload && payload.data) || []
+          this.$set(this.brokerAccounts, id, items)
+          const currentId = this.brokerCredentialIds[id]
+          if (!items.some(item => Number(item.id) === currentId)) {
+            this.$set(this.brokerCredentialIds, id, items.length ? Number(items[0].id) : null)
           }
         }
         const res = await broker[id].status(this.accountParams(id))
@@ -327,12 +361,15 @@ export default {
       }
     },
     accountParams (id) {
-      return id === 'alpaca' && this.alpacaCredentialId ? { credential_id: this.alpacaCredentialId } : {}
+      const credentialId = this.brokerCredentialIds[id]
+      return credentialId ? { credential_id: credentialId } : {}
     },
-    selectAlpacaAccount (credentialId) {
-      this.alpacaCredentialId = Number(credentialId)
-      this.$set(this.connectionMap, 'alpaca', { connected: false })
-      this.loadOne('alpaca')
+    selectBrokerAccount (credentialId) {
+      const id = this.selectedBroker && this.selectedBroker.id
+      if (!id) return
+      this.$set(this.brokerCredentialIds, id, Number(credentialId))
+      this.$set(this.connectionMap, id, { connected: false })
+      this.loadOne(id)
     },
     normalizeStatus (id, res) {
       if (!res) return { connected: false }
@@ -355,9 +392,9 @@ export default {
       try {
         const res = await broker[id].connect(payload)
         if (res && (res.success || (res.data && res.data.success))) {
-          if (id === 'alpaca') {
+          if (id !== 'ibkr') {
             const status = (res.data && res.data.data) || res.data || {}
-            this.alpacaCredentialId = Number(status.credential_id) || null
+            this.$set(this.brokerCredentialIds, id, Number(status.credential_id) || null)
           }
           this.$message.success(this.$t('brokerAccounts.connectSuccess'))
           await this.loadOne(id)

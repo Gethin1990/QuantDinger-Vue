@@ -41,7 +41,7 @@ test('indicator workspace keeps account mode balances and records in the trading
   assert.match(source, /setQuickAmountByPercent\(percent, 'buy'\)/)
   assert.match(source, /v-if="!embeddedDock" class="qt-section-header"/)
   assert.match(source, /cancelQuickTradeOrder\(\{ trade_id: trade\.id \}\)/)
-  assert.match(source, /broker\.alpaca\.cancelOrder\(trade\.id, \{ credential_id: this\.selectedCredentialId \}\)/)
+  assert.match(source, /\(this\.selectedStockBrokerClient \|\| broker\.alpaca\)\.cancelOrder\(trade\.id, \{ credential_id: this\.selectedCredentialId \}\)/)
   assert.match(source, /activeDockTab === 'openOrders' && canCancelTrade\(t\)/)
   assert.match(source, /class="qt-dock-header"[\s\S]*?class="qt-dock-trade-settings"[\s\S]*?class="qt-dock-balance"/)
   assert.match(source, /marketType \(\) \{[\s\S]*?syncTradeModeFromProps/)

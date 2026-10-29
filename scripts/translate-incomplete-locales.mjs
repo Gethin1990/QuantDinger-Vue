@@ -14,6 +14,8 @@ import {
 import {
   verifiedSameTranslations as existingVerifiedSameTranslations
 } from '../src/locales/generated-locale-overrides.js'
+import { verifiedSameUiMessages } from '../src/locales/reviewed-ui-overrides.js'
+import { verifiedSameSettingsMessages } from '../src/locales/settings-research-overrides.js'
 
 const root = resolve(process.cwd())
 const langDir = join(root, 'src', 'locales', 'lang')
@@ -731,7 +733,11 @@ const coreLocales = {}
 const verifiedSame = Object.fromEntries(
   Object.keys(localeTargets).map(localeName => [
     localeName,
-    new Set(existingVerifiedSameTranslations[localeName] || [])
+    new Set([
+      ...(existingVerifiedSameTranslations[localeName] || []),
+      ...verifiedSameUiMessages,
+      ...verifiedSameSettingsMessages
+    ])
   ])
 )
 const enCore = loadCoreLocale(langDir, 'en-US').locale
@@ -748,7 +754,7 @@ for (const localeName of activeLocaleNames) {
       isTranslatableText(source) &&
       (
         typeof locale[key] !== 'string' ||
-        (!missingOnly && locale[key] === source) ||
+        (locale[key] === source && !verifiedSame[localeName].has(key)) ||
         !placeholdersMatch(source, locale[key])
       )
     ))
@@ -821,7 +827,11 @@ for (const localeName of activeLocaleNames) {
       } else {
         generated[key] = source
       }
-    } else if (!missingOnly && target === source && isTranslatableText(source)) {
+    } else if (
+      target === source &&
+      isTranslatableText(source) &&
+      !verifiedSame[localeName].has(key)
+    ) {
       entries.push({ key, source })
     }
   }

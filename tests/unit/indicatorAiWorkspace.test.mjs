@@ -80,7 +80,9 @@ test('candidate requires an explicit user action before entering the editor', ()
 
 test('desktop editor is wider while the chart remains the flexible workspace', () => {
   assert.match(viewSource, /codeDrawerVisible: true/)
-  assert.match(viewSource, /\.ide-left\s*\{[\s\S]*?width: 38%;[\s\S]*?min-width: 420px;[\s\S]*?max-width: 600px;/)
+  assert.match(viewSource, /codePanelWidthStyle \(\)[\s\S]*?flexBasis: `\$\{this\.workspaceSplitRatio\}%`/)
+  assert.match(viewSource, /\.ide-left\s*\{[\s\S]*?width: 38%;[\s\S]*?min-width: 320px;[\s\S]*?max-width: none;/)
+  assert.match(viewSource, /class="ide-workspace-resizer"/)
   assert.match(viewSource, /\.ai-conversation\s*\{[\s\S]*?flex: 1 1 auto;[\s\S]*?resize: none;/)
   assert.match(viewSource, /class="ai-composer-toolbar"/)
   assert.match(viewSource, /\.ai-composer-toolbar\s*\{[\s\S]*?justify-content: space-between;/)

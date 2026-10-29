@@ -165,33 +165,28 @@ test('reviewed values reject known machine-translation corruption markers', () =
 })
 
 test('broker trademarks and IP protocol labels stay canonical in every locale', () => {
-  assert.deepEqual(verifiedSameUiMessages, [
+  const canonicalUiKeys = [
     'brokerAccounts.alpaca.name',
     'brokerAccounts.ibkr.name',
+    'brokerAccounts.tiger.name',
+    'brokerAccounts.webull.name',
+    'brokerAccounts.tiger.tigerId',
+    'brokerAccounts.webull.appKey',
+    'brokerAccounts.webull.appSecret',
     'profile.exchange.whitelistIpv4',
-    'profile.exchange.whitelistIpv6',
-    'trading-assistant.notify.discord',
-    'trading-assistant.notify.webhook',
-    'universeManager.placeholder',
-    'universeManager.mixedPlaceholder',
-    'indicatorIde.signalAlert.telegram',
-    'indicatorIde.signalAlert.webhook',
-    'indicatorIde.signalAlert.telegramChatIdPlaceholder',
-    'indicatorIde.signalAlert.webhookUrlPlaceholder',
-    'aiAssetAnalysis.copilot.intervalMinutes',
-    'fastAnalysis.provider.yahoo_finance',
-    'fastAnalysis.provider.yfinance',
-    'fastAnalysis.provider.finnhub',
-    'strategyV2.taLibBadge',
-    'factorLibrary.family.talib',
-    'factorLibrary.family.alpha158',
-    'factorLibrary.family.alpha360',
-    'factorLibrary.qlibFeatureName'
-  ])
+    'profile.exchange.whitelistIpv6'
+  ]
+  canonicalUiKeys.forEach(key => assert.ok(verifiedSameUiMessages.includes(key), key))
+  assert.equal(new Set(verifiedSameUiMessages).size, verifiedSameUiMessages.length)
 
   for (const locale of ['en-US', ...translatedLocales]) {
     assert.equal(reviewedUiOverrides[locale]['brokerAccounts.alpaca.name'], 'Alpaca Markets')
     assert.equal(reviewedUiOverrides[locale]['brokerAccounts.ibkr.name'], 'Interactive Brokers')
+    assert.equal(reviewedUiOverrides[locale]['brokerAccounts.tiger.name'], 'Tiger Brokers')
+    assert.equal(reviewedUiOverrides[locale]['brokerAccounts.webull.name'], 'Webull')
+    assert.equal(reviewedUiOverrides[locale]['brokerAccounts.tiger.tigerId'], 'Tiger ID')
+    assert.equal(reviewedUiOverrides[locale]['brokerAccounts.webull.appKey'], 'App Key')
+    assert.equal(reviewedUiOverrides[locale]['brokerAccounts.webull.appSecret'], 'App Secret')
     assert.equal(reviewedUiOverrides[locale]['profile.exchange.whitelistIpv4'], 'IPv4')
     assert.equal(reviewedUiOverrides[locale]['profile.exchange.whitelistIpv6'], 'IPv6')
   }

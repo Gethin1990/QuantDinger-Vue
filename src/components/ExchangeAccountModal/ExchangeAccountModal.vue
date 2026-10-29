@@ -160,7 +160,11 @@
 <script>
 import { mapState } from 'vuex'
 import { createExchangeCredential, getCredentialsEgressIp, testExchangeCredential } from '@/api/credentials'
+import { getPublicSettingsConfig } from '@/api/settings'
 import { getCryptoEnvironmentValues, normalizeCryptoExchangeId, shouldShowCryptoEnvironmentHint } from './environmentOptions'
+import { normalizeEnabledTradingVenues } from '@/utils/tradingVenueConfig'
+
+const ALL_TRADING_VENUE_IDS = ['alpaca', 'ibkr', 'tiger', 'webull', 'binance', 'okx', 'bybit', 'bitget', 'gate', 'htx']
 
 const CRYPTO_ENVIRONMENT_LABEL_KEYS = Object.freeze({
   live: 'profile.exchange.environmentLive',
@@ -185,14 +189,15 @@ export default {
       egressServerIpv4: '',
       egressServerIpv6: '',
       egressIpLoading: false,
-      cryptoExchangeList: [
+      allCryptoExchangeList: [
         { id: 'binance', name: 'Binance', docsUrl: 'https://www.binance.com/en/support/faq/detail/360002502072' },
         { id: 'okx', name: 'OKX', docsUrl: 'https://www.okx.com/docs-v5/zh/#overview-v5-api-key-creation' },
         { id: 'bitget', name: 'Bitget', docsUrl: 'https://www.bitget.com/api-doc/common/quick-start' },
         { id: 'bybit', name: 'Bybit', docsUrl: 'https://www.bybit.com/en/help-center/article/How-to-create-your-API-key/' },
         { id: 'gate', name: 'Gate.io', docsUrl: 'https://www.gate.com/docs/developers/apiv4/' },
         { id: 'htx', name: 'HTX', docsUrl: 'https://www.htx.com/en-us/opend/newApiPages/?id=414' }
-      ]
+      ],
+      enabledTradingVenues: [...ALL_TRADING_VENUE_IDS]
     }
   },
   computed: {
@@ -201,6 +206,10 @@ export default {
     }),
     isDarkTheme () {
       return this.navTheme === 'dark' || this.navTheme === 'realdark'
+    },
+    cryptoExchangeList () {
+      const enabled = new Set(this.enabledTradingVenues)
+      return this.allCryptoExchangeList.filter(item => enabled.has(item.id))
     },
     modalWrapClass () {
       const base = 'profile-exchange-modal'
@@ -256,6 +265,7 @@ export default {
     visible (open) {
       if (open) {
         this.resetExchangeFormState()
+        this.loadTradingVenueConfig()
         this.fetchEgressIp()
       }
     }
@@ -264,6 +274,14 @@ export default {
     this.exchangeForm = this.$form.createForm(this, { name: 'exchangeAccountModal' })
   },
   methods: {
+    async loadTradingVenueConfig () {
+      try {
+        const res = await getPublicSettingsConfig()
+        this.enabledTradingVenues = normalizeEnabledTradingVenues(res && res.data && res.data.enabled_trading_venues)
+      } catch (_) {
+        this.enabledTradingVenues = [...ALL_TRADING_VENUE_IDS]
+      }
+    },
     exchangeModalGetContainer () {
       if (typeof this.overlayMount === 'function') {
         const n = this.overlayMount()

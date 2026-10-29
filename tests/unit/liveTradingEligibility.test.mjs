@@ -25,18 +25,27 @@ test('same-market crypto portfolios support live execution with crypto credentia
   assert.equal(credentialMatchesLiveStrategy(cryptoPortfolio, 'alpaca'), false)
 })
 
-test('US stock strategies support both configured stock brokers', () => {
+test('US stock strategies support all configured stock brokers', () => {
   const manifest = { strategyType: 'portfolio', markets: ['USStock'] }
   assert.equal(supportsLiveExecutionMode(manifest), true)
-  assert.equal(credentialMatchesLiveStrategy(manifest, 'alpaca'), true)
-  assert.equal(credentialMatchesLiveStrategy(manifest, 'IBKR'), true)
+  for (const exchangeId of ['alpaca', 'IBKR', 'tiger', 'webull']) {
+    assert.equal(credentialMatchesLiveStrategy(manifest, exchangeId), true)
+  }
   assert.equal(credentialMatchesLiveStrategy(manifest, 'okx'), false)
+})
+
+test('Hong Kong stock strategies use Tiger credentials', () => {
+  const manifest = { strategyType: 'portfolio', markets: ['HKStock'] }
+  assert.equal(supportsLiveExecutionMode(manifest), true)
+  assert.equal(credentialMatchesLiveStrategy(manifest, 'tiger'), true)
+  assert.equal(credentialMatchesLiveStrategy(manifest, 'webull'), false)
+  assert.equal(credentialMatchesLiveStrategy(manifest, 'alpaca'), false)
 })
 
 test('mixed and unsupported markets remain signal-only', () => {
   for (const manifest of [
     { strategyType: 'portfolio', markets: ['Crypto', 'USStock'] },
-    { strategyType: 'portfolio', markets: ['HKStock'] },
+    { strategyType: 'portfolio', markets: ['CNStock'] },
     { strategyType: 'portfolio', markets: [] }
   ]) {
     assert.equal(supportsLiveExecutionMode(manifest), false)

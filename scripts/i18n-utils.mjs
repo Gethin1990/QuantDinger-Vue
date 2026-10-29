@@ -54,7 +54,8 @@ export const postGeneratedOverrideModulePaths = [
   '../src/locales/settings-feature-overrides.js',
   '../src/locales/zh-tw-product-overrides.js',
   '../src/locales/navigation-overrides.js',
-  '../src/locales/lang/ai-skills-taxonomy.js'
+  '../src/locales/lang/ai-skills-taxonomy.js',
+  '../src/locales/venue-research-copy-overrides.js'
 ]
 
 export const overrideModulePaths = [

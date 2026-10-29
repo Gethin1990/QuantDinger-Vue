@@ -17,6 +17,17 @@ const indicatorIdeSource = fs.readFileSync(indicatorIdePath, 'utf8')
 const klineChartSource = fs.readFileSync(klineChartPath, 'utf8')
 const strategyIdeSource = fs.readFileSync(strategyIdePath, 'utf8')
 
+test('indicator workspace exposes a constrained and persistent horizontal resizer', () => {
+  assert.match(indicatorIdeSource, /class="ide-workspace-resizer"/)
+  assert.match(indicatorIdeSource, /@mousedown="startWorkspaceResize"/)
+  assert.match(indicatorIdeSource, /@dblclick="resetWorkspaceSplit"/)
+  assert.match(indicatorIdeSource, /workspaceSplitBounds \(\)/)
+  assert.match(indicatorIdeSource, /const codeMin = Math\.min\(420/)
+  assert.match(indicatorIdeSource, /const chartMin = Math\.min\(520/)
+  assert.match(indicatorIdeSource, /workspaceSplitRatio: this\.workspaceSplitRatio/)
+  assert.match(indicatorIdeSource, /<span>\{\{ \$t\('indicatorIde\.hideCode'\) \}\}<\/span>/)
+})
+
 test('indicator-to-strategy conversion has a parameter parser', () => {
   assert.match(
     indicatorIdeSource,

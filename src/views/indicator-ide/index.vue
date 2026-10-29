@@ -1,7 +1,7 @@
 <template>
   <div class="indicator-ide" :class="{ 'theme-dark': isDarkTheme }">
     <!-- Main split panels -->
-    <div class="ide-main">
+    <div ref="ideMain" class="ide-main" :class="{ 'is-workspace-resizing': workspaceResizing }">
       <button
         v-if="!codeDrawerVisible"
         type="button"
@@ -14,21 +14,17 @@
         <a-icon type="right" class="ide-code-rail__arrow" />
       </button>
       <!-- Left panel (collapsible drawer) -->
-      <div v-show="codeDrawerVisible" ref="editorFullscreenEl" class="ide-left" :class="{ 'ide-panel--fullscreen': editorFullscreen }">
+      <div
+        v-show="codeDrawerVisible"
+        ref="editorFullscreenEl"
+        class="ide-left"
+        :class="{ 'ide-panel--fullscreen': editorFullscreen }"
+        :style="codePanelWidthStyle"
+      >
         <!-- Code Editor -->
         <div class="code-panel">
           <div class="panel-title">
             <div class="panel-title__leading">
-              <a-tooltip :title="$t('indicatorIde.hideCode')">
-                <button
-                  type="button"
-                  class="code-panel-collapse"
-                  :aria-label="$t('indicatorIde.hideCode')"
-                  @click="toggleCodeDrawer"
-                >
-                  <a-icon type="double-left" />
-                </button>
-              </a-tooltip>
               <a-icon type="code" />
               <a-tag v-if="codeDirty && !selectedIndicatorCodeHidden" color="orange" size="small">{{ $t('indicatorIde.modified') }}</a-tag>
             </div>
@@ -80,6 +76,16 @@
                     {{ $t('indicatorIde.save') }}
                   </a-button>
                 </a-tooltip>
+                <button
+                  type="button"
+                  class="code-panel-collapse"
+                  :title="$t('indicatorIde.hideCode')"
+                  :aria-label="$t('indicatorIde.hideCode')"
+                  @click="toggleCodeDrawer"
+                >
+                  <a-icon type="double-left" />
+                  <span>{{ $t('indicatorIde.hideCode') }}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -314,6 +320,25 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div
+        v-show="codeDrawerVisible && !editorFullscreen && !chartFullscreen"
+        class="ide-workspace-resizer"
+        :class="{ 'is-resizing': workspaceResizing }"
+        role="separator"
+        aria-orientation="vertical"
+        tabindex="0"
+        :aria-label="$t('indicatorIde.resizeWorkspace')"
+        :aria-valuenow="Math.round(workspaceSplitRatio)"
+        :title="$t('indicatorIde.resizeWorkspaceHint')"
+        @mousedown="startWorkspaceResize"
+        @dblclick="resetWorkspaceSplit"
+        @keydown.left.prevent="adjustWorkspaceSplit(-2)"
+        @keydown.right.prevent="adjustWorkspaceSplit(2)"
+      >
+        <span class="ide-workspace-resizer__line"></span>
+        <span class="ide-workspace-resizer__grip"><i></i><i></i><i></i></span>
       </div>
 
       <div class="ide-right ide-right--workspace">
@@ -1411,6 +1436,8 @@ export default {
       codeQualityChecked: false,
       codeAiSplitRatio: 58,
       codeAiResizing: false,
+      workspaceSplitRatio: 38,
+      workspaceResizing: false,
 
       // Quick Trade drawer reuse
       qtSymbol: 'BTC/USDT',
@@ -1457,6 +1484,13 @@ export default {
     }
   },
   computed: {
+    codePanelWidthStyle () {
+      if (!this.codeDrawerVisible || this.editorFullscreen) return null
+      return {
+        flexBasis: `${this.workspaceSplitRatio}%`,
+        width: `${this.workspaceSplitRatio}%`
+      }
+    },
     marketplaceEnabled () {
       return this.$store.state.features.config.marketplace_enabled !== false
     },
@@ -1648,10 +1682,14 @@ export default {
     document.addEventListener('fullscreenchange', this._fullscreenListener)
     document.addEventListener('webkitfullscreenchange', this._fullscreenListener)
     window.addEventListener('keydown', this._saveShortcutListener)
-    this._quickTradeResizeListener = () => this.clampQuickTradeFloat()
+    this._quickTradeResizeListener = () => {
+      this.clampQuickTradeFloat()
+      this.clampWorkspaceSplit()
+    }
     window.addEventListener('resize', this._quickTradeResizeListener)
     this.$nextTick(() => {
       this.initCodeMirror()
+      this.clampWorkspaceSplit()
       this.ensureChartReady()
       this.applyIdeOverlayContainers()
       this.syncChartPresetIndicatorOptions()
@@ -1674,6 +1712,7 @@ export default {
   },
   beforeDestroy () {
     this.stopCodeAiResize()
+    this.stopWorkspaceResize()
     this.stopQuickTradeDrag()
     if (this._persistIdeUiTimer) {
       clearTimeout(this._persistIdeUiTimer)
@@ -1699,6 +1738,10 @@ export default {
     if (this._quickTradeResizeListener) {
       window.removeEventListener('resize', this._quickTradeResizeListener)
       this._quickTradeResizeListener = null
+    }
+    if (this._workspaceResizeFrame) {
+      cancelAnimationFrame(this._workspaceResizeFrame)
+      this._workspaceResizeFrame = null
     }
     try {
       message.destroy()
@@ -1745,6 +1788,65 @@ export default {
       if (!this.userId) return
       storage.remove(ideUiCacheStorageKey(this.userId))
       storage.remove(ideSelectionStorageKey(this.userId))
+    },
+    workspaceSplitBounds () {
+      const container = this.$refs.ideMain
+      const width = container ? container.getBoundingClientRect().width : 0
+      if (!width) return { min: 28, max: 68 }
+      const usableWidth = Math.max(1, width - 10)
+      const codeMin = Math.min(420, Math.max(320, usableWidth * 0.3))
+      const chartMin = Math.min(520, Math.max(360, usableWidth * 0.36))
+      const min = Math.max(24, (codeMin / usableWidth) * 100)
+      const max = Math.min(72, 100 - ((chartMin / usableWidth) * 100))
+      return min <= max ? { min, max } : { min: 36, max: 64 }
+    },
+    clampWorkspaceSplit (ratio = this.workspaceSplitRatio) {
+      const bounds = this.workspaceSplitBounds()
+      this.workspaceSplitRatio = Math.max(bounds.min, Math.min(bounds.max, Number(ratio) || 38))
+      this.scheduleWorkspaceResizeRefresh()
+    },
+    adjustWorkspaceSplit (delta) {
+      this.clampWorkspaceSplit(Number(this.workspaceSplitRatio || 38) + Number(delta || 0))
+      this.schedulePersistIdeUiState()
+    },
+    resetWorkspaceSplit () {
+      this.clampWorkspaceSplit(38)
+      this.schedulePersistIdeUiState()
+    },
+    scheduleWorkspaceResizeRefresh () {
+      if (this._workspaceResizeFrame) return
+      this._workspaceResizeFrame = requestAnimationFrame(() => {
+        this._workspaceResizeFrame = null
+        if (this.cmInstance) this.cmInstance.refresh()
+        this.ensureChartReady()
+      })
+    },
+    startWorkspaceResize (event) {
+      if (event && event.button !== 0) return
+      const container = this.$refs.ideMain
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      if (!rect.width) return
+      if (event) event.preventDefault()
+      this.workspaceResizing = true
+      this._workspaceResizeMove = (moveEvent) => {
+        const raw = ((moveEvent.clientX - rect.left) / rect.width) * 100
+        this.clampWorkspaceSplit(raw)
+      }
+      this._workspaceResizeEnd = () => this.stopWorkspaceResize(true)
+      document.body.classList.add('qd-workspace-resizing')
+      window.addEventListener('mousemove', this._workspaceResizeMove)
+      window.addEventListener('mouseup', this._workspaceResizeEnd, { once: true })
+    },
+    stopWorkspaceResize (persist = false) {
+      if (this._workspaceResizeMove) window.removeEventListener('mousemove', this._workspaceResizeMove)
+      if (this._workspaceResizeEnd) window.removeEventListener('mouseup', this._workspaceResizeEnd)
+      this._workspaceResizeMove = null
+      this._workspaceResizeEnd = null
+      this.workspaceResizing = false
+      if (typeof document !== 'undefined') document.body.classList.remove('qd-workspace-resizing')
+      if (persist) this.schedulePersistIdeUiState()
+      this.scheduleWorkspaceResizeRefresh()
     },
     adjustCodeAiSplit (delta) {
       const next = Number(this.codeAiSplitRatio || 58) + Number(delta || 0)
@@ -1881,6 +1983,10 @@ export default {
         }
         if (typeof s.quickTradeMinimized === 'boolean') this.quickTradeMinimized = s.quickTradeMinimized
         if (typeof s.quickTradePinned === 'boolean') this.quickTradePinned = s.quickTradePinned
+        if (typeof s.codeDrawerVisible === 'boolean') this.codeDrawerVisible = s.codeDrawerVisible
+        if (Number.isFinite(Number(s.workspaceSplitRatio))) {
+          this.workspaceSplitRatio = Math.max(24, Math.min(72, Number(s.workspaceSplitRatio)))
+        }
         if (s.quickTradePosition && Number.isFinite(Number(s.quickTradePosition.x)) && Number.isFinite(Number(s.quickTradePosition.y))) {
           this.quickTradePosition = {
             x: Number(s.quickTradePosition.x),
@@ -1940,7 +2046,9 @@ export default {
           quickTradeDrawerVisible: this.quickTradeDrawerVisible,
           quickTradeMinimized: this.quickTradeMinimized,
           quickTradePinned: this.quickTradePinned,
-          quickTradePosition: this.quickTradePosition
+          quickTradePosition: this.quickTradePosition,
+          codeDrawerVisible: this.codeDrawerVisible,
+          workspaceSplitRatio: this.workspaceSplitRatio
         }
         storage.set(ideUiCacheStorageKey(this.userId), JSON.stringify(payload))
       } catch (_) { /* ignore quota */ }
@@ -3743,7 +3851,7 @@ export default {
 
     // ===== Quick Trade =====
     isQuickTradeMarketSupported () {
-      return ['Crypto', 'USStock'].includes(this.market)
+      return ['Crypto', 'USStock', 'HKStock'].includes(this.market)
     },
     toggleQuickTradeDrawer () {
       if (!this.quickTradeDrawerVisible && !this.isQuickTradeMarketSupported()) {
@@ -4424,7 +4532,9 @@ export default {
       })
     },
     codeDrawerVisible () {
+      this.schedulePersistIdeUiState()
       this.$nextTick(() => {
+        this.clampWorkspaceSplit()
         if (this.cmInstance) this.cmInstance.refresh()
         this.ensureChartReady()
       })
@@ -5182,7 +5292,17 @@ body.dark .ide-signal-alert-modal-wrap {
 }
 
 // ===== Main =====
-.ide-main { display: flex; flex: 1 1 auto; overflow: hidden; min-height: 0; align-items: stretch; }
+.ide-main {
+  display: flex;
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-height: 0;
+  align-items: stretch;
+  &.is-workspace-resizing {
+    cursor: col-resize;
+    user-select: none;
+  }
+}
 
 .ide-code-rail {
   flex: 0 0 30px;
@@ -5222,8 +5342,8 @@ body.dark .ide-signal-alert-modal-wrap {
 
 .ide-left {
   width: 38%;
-  min-width: 420px;
-  max-width: 600px;
+  min-width: 320px;
+  max-width: none;
   height: 100%;
   max-height: 100%;
   display: flex;
@@ -5231,7 +5351,7 @@ body.dark .ide-signal-alert-modal-wrap {
   min-height: 0;
   border-right: 1px solid #eee;
   overflow: hidden;
-  flex-shrink: 0;
+  flex: 0 0 38%;
   background: #fcfcfd;
   position: sticky;
   top: 0;
@@ -5246,6 +5366,69 @@ body.dark .ide-signal-alert-modal-wrap {
     top: auto;
     align-self: stretch;
     border-right: none;
+  }
+}
+
+.ide-workspace-resizer {
+  position: relative;
+  z-index: 7;
+  flex: 0 0 10px;
+  width: 10px;
+  min-width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  outline: none;
+  background: #f8fafc;
+  transition: background .16s ease;
+}
+.ide-workspace-resizer__line {
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: #dbe3ee;
+  transition: width .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.ide-workspace-resizer__grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  color: #94a3b8;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .12);
+  transition: color .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+  i {
+    display: block;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+}
+.ide-workspace-resizer:hover,
+.ide-workspace-resizer:focus-visible,
+.ide-workspace-resizer.is-resizing {
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, #f8fafc);
+  .ide-workspace-resizer__line {
+    width: 2px;
+    background: var(--primary-color, #1890ff);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
+  }
+  .ide-workspace-resizer__grip {
+    color: var(--primary-color, #1890ff);
+    border-color: color-mix(in srgb, var(--primary-color, #1890ff) 58%, #cbd5e1);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 7%, #fff);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--primary-color, #1890ff) 24%, transparent);
   }
 }
 
@@ -5405,19 +5588,25 @@ body.dark .ide-signal-alert-modal-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: auto;
+  min-width: 78px;
   height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 24%, #dbe3ee);
+  border-radius: 6px;
   color: #64748b;
-  background: transparent;
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 4%, #fff);
   cursor: pointer;
-  transition: color .16s ease, background .16s ease;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color .16s ease, border-color .16s ease, background .16s ease;
 
   &:hover,
   &:focus-visible {
     color: var(--primary-color, @primary-color);
+    border-color: color-mix(in srgb, var(--primary-color, #1890ff) 54%, #dbe3ee);
     background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, transparent);
     outline: none;
   }
@@ -7370,6 +7559,39 @@ body.dark .ide-signal-alert-modal-wrap {
   }
   .code-panel-collapse {
     color: rgba(255, 255, 255, .48);
+    border-color: color-mix(in srgb, var(--primary-color, #1890ff) 28%, #303030);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 6%, #1f1f1f);
+    &:hover,
+    &:focus-visible {
+      color: var(--primary-color, #1890ff);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 58%, #303030);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, #1f1f1f);
+    }
+  }
+  .ide-workspace-resizer {
+    background: #181818;
+  }
+  .ide-workspace-resizer__line {
+    background: #303030;
+  }
+  .ide-workspace-resizer__grip {
+    color: rgba(255, 255, 255, .38);
+    border-color: #3a3a3a;
+    background: #222;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .42);
+  }
+  .ide-workspace-resizer:hover,
+  .ide-workspace-resizer:focus-visible,
+  .ide-workspace-resizer.is-resizing {
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, #181818);
+    .ide-workspace-resizer__line {
+      background: var(--primary-color, #1890ff);
+    }
+    .ide-workspace-resizer__grip {
+      color: var(--primary-color, #1890ff);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 62%, #3a3a3a);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, #222);
+    }
   }
   .code-hidden-mask {
     color: rgba(255, 255, 255, 0.9);

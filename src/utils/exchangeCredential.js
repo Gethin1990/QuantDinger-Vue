@@ -7,7 +7,9 @@ export const CRYPTO_EXCHANGE_DISPLAY_NAMES = {
   gate: 'Gate.io',
   htx: 'HTX',
   alpaca: 'Alpaca',
-  ibkr: 'IBKR'
+  ibkr: 'IBKR',
+  tiger: 'Tiger Brokers',
+  webull: 'Webull'
 }
 
 export const CRYPTO_EXCHANGE_IDS = new Set([
@@ -21,7 +23,13 @@ export const CRYPTO_EXCHANGE_IDS = new Set([
 
 export const US_STOCK_EXCHANGE_IDS = new Set([
   'alpaca',
-  'ibkr'
+  'ibkr',
+  'tiger',
+  'webull'
+])
+
+export const HK_STOCK_EXCHANGE_IDS = new Set([
+  'tiger'
 ])
 
 export const QUICK_TRADE_EXCHANGE_IDS = new Set([
@@ -55,7 +63,7 @@ function liveExecutionMarket (manifest) {
     ? [...new Set(manifest.markets.map(value => String(value || '').trim()).filter(Boolean))]
     : []
   if (markets.length !== 1) return ''
-  return ['Crypto', 'USStock'].includes(markets[0]) ? markets[0] : ''
+  return ['Crypto', 'USStock', 'HKStock'].includes(markets[0]) ? markets[0] : ''
 }
 
 /**
@@ -71,6 +79,7 @@ export function credentialMatchesLiveStrategy (manifest, exchangeId) {
   const normalizedExchangeId = String(exchangeId || '').trim().toLowerCase()
   if (market === 'Crypto') return CRYPTO_EXCHANGE_IDS.has(normalizedExchangeId)
   if (market === 'USStock') return US_STOCK_EXCHANGE_IDS.has(normalizedExchangeId)
+  if (market === 'HKStock') return HK_STOCK_EXCHANGE_IDS.has(normalizedExchangeId)
   return false
 }
 

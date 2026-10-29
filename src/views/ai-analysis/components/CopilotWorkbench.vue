@@ -19,7 +19,7 @@
             :class="{ active: session.id === sessionId }"
           >
             <button type="button" class="session-card" @click="loadHistory(session.id)">
-              <strong>{{ session.title || text.untitled }}</strong>
+              <strong>{{ displayDiagnoseText(session.title) || text.untitled }}</strong>
               <span>{{ session.context_symbol || session.context_market || text.chatSession }}</span>
             </button>
             <a-popconfirm
@@ -135,7 +135,7 @@
                 <span v-else class="thumb-missing">{{ att.name || text.imageAttachment }}</span>
               </div>
             </div>
-            <div class="message-content" v-html="renderMarkdown(msg.content)" @click="handleMessageContentClick" />
+            <div class="message-content" v-html="renderMarkdown(displayDiagnoseText(msg.content))" @click="handleMessageContentClick" />
             <div
               v-if="msg.report || msg.reportLoading || msg.reportError"
               :data-report-id="reportId(msg)"
@@ -167,6 +167,7 @@
                 v-else
                 :result="msg.report || null"
                 :loading="!!msg.reportLoading"
+                :target="msg.reportTarget || null"
                 :error="msg.reportError || null"
                 :error-tone="msg.reportErrorTone || 'error'"
                 @retry="retryProfessionalAnalysis(msg)"
@@ -1735,7 +1736,10 @@ export default {
         }
       } catch (_) {
         const inferred = this.inferSymbolFromText(kw)
-        this.symbolOptions = [{ market: (inferred && inferred.market) || this.context.market || firstMarketValue(this.markets), symbol: kw.toUpperCase() }]
+        this.symbolOptions = [{
+          market: (inferred && inferred.market) || this.context.market || firstMarketValue(this.markets),
+          symbol: (inferred && inferred.symbol) || kw.toUpperCase()
+        }]
       } finally {
         this.symbolSearching = false
       }
@@ -2823,6 +2827,18 @@ export default {
     },
     inferSymbolFromText (text) {
       const value = String(text || '').toUpperCase()
+      const marketPair = value.match(/\b(CRYPTO|USSTOCK|HKSTOCK|CNSTOCK|FOREX|FUTURES):([A-Z0-9./_-]{2,24})\b/)
+      if (marketPair) {
+        const canonicalMarkets = {
+          CRYPTO: 'Crypto',
+          USSTOCK: 'USStock',
+          HKSTOCK: 'HKStock',
+          CNSTOCK: 'CNStock',
+          FOREX: 'Forex',
+          FUTURES: 'Futures'
+        }
+        return { market: canonicalMarkets[marketPair[1]], symbol: marketPair[2] }
+      }
       const pair = value.match(/\b[A-Z0-9]{2,12}\/[A-Z0-9]{2,12}\b/)
       if (pair) return { market: 'Crypto', symbol: pair[0] }
       const usdAsset = value.match(/\b([A-Z]{2,10})-USD\b/)
@@ -2833,8 +2849,6 @@ export default {
         }
         return { market: 'USStock', symbol: base }
       }
-      const marketPair = value.match(/\b(CRYPTO|USSTOCK|HKSTOCK|CNSTOCK|FOREX|FUTURES):([A-Z0-9./_-]{2,24})\b/)
-      if (marketPair) return { market: marketPair[1], symbol: marketPair[2] }
       const cnCode = value.match(/(?:^|[^\d])([036]\d{5})(?:[^\d]|$)/)
       if (cnCode) return { market: 'CNStock', symbol: cnCode[1] }
       const hkCode = value.match(/(?:^|[^\d])(\d{5})(?:[^\d]|$)/)
@@ -3164,6 +3178,7 @@ export default {
         instrument_id: target.instrument_id || '',
         language: this.$i18n ? this.$i18n.locale : 'en-US',
         timeframe: '1D',
+        research_mode: this.activeResearchMode,
         response_contract: 'professional_report_v1'
       })
       if (!res || res.code === 0) {
@@ -4462,6 +4477,15 @@ export default {
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    },
+    displayDiagnoseText (value) {
+      const raw = String(value || '')
+      const legacy = raw.match(/^诊断\s*([A-Za-z]+)\s*(?:显示|数字|數字)\s*:\s*(.+)$/)
+      if (!legacy) return raw
+      return this.$t('aiAssetAnalysis.copilot.diagnoseCommand', {
+        market: legacy[1],
+        symbol: legacy[2].trim()
+      })
     },
     renderMarkdown (text) {
       const source = String(text || '').replace(/\r\n/g, '\n')
