@@ -1,4 +1,10 @@
 const locale = {
+  'marketData.invalidCryptoIdentifier': 'The crypto instrument format is invalid. Use Crypto:BASE/QUOTE@exchange:spot or Crypto:BASE/QUOTE@exchange:swap.',
+  'marketData.invalidCryptoExchange': 'The crypto exchange identifier is invalid.',
+  'marketData.invalidCryptoProduct': 'The crypto product type is invalid. Use spot or swap.',
+  'marketData.invalidCryptoSettlement': 'The crypto settlement currency format is invalid.',
+  'marketData.cryptoSettlementMismatch': 'The crypto settlement currency must match the quote currency.',
+  'marketData.cryptoSymbolRequired': 'Select a valid crypto trading pair.',
   'strategyV2.universeHistoryUnavailable': 'The requested start date predates the available universe history. Import verified historical membership or select a later start date. Details:',
   'strategyV2.cancellationNeedsReconciliation': 'Cancellation requested, but an earlier submission has no confirmed broker order ID. Reconcile the broker order before retrying; this order still reserves a position slot.',
   'strategyV2.fundamentalDataMissing': 'Required financial data is missing for the following stocks. Synchronize historical financial statements before retrying. Details:',
@@ -601,6 +607,12 @@ const locale = {
 const enUSFallback = locale
 
 const zhCN = {
+  'marketData.invalidCryptoIdentifier': '加密资产标的格式无效，请使用 Crypto:基础币/计价币@交易所:spot 或 Crypto:基础币/计价币@交易所:swap。',
+  'marketData.invalidCryptoExchange': '加密资产交易所标识无效。',
+  'marketData.invalidCryptoProduct': '加密资产产品类型无效，请使用 spot 或 swap。',
+  'marketData.invalidCryptoSettlement': '加密资产结算币种格式无效。',
+  'marketData.cryptoSettlementMismatch': '结算币种必须与计价币种一致。',
+  'marketData.cryptoSymbolRequired': '请选择有效的加密资产交易对。',
   'strategyV2.universeHistoryUnavailable': '回测开始日期早于股票池的历史覆盖范围。请导入真实历史成分股，或选择更晚的开始日期。详情：',
   'strategyV2.cancellationNeedsReconciliation': '已请求撤单，但之前的发送尚未取得券商订单确认。请先核对券商订单再重试；该订单仍占用持仓名额。',
   'strategyV2.fundamentalDataMissing': '以下股票缺少策略所需的财务数据。请先同步历史财报后重试。详情：',
@@ -1201,6 +1213,12 @@ const zhCN = {
 }
 
 const zhTW = {
+  'marketData.invalidCryptoIdentifier': '加密資產標的格式無效，請使用 Crypto:基礎幣/計價幣@交易所:spot 或 Crypto:基礎幣/計價幣@交易所:swap。',
+  'marketData.invalidCryptoExchange': '加密資產交易所識別碼無效。',
+  'marketData.invalidCryptoProduct': '加密資產產品類型無效，請使用 spot 或 swap。',
+  'marketData.invalidCryptoSettlement': '加密資產結算幣種格式無效。',
+  'marketData.cryptoSettlementMismatch': '結算幣種必須與計價幣種一致。',
+  'marketData.cryptoSymbolRequired': '請選擇有效的加密資產交易對。',
   'strategyV2.universeHistoryUnavailable': '回測開始日期早於股票池的歷史覆蓋範圍。請匯入真實歷史成分股，或選擇較晚的開始日期。詳情：',
   'strategyV2.cancellationNeedsReconciliation': '已請求撤單，但之前的發送尚未取得券商訂單確認。請先核對券商訂單再重試；該訂單仍占用持倉名額。',
   'strategyV2.fundamentalDataMissing': '以下股票缺少策略所需的財務資料。請先同步歷史財報後重試。詳情：',

@@ -3,6 +3,11 @@
 // Template data is loaded from the backend so template content can be managed in
 // the database. This module only keeps code-param parsing and template rendering
 // helpers used by the editor.
+import {
+  formatStrategyInstrumentIdentity,
+  parseStrategyInstrumentIdentity
+} from '../../../utils/strategyInstrument.js'
+
 export const SCRIPT_TEMPLATE_CATALOG = []
 
 export function normalizeScriptTemplate (raw) {
@@ -55,12 +60,7 @@ export function normalizePercentParamValue (raw) {
 }
 
 export function formatStrategyInstrument (config = {}) {
-  const market = String(config.market_category || config.market || 'Crypto').trim() || 'Crypto'
-  const symbol = String(config.symbol || '').trim().toUpperCase()
-  if (!symbol) return ''
-  if (market !== 'Crypto') return `${market}:${symbol}`
-  const marketType = String(config.market_type || config.marketType || 'spot').toLowerCase() === 'swap' ? 'swap' : 'spot'
-  return `Crypto:${symbol}@${marketType}`
+  return formatStrategyInstrumentIdentity(config, { includeConfigExchange: true })
 }
 
 function replacePrimaryTimeframeReferences (source, previousTimeframe, nextTimeframe) {
@@ -113,7 +113,13 @@ export function applyStrategyRuntimeConfigToCode (code, config = {}) {
     )
     next = next.replace(
       /(context\.set_benchmark\(\s*)["'][^"']+["'](\s*\))/m,
-      `$1${JSON.stringify(config.market_category === 'Crypto' ? `Crypto:${String(config.symbol || '').trim().toUpperCase()}@spot` : instrument)}$2`
+      `$1${JSON.stringify(config.market_category === 'Crypto'
+        ? formatStrategyInstrumentIdentity({
+          ...config,
+          symbol: parseStrategyInstrumentIdentity(config.symbol, config).symbol,
+          market_type: 'spot'
+        })
+        : instrument)}$2`
     )
   }
   if (String(config.market_category || '') === 'Crypto' && config.market_type) {
@@ -165,13 +171,13 @@ export function extractStrategyRuntimeConfigFromCode (code) {
   const equityTakeProfitMatch = source.match(/^\s*EQUITY_TAKE_PROFIT\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?)\s*$/im)
   const equityStopLossMatch = source.match(/^\s*EQUITY_STOP_LOSS\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?)\s*$/im)
   const instrument = String((instrumentMatch && instrumentMatch[1]) || '').trim()
-  const match = instrument.match(/^([^:]+):(.+)$/i)
   const result = {}
-  if (match) {
-    const productMatch = match[2].match(/^(.*)@(spot|swap)$/i)
-    result.market_category = match[1]
-    result.symbol = String(productMatch ? productMatch[1] : match[2]).toUpperCase()
-    result.market_type = match[1] === 'Crypto' ? String((productMatch && productMatch[2]) || 'spot').toLowerCase() : 'spot'
+  if (instrument) {
+    const parsed = parseStrategyInstrumentIdentity(instrument)
+    result.market_category = parsed.market
+    result.symbol = parsed.symbol
+    result.market_type = parsed.marketType
+    if (parsed.exchangeId) result.exchange_id = parsed.exchangeId
   }
   if (timeframeMatch && timeframeMatch[1]) result.timeframe = String(timeframeMatch[1]).trim()
   if (exchangeMatch && exchangeMatch[1]) result.exchange_id = String(exchangeMatch[1]).trim().toLowerCase()

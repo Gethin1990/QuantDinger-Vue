@@ -123,6 +123,41 @@ test('indicator conversion resolves Crypto source context without falling back t
   )
 })
 
+test('indicator conversion normalizes decorated and previously duplicated Crypto identities', () => {
+  assert.deepEqual(
+    resolveIndicatorStrategyContext({
+      market: 'Crypto',
+      symbol: 'BTC/USDT@BINANCE:SPOT@spot',
+      exchange_id: 'binance',
+      market_type: 'spot',
+      timeframe: '15m'
+    }),
+    {
+      market: 'Crypto',
+      symbol: 'BTC/USDT',
+      exchangeId: 'binance',
+      marketType: 'spot',
+      timeframe: '15m',
+      instrument: 'Crypto:BTC/USDT@binance:spot'
+    }
+  )
+})
+
+test('indicator conversion keeps an explicit source product ahead of stale fallback metadata', () => {
+  const resolved = resolveIndicatorStrategyContext({
+    market: 'Crypto',
+    symbol: 'BTC/USDT@okx:swap',
+    exchange_id: 'binance',
+    market_type: 'spot',
+    timeframe: '15m'
+  })
+
+  assert.equal(resolved.instrument, 'Crypto:BTC/USDT@okx:swap')
+  assert.equal(resolved.symbol, 'BTC/USDT')
+  assert.equal(resolved.exchangeId, 'okx')
+  assert.equal(resolved.marketType, 'swap')
+})
+
 test('indicator conversion keeps the strategy identity separate from the venue native id', () => {
   const resolved = resolveIndicatorStrategyContext({
     market: 'Crypto',

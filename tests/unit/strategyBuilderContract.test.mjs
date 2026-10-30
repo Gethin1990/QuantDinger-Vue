@@ -26,7 +26,14 @@ const liveEditorSource = readFileSync(new URL('../../src/views/strategy-center/c
 
 test('strategy builder formats crypto and non-crypto instruments', () => {
   assert.equal(formatStrategyInstrument({ market_category: 'Crypto', symbol: 'btc/usdt', market_type: 'swap' }), 'Crypto:BTC/USDT@swap')
+  assert.equal(formatStrategyInstrument({ market_category: 'Crypto', symbol: 'Crypto:btc/usdt@binance:spot', market_type: 'spot' }), 'Crypto:BTC/USDT@binance:spot')
+  assert.equal(formatStrategyInstrument({ market_category: 'Crypto', symbol: 'btc/usdt@BINANCE:SPOT@spot', market_type: 'spot' }), 'Crypto:BTC/USDT@binance:spot')
   assert.equal(formatStrategyInstrument({ market_category: 'USStock', symbol: 'msft', market_type: 'spot' }), 'USStock:MSFT')
+  assert.equal(formatStrategyInstrument({ market_category: 'USStock', symbol: 'USStock:msft@nasdaq', market_type: 'spot' }), 'USStock:MSFT')
+  assert.equal(formatStrategyInstrument({ market_category: 'HKStock', symbol: 'HKStock:00700.HK@hkex' }), 'HKStock:00700.HK')
+  assert.equal(formatStrategyInstrument({ market_category: 'CNStock', symbol: '600519.SH' }), 'CNStock:600519.SH')
+  assert.equal(formatStrategyInstrument({ market_category: 'Forex', symbol: 'eur/usd@broker' }), 'Forex:EUR/USD')
+  assert.equal(formatStrategyInstrument({ market_category: 'Futures', symbol: 'es.cme@broker' }), 'Futures:ES.CME')
 })
 
 test('strategy builder updates the single-instrument source contract', () => {
@@ -90,6 +97,26 @@ test('strategy builder restores runtime controls from legacy source code', () =>
     market_type: 'swap',
     timeframe: '15m'
   })
+})
+
+test('strategy builder preserves venue-qualified crypto identities without duplicating the product suffix', () => {
+  const source = `def initialize(context):
+    g.symbol = 'Crypto:BTC/USDT@binance:spot'
+    context.set_universe([g.symbol])
+    context.subscribe(frequency='15m', fields=['close'])
+`
+  const config = extractStrategyRuntimeConfigFromCode(source)
+  assert.deepEqual(config, {
+    market_category: 'Crypto',
+    symbol: 'BTC/USDT',
+    market_type: 'spot',
+    timeframe: '15m',
+    exchange_id: 'binance'
+  })
+
+  const updated = applyStrategyRuntimeConfigToCode(source, config)
+  assert.match(updated, /Crypto:BTC\/USDT@binance:spot/)
+  assert.doesNotMatch(updated, /@binance:spot@spot/)
 })
 
 test('strategy builder reads generated robot equity defaults for deployment', () => {
