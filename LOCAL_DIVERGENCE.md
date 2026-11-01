@@ -68,6 +68,22 @@
 
 ---
 
+## 7. 后端不在仓库内，前端测试要自己找路（已确认，2026-11-01）
+
+- **文件**：`tests/unit/factorLibraryLocalization.test.mjs`
+- **本地行为**：先试 `../quantdinger_backend/backend_api_python/...`，再试 `../backend_api_python/...`；两者都不存在时该用例 `skip`（standalone worktree 就是这种情况）。
+- **上游行为**：写死 `../quantdinger_backend/backend_api_python/app/services/factors/registry.py`，读不到直接 ENOENT 让整个文件挂掉。
+- **为什么改**：本仓库把后端放在 `../backend_api_python`，上游叫 `../quantdinger_backend/backend_api_python`。不改则该用例在本仓库**永远**失败，与合并无关。
+- **合并时**：这条冲突会以「上游新增测试」的形式反复出现。合并后先跑 `node --test "tests/unit/*.test.mjs"`，若报 ENOENT 指向 `quantdinger_backend`，按上面候选列表补一条即可。
+
+## 8. 编码审计的自排除判断要跨平台（已确认，2026-11-01）
+
+- **文件**：`scripts/encoding-audit.mjs`
+- **本地行为**：用 `basename(filePath) === 'encoding-audit.mjs'` 判断"正在审计自己"，跳过 mojibake 检查。
+- **上游行为**：`displayPath === 'scripts\\encoding-audit.mjs'`，是 Windows 分隔符，在 macOS/Linux 上永不命中。
+- **为什么改**：脚本本身要列出 mojibake 模式表，一旦表里有 CJK 正则（上游 2026-10 加了），脚本就会把自己报成乱码，`npm run i18n:audit` 恒失败。
+- **合并时**：上游若再改这个自排除判断，保留 `basename` 版本即可；真正的判据是「审计脚本不得审计自己的模式表」。
+
 ## 已知但尚未归类的提交
 
 以下提交标题不含语义信息，需要下次同步时对照代码确认归属：
