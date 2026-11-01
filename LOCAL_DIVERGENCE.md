@@ -84,6 +84,17 @@
 - **为什么改**：脚本本身要列出 mojibake 模式表，一旦表里有 CJK 正则（上游 2026-10 加了），脚本就会把自己报成乱码，`npm run i18n:audit` 恒失败。
 - **合并时**：上游若再改这个自排除判断，保留 `basename` 版本即可；真正的判据是「审计脚本不得审计自己的模式表」。
 
+## 9. package.json 与 pnpm-lock.yaml 必须成对合并（已确认，2026-11-01）
+
+- **文件**：`package.json` + `pnpm-lock.yaml`
+- **本地行为**：`package.json` 保留本地 dev 依赖 `code-inspector-plugin`、`unplugin-vue-inspector`（`vite.config.js` 里 `import Inspector from 'unplugin-vue-inspector/vite'` 在用），lockfile 用 `pnpm install --lockfile-only` 按合并后的 `package.json` **重新生成**。
+- **上游行为**：上游没有这两个依赖，它的 lockfile 里也没有解析；整体取上游 lockfile 就会失配。
+- **为什么改**：`docker compose build frontend` 跑的是 `pnpm install --frozen-lockfile`，失配直接
+  `ERR_PNPM_OUTDATED_LOCKFILE`，整个前端镜像构建失败。2026-11-01 这次就是先合完、部署时才发现。
+- **合并时**：**不要**把 `pnpm-lock.yaml` 当作普通文件"取上游"。正确流程：解完 `package.json` 冲突后
+  在仓库根跑 `pnpm install --lockfile-only`（pnpm 版本按 `packageManager` 字段，当前 10.33.4），
+  然后确认 `dependencies`（运行时）的解析版本没被动 —— 只允许 peer 后缀归一，不允许版本升级。
+
 ## 已知但尚未归类的提交
 
 以下提交标题不含语义信息，需要下次同步时对照代码确认归属：
