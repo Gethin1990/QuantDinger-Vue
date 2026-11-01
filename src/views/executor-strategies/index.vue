@@ -436,7 +436,7 @@
               </div>
               <div class="field-block">
                 <label>{{ t('executorStrategies.dcaInterval') }}</label>
-                <a-select v-model="form.dca_interval_minutes">
+                <a-select v-model="form.dca_interval_minutes" @change="syncDcaTimeframe">
                   <a-select-option
                     v-for="option in dcaIntervalOptions"
                     :key="option.value"
@@ -1204,6 +1204,22 @@ export default {
       this.applyTypeDefaults()
       this.enforceDcaConstraints()
     },
+    /**
+     * DCA 的采样周期必须跟着买入间隔走。
+     *
+     * 历史上一律写死 1H：日频/周频定投也按小时取数，白白多拉 24 倍历史，
+     * 而港股/美股的分钟级历史源经常不可用，回测会直接 noMarketData
+     * （DCA-H-09988-D 就是这么挂的）。买入间隔 >= 1 天时用日线，其余保持 1H。
+     */
+    dcaTimeframeFor (intervalMinutes) {
+      const minutes = Number(intervalMinutes || 0)
+      return minutes >= 1440 ? '1d' : '1H'
+    },
+    syncDcaTimeframe (interval) {
+      if (!this.isDca) return
+      const minutes = interval != null ? interval : this.form.dca_interval_minutes
+      this.form.timeframe = this.dcaTimeframeFor(minutes)
+    },
     applyTypeDefaults () {
       const template = this.templateForType(this.form.executor_type)
       if (template && template.defaults) {
@@ -1214,7 +1230,9 @@ export default {
           strategy_name: this.form.strategy_name,
           symbol: this.form.symbol,
           timeframe: this.form.executor_type === 'dca'
-            ? (template.defaults.timeframe || '1H')
+            ? this.dcaTimeframeFor(
+              this.form.dca_interval_minutes || (template.defaults && template.defaults.dca_interval_minutes)
+            )
             : (this.form.timeframe || '1m')
         }
       }
@@ -1230,7 +1248,7 @@ export default {
       if (!this.isDca) return
       this.form.side = 'long'
       this.form.market_type = 'spot'
-      this.form.timeframe = '1H'
+      this.form.timeframe = this.dcaTimeframeFor(this.form.dca_interval_minutes)
     },
     handleMarketTypeChange () {
       if (this.form.market_type === 'spot') {
@@ -1270,7 +1288,8 @@ export default {
       if (this.isDca) {
         templateConfig.side = 'long'
         templateConfig.market_type = 'spot'
-        templateConfig.timeframe = '1H'
+        // 提交前再按买入间隔算一次，避免用户改完间隔后 timeframe 停在旧值
+        templateConfig.timeframe = this.dcaTimeframeFor(this.form.dca_interval_minutes)
       }
       delete templateConfig.initial_capital
       delete templateConfig.leverage

@@ -140,6 +140,12 @@ export function applyStrategyRuntimeConfigToCode (code, config = {}) {
     next = next.replace(/(^\s*g\.trade_direction\s*=\s*)["'][^"']+["']/m, `$1${JSON.stringify(tradeDirection)}`)
     next = next.replace(/(^\s*#\s*trade_direction\s*:\s*)[^\s#]+/im, `$1${tradeDirection}`)
   }
+  // Leverage is only legal on crypto perpetual swaps.  Every other target must
+  // drop the declaration, otherwise the saved source is self-contradictory and
+  // the backend rejects it with `strategyV2.leverageCryptoSwapOnly`.
+  if (!instrumentIsLeverageEligible(instrument)) {
+    next = stripStrategyLeverageDeclaration(next)
+  }
   return next
 }
 
@@ -172,6 +178,28 @@ export function extractStrategyRuntimeConfigFromCode (code) {
 
 export function strategyCodeUsesExplicitExchange (code) {
   return /\b(?:exchange_id|exchangeId|exchange)\b\s*=|\bset_exchange\s*\(/i.test(String(code || ''))
+}
+
+/**
+ * Remove `context.allow_leverage(...)` declarations from a strategy source.
+ *
+ * A source that declares leverage is only valid when every instrument is a
+ * crypto perpetual swap; the backend rejects anything else with
+ * `strategyV2.leverageCryptoSwapOnly`.  Swapping the runtime instrument to an
+ * equity/spot symbol while leaving the declaration behind produces exactly
+ * that contradiction, so the declaration must be stripped on the way out.
+ */
+export function stripStrategyLeverageDeclaration (code) {
+  return String(code || '')
+    .split('\n')
+    .filter(line => !/^\s*(?:context\.)?allow_leverage\s*\(/i.test(line))
+    .join('\n')
+}
+
+function instrumentIsLeverageEligible (instrument) {
+  const match = String(instrument || '').trim().match(/^([^:@]+):(.+)$/)
+  if (!match) return false
+  return match[1].trim().toLowerCase() === 'crypto' && /@swap$/i.test(match[2].trim())
 }
 
 const SOURCE_OWNED_EXECUTION_KEYS = [
