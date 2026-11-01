@@ -320,6 +320,133 @@ const messages = {
   }
 }
 
+const membershipPageMessages = {
+  'en-US': ['Choose your membership', 'Compare the cost and included credits before checkout.', 'Best value', 'Flexible access with no long commitment', 'US$ {price} per 30 days', 'Save {percent}% vs monthly', 'One payment for lifetime VIP access', 'Included', 'Choose lifetime', 'Choose annual', 'Choose monthly'],
+  'zh-CN': ['选择会员套餐', '先比较价格和赠送积分，再决定适合你的方案。', '性价比推荐', '低门槛体验，按需开通', '折合每 30 天 US$ {price}', '比月付节省 {percent}%', '一次购买，长期享有 VIP 权益', '套餐包含', '选择永久会员', '选择年费会员', '选择月费会员'],
+  'zh-TW': ['選擇會員方案', '先比較價格與贈送積分，再決定適合你的方案。', '性價比推薦', '低門檻體驗，按需開通', '平均每 30 天 US$ {price}', '比月付節省 {percent}%', '一次購買，長期享有 VIP 權益', '方案包含', '選擇永久會員', '選擇年費會員', '選擇月費會員'],
+  'ja-JP': ['メンバーシップを選択', '購入前に料金と付与クレジットを比較できます。', 'おすすめ', '長期契約なしで柔軟に利用', '30日あたり US$ {price}', '月払いより {percent}% お得', '一度の支払いで生涯 VIP アクセス', '含まれる内容', '永久会員を選択', '年額プランを選択', '月額プランを選択'],
+  'ko-KR': ['멤버십 선택', '결제 전에 가격과 제공 크레딧을 비교하세요.', '추천 요금제', '장기 약정 없이 유연하게 이용', '30일당 US$ {price}', '월간 결제 대비 {percent}% 절약', '한 번 결제로 평생 VIP 이용', '포함 사항', '평생 멤버십 선택', '연간 멤버십 선택', '월간 멤버십 선택'],
+  'de-DE': ['Mitgliedschaft wählen', 'Vergleichen Sie Preis und enthaltene Punkte vor dem Kauf.', 'Bestes Preis-Leistungs-Verhältnis', 'Flexibler Zugang ohne lange Bindung', 'US$ {price} pro 30 Tage', '{percent}% günstiger als monatlich', 'Einmal zahlen und VIP dauerhaft nutzen', 'Enthalten', 'Lebenslang wählen', 'Jahrestarif wählen', 'Monatstarif wählen'],
+  'fr-FR': ['Choisir votre adhésion', 'Comparez le prix et les crédits inclus avant le paiement.', 'Meilleur rapport qualité-prix', 'Accès flexible sans engagement long', 'US$ {price} par 30 jours', 'Économisez {percent}% par rapport au mensuel', 'Un paiement pour un accès VIP à vie', 'Inclus', 'Choisir à vie', 'Choisir l’offre annuelle', 'Choisir l’offre mensuelle'],
+  'ru-RU': ['Выберите подписку', 'Сравните цену и включённые баллы перед оплатой.', 'Выгодный выбор', 'Гибкий доступ без длительных обязательств', 'US$ {price} за 30 дней', 'Экономия {percent}% по сравнению с месяцем', 'Один платёж за пожизненный VIP-доступ', 'Включено', 'Выбрать навсегда', 'Выбрать годовой тариф', 'Выбрать месячный тариф'],
+  'th-TH': ['เลือกแพ็กเกจสมาชิก', 'เปรียบเทียบราคาและเครดิตที่ได้รับก่อนชำระเงิน', 'คุ้มค่าที่สุด', 'ใช้งานยืดหยุ่นโดยไม่ผูกมัดระยะยาว', 'US$ {price} ต่อ 30 วัน', 'ประหยัด {percent}% เทียบกับรายเดือน', 'ชำระครั้งเดียวเพื่อใช้ VIP ตลอดชีพ', 'สิ่งที่รวมอยู่', 'เลือกตลอดชีพ', 'เลือกรายปี', 'เลือกรายเดือน'],
+  'vi-VN': ['Chọn gói thành viên', 'So sánh giá và điểm tặng trước khi thanh toán.', 'Giá trị tốt nhất', 'Linh hoạt sử dụng, không cam kết dài hạn', 'US$ {price} mỗi 30 ngày', 'Tiết kiệm {percent}% so với gói tháng', 'Thanh toán một lần để dùng VIP trọn đời', 'Bao gồm', 'Chọn trọn đời', 'Chọn gói năm', 'Chọn gói tháng'],
+  'ar-SA': ['اختر العضوية', 'قارن السعر والرصيد المضمّن قبل الدفع.', 'أفضل قيمة', 'وصول مرن بلا التزام طويل', 'US$ {price} لكل 30 يومًا', 'وفّر {percent}% مقارنة بالدفع الشهري', 'دفعة واحدة لوصول VIP مدى الحياة', 'يتضمن', 'اختر مدى الحياة', 'اختر الخطة السنوية', 'اختر الخطة الشهرية']
+}
+
+const membershipPageKeys = [
+  'billing.choosePlan',
+  'billing.choosePlanHint',
+  'billing.recommended',
+  'billing.flexiblePlan',
+  'billing.monthlyEquivalent',
+  'billing.saveComparedMonthly',
+  'billing.lifetimeValue',
+  'billing.included',
+  'billing.chooseLifetime',
+  'billing.chooseRecommended',
+  'billing.choosePlanAction'
+]
+
+for (const [locale, values] of Object.entries(membershipPageMessages)) {
+  membershipPageKeys.forEach((key, index) => {
+    messages[locale][key] = values[index]
+  })
+}
+
+const membershipValueMessages = {
+  'en-US': ['VIP TOOLKIT', 'Turn one-off unlocks into membership access', 'Use selected strategies and indicators from the VIP Free collection and receive bonus credits.', 'Curated strategies and indicators', 'Ongoing tool updates', 'Bonus credits included', 'VIP access', 'VIP Free strategies and indicators use no credits; AI analysis, backtests, and other paid tools continue to use credits.', 'VIP Free strategy and indicator access', 'Ongoing releases and updates', 'Every plan includes the VIP Free collection and bonus credits. Choose the access period that fits you.', 'Most popular', 'Unlock lifetime access', 'Unlock annual access', 'Try 30 days'],
+  'zh-CN': ['VIP 工具库', '把每次单独解锁，变成会员期内自由使用', '免费使用 VIP 免费专区的精选策略与指标，开通即赠积分。', '精选策略与指标', '工具持续更新', '开通即赠积分', 'VIP 权益', '「VIP 免费」策略与指标不扣积分；AI 分析、回测等其他付费能力正常使用积分。', '免费使用 VIP 策略与指标', '持续获得新工具与版本更新', '每档套餐均包含 VIP 免费工具库和赠送积分，按使用周期选择即可。', '多数活跃用户的选择', '一次开通，长期使用', '开通年度会员', '先体验 30 天'],
+  'zh-TW': ['VIP 工具庫', '把每次單獨解鎖，變成會員期間自由使用', '免費使用 VIP 免費專區的精選策略與指標，開通即贈點數。', '精選策略與指標', '工具持續更新', '開通即贈點數', 'VIP 權益', '「VIP 免費」策略與指標不扣點數；AI 分析、回測等其他付費能力正常使用點數。', '免費使用 VIP 策略與指標', '持續取得新工具與版本更新', '每個方案均包含 VIP 免費工具庫及贈送點數，依使用期間選擇即可。', '多數活躍用戶的選擇', '一次開通，長期使用', '開通年度會員', '先體驗 30 天'],
+  'ja-JP': ['VIP ツールキット', '個別購入から、会員期間中の自由な利用へ', 'VIP 無料コレクションの厳選ストラテジーと指標を利用でき、ボーナスクレジットも受け取れます。', '厳選ストラテジーと指標', '継続的なツール更新', 'ボーナスクレジット付き', 'VIP 特典', 'VIP 無料のストラテジーと指標はクレジット不要です。AI 分析、バックテスト、その他の有料機能はクレジットを使用します。', 'VIP 無料ストラテジー・指標へのアクセス', '新しいツールと更新を継続提供', 'すべてのプランに VIP 無料コレクションとボーナスクレジットが含まれます。利用期間でお選びください。', '多くの利用者が選択', '生涯アクセスを有効化', '年間アクセスを有効化', '30 日間試す'],
+  'ko-KR': ['VIP 도구 모음', '개별 잠금 해제 대신 멤버십 기간 동안 자유롭게 이용하세요', 'VIP 무료 컬렉션의 엄선된 전략과 지표를 이용하고 보너스 크레딧을 받으세요.', '엄선된 전략과 지표', '지속적인 도구 업데이트', '보너스 크레딧 포함', 'VIP 혜택', 'VIP 무료 전략과 지표는 크레딧을 차감하지 않습니다. AI 분석, 백테스트 및 기타 유료 기능은 크레딧을 사용합니다.', 'VIP 무료 전략 및 지표 이용', '새 도구와 버전 업데이트 지속 제공', '모든 요금제에 VIP 무료 컬렉션과 보너스 크레딧이 포함됩니다. 필요한 이용 기간을 선택하세요.', '활성 사용자가 가장 많이 선택', '평생 이용 시작', '연간 이용 시작', '30일 체험'],
+  'de-DE': ['VIP-TOOLKIT', 'Mitgliedszugriff statt einzelner Freischaltungen', 'Nutzen Sie ausgewählte Strategien und Indikatoren aus der VIP-Free-Sammlung und erhalten Sie Bonuspunkte.', 'Ausgewählte Strategien und Indikatoren', 'Laufende Werkzeug-Updates', 'Bonuspunkte inklusive', 'VIP-Vorteile', 'VIP-Free-Strategien und -Indikatoren benötigen keine Punkte. KI-Analysen, Backtests und andere kostenpflichtige Funktionen verwenden weiterhin Punkte.', 'Zugriff auf VIP-Free-Strategien und -Indikatoren', 'Laufende Veröffentlichungen und Updates', 'Jeder Tarif enthält die VIP-Free-Sammlung und Bonuspunkte. Wählen Sie die passende Laufzeit.', 'Von aktiven Nutzern bevorzugt', 'Dauerhaften Zugriff freischalten', 'Jahreszugriff freischalten', '30 Tage testen'],
+  'fr-FR': ['OUTILS VIP', 'Remplacez les déblocages à l’unité par un accès membre', 'Utilisez les stratégies et indicateurs sélectionnés de la collection VIP gratuite et recevez des crédits bonus.', 'Stratégies et indicateurs sélectionnés', 'Mises à jour continues', 'Crédits bonus inclus', 'Avantages VIP', 'Les stratégies et indicateurs VIP gratuits ne consomment pas de crédits. L’analyse IA, les backtests et les autres fonctions payantes utilisent toujours des crédits.', 'Accès aux stratégies et indicateurs VIP gratuits', 'Nouveaux outils et mises à jour continues', 'Chaque offre inclut la collection VIP gratuite et des crédits bonus. Choisissez la durée qui vous convient.', 'Choix des utilisateurs actifs', 'Débloquer l’accès à vie', 'Débloquer l’accès annuel', 'Essayer pendant 30 jours'],
+  'ru-RU': ['VIP-ИНСТРУМЕНТЫ', 'Доступ по подписке вместо отдельных разблокировок', 'Используйте отобранные стратегии и индикаторы из коллекции VIP Free и получайте бонусные баллы.', 'Отобранные стратегии и индикаторы', 'Постоянные обновления', 'Бонусные баллы включены', 'Преимущества VIP', 'Стратегии и индикаторы VIP Free не расходуют баллы. ИИ-анализ, бэктесты и другие платные функции продолжают использовать баллы.', 'Доступ к стратегиям и индикаторам VIP Free', 'Новые инструменты и обновления', 'Каждый тариф включает коллекцию VIP Free и бонусные баллы. Выберите подходящий срок доступа.', 'Выбор активных пользователей', 'Открыть пожизненный доступ', 'Открыть годовой доступ', 'Попробовать 30 дней'],
+  'th-TH': ['ชุดเครื่องมือ VIP', 'เปลี่ยนการปลดล็อกทีละรายการเป็นการใช้งานตลอดช่วงสมาชิก', 'ใช้กลยุทธ์และอินดิเคเตอร์ที่คัดสรรจากคอลเลกชัน VIP ฟรี พร้อมรับเครดิตโบนัส', 'กลยุทธ์และอินดิเคเตอร์ที่คัดสรร', 'อัปเดตเครื่องมืออย่างต่อเนื่อง', 'รวมเครดิตโบนัส', 'สิทธิ์ VIP', 'กลยุทธ์และอินดิเคเตอร์ VIP ฟรีไม่หักเครดิต ส่วนการวิเคราะห์ AI การทดสอบย้อนหลัง และฟีเจอร์แบบชำระเงินอื่นยังคงใช้เครดิต', 'ใช้กลยุทธ์และอินดิเคเตอร์ VIP ฟรี', 'รับเครื่องมือใหม่และการอัปเดตต่อเนื่อง', 'ทุกแพ็กเกจรวมคอลเลกชัน VIP ฟรีและเครดิตโบนัส เลือกระยะเวลาที่เหมาะกับคุณ', 'ตัวเลือกยอดนิยมของผู้ใช้ประจำ', 'ปลดล็อกใช้งานตลอดชีพ', 'ปลดล็อกใช้งานรายปี', 'ทดลอง 30 วัน'],
+  'vi-VN': ['BỘ CÔNG CỤ VIP', 'Thay việc mở khóa từng mục bằng quyền truy cập thành viên', 'Sử dụng chiến lược và chỉ báo tuyển chọn trong bộ sưu tập VIP miễn phí và nhận điểm thưởng.', 'Chiến lược và chỉ báo tuyển chọn', 'Cập nhật công cụ liên tục', 'Kèm điểm thưởng', 'Quyền lợi VIP', 'Chiến lược và chỉ báo VIP miễn phí không trừ điểm. Phân tích AI, backtest và các tính năng trả phí khác vẫn sử dụng điểm.', 'Truy cập chiến lược và chỉ báo VIP miễn phí', 'Liên tục có công cụ mới và bản cập nhật', 'Mọi gói đều gồm bộ sưu tập VIP miễn phí và điểm thưởng. Hãy chọn thời hạn phù hợp.', 'Lựa chọn của người dùng tích cực', 'Mở khóa quyền truy cập trọn đời', 'Mở khóa quyền truy cập năm', 'Dùng thử 30 ngày'],
+  'ar-SA': ['مجموعة أدوات VIP', 'حوّل عمليات الفتح المنفردة إلى وصول طوال مدة العضوية', 'استخدم استراتيجيات ومؤشرات مختارة من مجموعة VIP المجانية واحصل على رصيد إضافي.', 'استراتيجيات ومؤشرات مختارة', 'تحديثات مستمرة للأدوات', 'رصيد إضافي مشمول', 'مزايا VIP', 'لا تستهلك استراتيجيات ومؤشرات VIP المجانية الرصيد. ويستمر تحليل الذكاء الاصطناعي والاختبارات التاريخية والميزات المدفوعة الأخرى في استهلاك الرصيد.', 'الوصول إلى استراتيجيات ومؤشرات VIP المجانية', 'إصدارات وتحديثات مستمرة', 'تتضمن كل باقة مجموعة VIP المجانية ورصيدًا إضافيًا. اختر مدة الوصول المناسبة لك.', 'اختيار المستخدمين النشطين', 'فتح الوصول مدى الحياة', 'فتح الوصول السنوي', 'تجربة لمدة 30 يومًا']
+}
+
+const membershipValueKeys = [
+  'billing.valueEyebrow',
+  'billing.valueTitle',
+  'billing.valueDesc',
+  'billing.valueVipAccess',
+  'billing.valueUpdates',
+  'billing.valueCredits',
+  'billing.vipRule.title',
+  'billing.vipRule.desc',
+  'billing.benefitVipLibrary',
+  'billing.benefitUpdates',
+  'billing.choosePlanHint',
+  'billing.recommended',
+  'billing.chooseLifetime',
+  'billing.chooseRecommended',
+  'billing.choosePlanAction'
+]
+
+for (const [locale, values] of Object.entries(membershipValueMessages)) {
+  membershipValueKeys.forEach((key, index) => {
+    messages[locale][key] = values[index]
+  })
+}
+
+const premiumMembershipCopyMessages = {
+  'en-US': ['Unlock a curated strategy and indicator library and receive bonus credits.', 'During membership, strategies and indicators in the member library use no credits. AI analysis, backtests, and other paid tools continue to use credits.', 'Every plan includes member library access and bonus credits. Choose the access period that fits you.'],
+  'zh-CN': ['解锁精选策略与指标工具库，开通即赠积分。', '会员期内，权益工具库中的策略与指标不扣积分；AI 分析、回测等其他付费能力正常使用积分。', '每档套餐均包含会员策略工具库和赠送积分，按使用周期选择即可。'],
+  'zh-TW': ['解鎖精選策略與指標工具庫，開通即贈點數。', '會員期間，權益工具庫中的策略與指標不扣點數；AI 分析、回測等其他付費功能正常使用點數。', '每個方案均包含會員策略工具庫及贈送點數，依使用期間選擇即可。'],
+  'ja-JP': ['厳選されたストラテジー・指標ライブラリを利用でき、ボーナスクレジットも受け取れます。', '会員期間中、メンバーライブラリのストラテジーと指標はクレジット不要です。AI 分析、バックテスト、その他の有料機能はクレジットを使用します。', 'すべてのプランにメンバーライブラリとボーナスクレジットが含まれます。利用期間でお選びください。'],
+  'ko-KR': ['엄선된 전략 및 지표 도구 모음을 이용하고 보너스 크레딧을 받으세요.', '멤버십 기간에는 회원 도구 모음의 전략과 지표에 크레딧이 차감되지 않습니다. AI 분석, 백테스트 및 기타 유료 기능은 크레딧을 사용합니다.', '모든 요금제에 회원 도구 모음과 보너스 크레딧이 포함됩니다. 필요한 이용 기간을 선택하세요.'],
+  'de-DE': ['Nutzen Sie eine kuratierte Strategie- und Indikatorenbibliothek und erhalten Sie Bonuspunkte.', 'Während der Mitgliedschaft benötigen Strategien und Indikatoren der Mitgliederbibliothek keine Punkte. KI-Analysen, Backtests und andere kostenpflichtige Funktionen verwenden weiterhin Punkte.', 'Jeder Tarif enthält den Zugang zur Mitgliederbibliothek und Bonuspunkte. Wählen Sie die passende Laufzeit.'],
+  'fr-FR': ['Accédez à une bibliothèque sélectionnée de stratégies et d’indicateurs et recevez des crédits bonus.', 'Pendant l’adhésion, les stratégies et indicateurs de la bibliothèque membre ne consomment pas de crédits. L’analyse IA, les backtests et les autres fonctions payantes utilisent toujours des crédits.', 'Chaque offre inclut l’accès à la bibliothèque membre et des crédits bonus. Choisissez la durée qui vous convient.'],
+  'ru-RU': ['Получите доступ к отобранной библиотеке стратегий и индикаторов и бонусные баллы.', 'Во время действия подписки стратегии и индикаторы из библиотеки участника не расходуют баллы. ИИ-анализ, бэктесты и другие платные функции продолжают использовать баллы.', 'Каждый тариф включает доступ к библиотеке участника и бонусные баллы. Выберите подходящий срок доступа.'],
+  'th-TH': ['เข้าถึงคลังกลยุทธ์และอินดิเคเตอร์ที่คัดสรร พร้อมรับเครดิตโบนัส', 'ระหว่างเป็นสมาชิก กลยุทธ์และอินดิเคเตอร์ในคลังสมาชิกจะไม่หักเครดิต ส่วนการวิเคราะห์ AI การทดสอบย้อนหลัง และฟีเจอร์แบบชำระเงินอื่นยังคงใช้เครดิต', 'ทุกแพ็กเกจรวมสิทธิ์เข้าถึงคลังสมาชิกและเครดิตโบนัส เลือกระยะเวลาที่เหมาะกับคุณ'],
+  'vi-VN': ['Mở khóa thư viện chiến lược và chỉ báo tuyển chọn, đồng thời nhận điểm thưởng.', 'Trong thời hạn thành viên, chiến lược và chỉ báo trong thư viện thành viên không trừ điểm. Phân tích AI, backtest và các tính năng trả phí khác vẫn sử dụng điểm.', 'Mọi gói đều gồm quyền truy cập thư viện thành viên và điểm thưởng. Hãy chọn thời hạn phù hợp.'],
+  'ar-SA': ['افتح مكتبة مختارة من الاستراتيجيات والمؤشرات واحصل على رصيد إضافي.', 'خلال مدة العضوية، لا تستهلك الاستراتيجيات والمؤشرات في مكتبة الأعضاء الرصيد. ويستمر تحليل الذكاء الاصطناعي والاختبارات التاريخية والميزات المدفوعة الأخرى في استهلاك الرصيد.', 'تتضمن كل باقة الوصول إلى مكتبة الأعضاء ورصيدًا إضافيًا. اختر مدة الوصول المناسبة لك.']
+}
+
+const premiumMembershipCopyKeys = [
+  'billing.valueDesc',
+  'billing.vipRule.desc',
+  'billing.choosePlanHint'
+]
+
+for (const [locale, values] of Object.entries(premiumMembershipCopyMessages)) {
+  premiumMembershipCopyKeys.forEach((key, index) => {
+    messages[locale][key] = values[index]
+  })
+}
+
+const libraryEntitlementMessages = {
+  'en-US': ['VIP benefits', 'Join any plan and use the library free throughout your membership', 'Strategies', 'Indicators', 'The library grows as new assets arrive', 'Member strategy library access'],
+  'zh-CN': ['VIP 权益', '开通任一会员，会员期内免费使用', '策略', '指标', '内容随市场上新持续增加', '会员策略工具库权益'],
+  'zh-TW': ['VIP 權益', '開通任一會員，會員期間免費使用', '策略', '指標', '內容隨市場上新持續增加', '會員策略工具庫權益'],
+  'ja-JP': ['VIP 特典', 'いずれかのプランに加入すると、会員期間中は無料で利用できます', 'ストラテジー', '指標', '新しいコンテンツの公開に合わせて拡充', '会員向けストラテジーライブラリ'],
+  'ko-KR': ['VIP 혜택', '모든 멤버십에서 이용 기간 동안 무료로 사용할 수 있습니다', '전략', '지표', '새 콘텐츠 출시에 따라 계속 확장됩니다', '회원 전략 도구 모음 혜택'],
+  'de-DE': ['VIP-Vorteile', 'Mit jedem Tarif während der gesamten Mitgliedschaft kostenlos nutzen', 'Strategien', 'Indikatoren', 'Die Bibliothek wächst mit neuen Veröffentlichungen', 'Zugang zur Strategie-Bibliothek für Mitglieder'],
+  'fr-FR': ['Avantages VIP', 'Avec chaque offre, utilisez la bibliothèque gratuitement pendant votre adhésion', 'Stratégies', 'Indicateurs', 'La bibliothèque s’enrichit à chaque nouvelle publication', 'Accès membre à la bibliothèque de stratégies'],
+  'ru-RU': ['Преимущества VIP', 'Подключите любой тариф и пользуйтесь библиотекой бесплатно весь срок подписки', 'Стратегии', 'Индикаторы', 'Библиотека пополняется с выходом новых материалов', 'Доступ к библиотеке стратегий для участников'],
+  'th-TH': ['สิทธิ์ VIP', 'สมัครแพ็กเกจใดก็ได้และใช้งานฟรีตลอดอายุสมาชิก', 'กลยุทธ์', 'อินดิเคเตอร์', 'คลังจะเพิ่มขึ้นเมื่อมีรายการใหม่ในตลาด', 'สิทธิ์ใช้งานคลังกลยุทธ์สำหรับสมาชิก'],
+  'vi-VN': ['Quyền lợi VIP', 'Đăng ký bất kỳ gói nào để sử dụng miễn phí trong suốt thời hạn thành viên', 'Chiến lược', 'Chỉ báo', 'Thư viện tiếp tục mở rộng khi có nội dung mới', 'Quyền truy cập thư viện chiến lược thành viên'],
+  'ar-SA': ['مزايا VIP', 'اشترك في أي باقة واستخدم المكتبة مجانًا طوال مدة العضوية', 'استراتيجيات', 'مؤشرات', 'تتوسع المكتبة مع إضافة محتوى جديد', 'الوصول إلى مكتبة استراتيجيات الأعضاء']
+}
+
+const libraryEntitlementKeys = [
+  'billing.libraryEntitlement.label',
+  'billing.libraryEntitlement.title',
+  'billing.libraryEntitlement.strategies',
+  'billing.libraryEntitlement.indicators',
+  'billing.libraryEntitlement.note',
+  'billing.benefitVipLibrary'
+]
+
+for (const [locale, values] of Object.entries(libraryEntitlementMessages)) {
+  libraryEntitlementKeys.forEach((key, index) => {
+    messages[locale][key] = values[index]
+  })
+}
+
 const paymentMethodMessages = {
   'en-US': ['Choose a secure payment method for this order', 'USDT stablecoin', 'Transfer from a crypto wallet on supported networks', 'USDC stablecoin', 'Circle stablecoin on Ethereum or Solana', 'Card payment', 'Visa, Mastercard and other cards, securely processed by Stripe'],
   'zh-CN': ['选择适合本次订单的安全支付方式', 'USDT 稳定币', '通过链上钱包转账，支持多条网络', 'USDC 稳定币', 'Circle 官方稳定币，支持 Ethereum 与 Solana', '银行卡支付', '支持 Visa、Mastercard 等银行卡，由 Stripe 安全处理'],

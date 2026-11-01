@@ -1,6 +1,6 @@
 <template>
   <div class="broker-panel" :class="{ 'theme-dark': isDarkTheme }">
-    <div v-if="broker.id === 'alpaca'" class="bp-account-selector">
+    <div v-if="supportsSavedAccounts" class="bp-account-selector">
       <label>{{ $t('brokerAccounts.selectAccount') }}</label>
       <a-select :value="credentialId" :disabled="loading" :placeholder="$t('brokerAccounts.selectAccount')" @change="value => $emit('select-account', value)">
         <a-select-option v-for="account in accounts" :key="account.id" :value="Number(account.id)">
@@ -31,7 +31,7 @@
             </span>
           </div>
           <div class="bp-badge-row">
-            <a-tag v-if="broker.id === 'alpaca' && isConnected" :color="status.paper ? 'blue' : 'orange'">{{ $t(status.paper ? 'brokerAccounts.paperAccount' : 'brokerAccounts.liveAccount') }}</a-tag>
+            <a-tag v-if="supportsAccountEnvironment && isConnected" :color="status.paper ? 'blue' : 'orange'">{{ $t(status.paper ? 'brokerAccounts.paperAccount' : 'brokerAccounts.liveAccount') }}</a-tag>
             <a-tag v-for="badge in broker.badges" :key="badge" :color="badgeColor(badge)" class="bp-badge">
               {{ $t('brokerAccounts.badges.' + badge) }}
             </a-tag>
@@ -104,6 +104,8 @@
 <script>
 import AlpacaConnectForm from './forms/AlpacaConnectForm.vue'
 import IbkrConnectForm from './forms/IbkrConnectForm.vue'
+import TigerConnectForm from './forms/TigerConnectForm.vue'
+import WebullConnectForm from './forms/WebullConnectForm.vue'
 import BrokerAccountCard from './BrokerAccountCard.vue'
 import BrokerPositionsTable from './BrokerPositionsTable.vue'
 import BrokerOrdersTable from './BrokerOrdersTable.vue'
@@ -111,17 +113,21 @@ import ProviderLogo from '@/components/ProviderLogo/ProviderLogo.vue'
 
 const FORM_BY_BROKER = {
   alpaca: 'AlpacaConnectForm',
-  ibkr: 'IbkrConnectForm'
+  ibkr: 'IbkrConnectForm',
+  tiger: 'TigerConnectForm',
+  webull: 'WebullConnectForm'
 }
 
 const DOCS = {
   alpaca: 'https://app.alpaca.markets/paper/dashboard/overview',
-  ibkr: 'https://www.interactivebrokers.com/en/trading/tws.php'
+  ibkr: 'https://www.interactivebrokers.com/en/trading/tws.php',
+  tiger: 'https://docs-en.itigerup.com/docs/',
+  webull: 'https://developer.webull.com/apis/docs/'
 }
 
 export default {
   name: 'BrokerPanel',
-  components: { AlpacaConnectForm, IbkrConnectForm, BrokerAccountCard, BrokerPositionsTable, BrokerOrdersTable, ProviderLogo },
+  components: { AlpacaConnectForm, IbkrConnectForm, TigerConnectForm, WebullConnectForm, BrokerAccountCard, BrokerPositionsTable, BrokerOrdersTable, ProviderLogo },
   props: {
     broker: { type: Object, required: true },
     accounts: { type: Array, default: () => [] },
@@ -144,6 +150,12 @@ export default {
     },
     isConnected () {
       return !!(this.status && this.status.connected)
+    },
+    supportsSavedAccounts () {
+      return this.broker.id !== 'ibkr'
+    },
+    supportsAccountEnvironment () {
+      return this.broker.id === 'alpaca' || this.broker.id === 'tiger' || this.broker.id === 'webull'
     },
     connectionStateClass () {
       return this.isConnected ? 'is-connected' : 'is-disconnected'
@@ -179,6 +191,10 @@ export default {
         rest_api: 'purple',
         tws_required: 'orange',
         pro_features: 'magenta',
+        direct_openapi: 'purple',
+        opend_required: 'gold',
+        cloud_ready: 'green',
+        sandbox_available: 'blue',
         terminal_required: 'gold',
         windows_only: 'red'
       }
@@ -364,7 +380,9 @@ export default {
   }
 
   ::v-deep .broker-form .ant-input,
-  ::v-deep .broker-form .ant-input-password {
+  ::v-deep .broker-form .ant-input-password,
+  ::v-deep .broker-form textarea.ant-input,
+  ::v-deep .broker-form .ant-select-selection {
     background: #141414 !important;
     border-color: #303030 !important;
     color: rgba(255, 255, 255, 0.86) !important;
@@ -377,6 +395,17 @@ export default {
 
   ::v-deep .broker-form .ant-input::placeholder {
     color: rgba(255, 255, 255, 0.28);
+  }
+
+  ::v-deep .broker-form .ant-select-arrow,
+  ::v-deep .broker-form .ant-select-selection-selected-value,
+  ::v-deep .broker-form .ant-radio-button-wrapper {
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  ::v-deep .broker-form .ant-radio-button-wrapper {
+    background: #141414;
+    border-color: #303030;
   }
 
   ::v-deep .broker-form .ant-input-password-icon {

@@ -26,16 +26,6 @@
               {{ ex.name }}
             </a-select-option>
           </a-select-opt-group>
-          <a-select-opt-group :label="$t('profile.exchange.typeAlpaca')">
-            <a-select-option value="alpaca">
-              Alpaca (US Stock + Crypto)
-            </a-select-option>
-          </a-select-opt-group>
-          <a-select-opt-group :label="$t('profile.exchange.typeIBKR')">
-            <a-select-option value="ibkr">
-              Interactive Brokers (IBKR)
-            </a-select-option>
-          </a-select-opt-group>
         </a-select>
       </a-form-item>
 
@@ -51,20 +41,26 @@
           <a-select
             :key="`environment-${selectedExchangeId}`"
             v-decorator="['environment', { initialValue: 'live' }]"
+            :dropdown-class-name="exchangeSelectDropdownClass"
+            :get-popup-container="getExchangeSelectPopupContainer"
             @change="handleEnvironmentChange"
           >
             <a-select-option v-for="option in cryptoEnvironmentOptions" :key="option.value" :value="option.value">
               {{ $t(option.labelKey) }}
             </a-select-option>
           </a-select>
-          <div class="field-hint">
+          <div v-if="showEnvironmentHint" class="field-hint">
             <a-icon type="info-circle" />
             <span>{{ $t(selectedEnvironmentHintKey) }}</span>
           </div>
         </a-form-item>
 
         <a-form-item :label="$t('profile.exchange.marketScope')">
-          <a-select v-decorator="['market_scope', { initialValue: 'both' }]">
+          <a-select
+            v-decorator="['market_scope', { initialValue: 'both' }]"
+            :dropdown-class-name="exchangeSelectDropdownClass"
+            :get-popup-container="getExchangeSelectPopupContainer"
+          >
             <a-select-option v-for="option in marketScopeOptions" :key="option.value" :value="option.value">
               {{ $t(option.labelKey) }}
             </a-select-option>
@@ -143,69 +139,10 @@
         </a-form-item>
       </template>
 
-      <template v-if="addExchangeType === 'alpaca'">
-        <a-form-item :label="$t('profile.exchange.apiKey')">
-          <a-input-password
-            v-decorator="['api_key', { rules: [{ required: true, message: $t('trading-assistant.validation.apiKeyRequired') }] }]"
-            :placeholder="$t('profile.exchange.alpacaApiKeyPh')"
-            autocomplete="new-password"
-          />
-        </a-form-item>
-        <a-form-item :label="$t('profile.exchange.secretKey')">
-          <a-input-password
-            v-decorator="['secret_key', { rules: [{ required: true, message: $t('trading-assistant.validation.secretKeyRequired') }] }]"
-            :placeholder="$t('profile.exchange.alpacaSecretKeyPh')"
-            autocomplete="new-password"
-          />
-        </a-form-item>
-        <a-form-item :label="$t('profile.exchange.alpacaBaseUrlOptional')">
-          <a-input
-            v-decorator="['base_url']"
-            placeholder="https://api.alpaca.markets"
-          />
-          <div class="field-hint">
-            <a-icon type="info-circle" />
-            <span>{{ $t('profile.exchange.alpacaBaseUrlHint') }}</span>
-          </div>
-        </a-form-item>
-      </template>
-
-      <template v-if="addExchangeType === 'ibkr'">
-        <a-alert
-          type="warning"
-          showIcon
-          style="margin-bottom: 16px"
-          :message="$t('profile.exchange.localDeploymentRequired')"
-          :description="$t('profile.exchange.localDeploymentHint')"
-        />
-        <a-form-item :label="$t('profile.exchange.ibkrHost')">
-          <a-input v-decorator="['ibkr_host', { initialValue: '127.0.0.1' }]" placeholder="127.0.0.1" />
-        </a-form-item>
-        <a-form-item :label="$t('profile.exchange.ibkrPort')">
-          <a-input-number
-            v-decorator="['ibkr_port', { initialValue: 7497 }]"
-            :min="1"
-            :max="65535"
-            style="width: 100%"
-          />
-          <div class="field-hint">
-            <a-icon type="info-circle" />
-            <span>{{ $t('profile.exchange.ibkrPortHint') }}</span>
-          </div>
-        </a-form-item>
-        <a-form-item :label="$t('profile.exchange.ibkrClientId')">
-          <a-input-number v-decorator="['ibkr_client_id', { initialValue: 1 }]" :min="1" :max="999" style="width: 100%" />
-        </a-form-item>
-        <a-form-item :label="$t('profile.exchange.ibkrAccount')">
-          <a-input v-decorator="['ibkr_account']" placeholder="DU123456" />
-        </a-form-item>
-      </template>
-
       <a-form-item v-if="addExchangeType">
         <a-button
           block
           :loading="testingExchange"
-          :disabled="testingDesktopBlocked"
           @click="handleTestExchangeConnection"
         >
           <a-icon type="api" />
@@ -222,8 +159,12 @@
 
 <script>
 import { mapState } from 'vuex'
-import { createExchangeCredential, getCredentialsEgressIp, getDesktopBrokersPolicy, testExchangeCredential } from '@/api/credentials'
-import { getCryptoEnvironmentValues, normalizeCryptoExchangeId } from './environmentOptions'
+import { createExchangeCredential, getCredentialsEgressIp, testExchangeCredential } from '@/api/credentials'
+import { getPublicSettingsConfig } from '@/api/settings'
+import { getCryptoEnvironmentValues, normalizeCryptoExchangeId, shouldShowCryptoEnvironmentHint } from './environmentOptions'
+import { normalizeEnabledTradingVenues } from '@/utils/tradingVenueConfig'
+
+const ALL_TRADING_VENUE_IDS = ['alpaca', 'ibkr', 'tiger', 'webull', 'binance', 'okx', 'bybit', 'bitget', 'gate', 'htx']
 
 const CRYPTO_ENVIRONMENT_LABEL_KEYS = Object.freeze({
   live: 'profile.exchange.environmentLive',
@@ -248,15 +189,15 @@ export default {
       egressServerIpv4: '',
       egressServerIpv6: '',
       egressIpLoading: false,
-      desktopBrokersAllowed: true,
-      cryptoExchangeList: [
+      allCryptoExchangeList: [
         { id: 'binance', name: 'Binance', docsUrl: 'https://www.binance.com/en/support/faq/detail/360002502072' },
         { id: 'okx', name: 'OKX', docsUrl: 'https://www.okx.com/docs-v5/zh/#overview-v5-api-key-creation' },
         { id: 'bitget', name: 'Bitget', docsUrl: 'https://www.bitget.com/api-doc/common/quick-start' },
         { id: 'bybit', name: 'Bybit', docsUrl: 'https://www.bybit.com/en/help-center/article/How-to-create-your-API-key/' },
         { id: 'gate', name: 'Gate.io', docsUrl: 'https://www.gate.com/docs/developers/apiv4/' },
         { id: 'htx', name: 'HTX', docsUrl: 'https://www.htx.com/en-us/opend/newApiPages/?id=414' }
-      ]
+      ],
+      enabledTradingVenues: [...ALL_TRADING_VENUE_IDS]
     }
   },
   computed: {
@@ -265,6 +206,10 @@ export default {
     }),
     isDarkTheme () {
       return this.navTheme === 'dark' || this.navTheme === 'realdark'
+    },
+    cryptoExchangeList () {
+      const enabled = new Set(this.enabledTradingVenues)
+      return this.allCryptoExchangeList.filter(item => enabled.has(item.id))
     },
     modalWrapClass () {
       const base = 'profile-exchange-modal'
@@ -276,9 +221,6 @@ export default {
     },
     addExchangeNeedsPassphrase () {
       return ['okx', 'bitget'].includes(this.selectedExchangeId)
-    },
-    testingDesktopBlocked () {
-      return this.selectedExchangeId === 'ibkr' && !this.desktopBrokersAllowed
     },
     selectedCryptoExchangeMeta () {
       return this.cryptoExchangeList.find(item => item.id === this.selectedExchangeId) || null
@@ -306,6 +248,9 @@ export default {
       ]
       return options
     },
+    showEnvironmentHint () {
+      return shouldShowCryptoEnvironmentHint(this.selectedEnvironment)
+    },
     selectedEnvironmentHintKey () {
       const id = this.selectedExchangeId || 'default'
       if (id === 'binance') {
@@ -320,8 +265,8 @@ export default {
     visible (open) {
       if (open) {
         this.resetExchangeFormState()
+        this.loadTradingVenueConfig()
         this.fetchEgressIp()
-        this.loadDesktopPolicy()
       }
     }
   },
@@ -329,16 +274,12 @@ export default {
     this.exchangeForm = this.$form.createForm(this, { name: 'exchangeAccountModal' })
   },
   methods: {
-    async loadDesktopPolicy () {
+    async loadTradingVenueConfig () {
       try {
-        const res = await getDesktopBrokersPolicy()
-        const payload = (res && (res.data || res)) || {}
-        const flag = payload.allow_local_desktop_brokers
-        this.desktopBrokersAllowed = flag === undefined || flag === null
-          ? Boolean(payload.allowed || payload.allow || payload.enabled)
-          : Boolean(flag)
+        const res = await getPublicSettingsConfig()
+        this.enabledTradingVenues = normalizeEnabledTradingVenues(res && res.data && res.data.enabled_trading_venues)
       } catch (_) {
-        this.desktopBrokersAllowed = true
+        this.enabledTradingVenues = [...ALL_TRADING_VENUE_IDS]
       }
     },
     exchangeModalGetContainer () {
@@ -369,9 +310,7 @@ export default {
         bitget: 'Bitget',
         bybit: 'Bybit',
         gate: 'Gate.io',
-        htx: 'HTX',
-        ibkr: 'IBKR',
-        alpaca: 'Alpaca'
+        htx: 'HTX'
       }
       return names[id] || id
     },
@@ -382,10 +321,6 @@ export default {
       if (this.addExchangeType === 'crypto') {
         f.push('api_key', 'secret_key', 'environment', 'market_scope')
         if (this.addExchangeNeedsPassphrase) f.push('passphrase')
-      } else if (this.addExchangeType === 'alpaca') {
-        f.push('api_key', 'secret_key', 'base_url')
-      } else if (this.addExchangeType === 'ibkr') {
-        f.push('ibkr_host', 'ibkr_port', 'ibkr_client_id')
       }
       return f
     },
@@ -395,21 +330,12 @@ export default {
         if (this.addExchangeNeedsPassphrase) f.push('passphrase')
         return f
       }
-      if (this.addExchangeType === 'alpaca') {
-        return ['exchange_id', 'api_key', 'secret_key', 'base_url']
-      }
-      if (this.addExchangeType === 'ibkr') {
-        return ['exchange_id', 'ibkr_host', 'ibkr_port', 'ibkr_client_id']
-      }
       return ['exchange_id']
     },
     _normalizeCredentialPayload (values) {
       const p = { ...values }
       if (typeof p.name === 'string') {
         p.name = p.name.trim()
-      }
-      if (p.exchange_id === 'alpaca') {
-        if (typeof p.base_url === 'string') p.base_url = p.base_url.trim()
       }
       if (this.addExchangeType === 'crypto') {
         p.environment = p.environment || 'live'
@@ -478,10 +404,6 @@ export default {
       const cryptoIds = this.cryptoExchangeList.map(e => e.id)
       if (cryptoIds.includes(exchangeId)) {
         this.addExchangeType = 'crypto'
-      } else if (exchangeId === 'alpaca') {
-        this.addExchangeType = 'alpaca'
-      } else if (exchangeId === 'ibkr') {
-        this.addExchangeType = 'ibkr'
       } else {
         this.addExchangeType = ''
       }

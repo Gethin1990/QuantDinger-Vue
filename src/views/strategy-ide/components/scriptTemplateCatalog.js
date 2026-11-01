@@ -3,6 +3,11 @@
 // Template data is loaded from the backend so template content can be managed in
 // the database. This module only keeps code-param parsing and template rendering
 // helpers used by the editor.
+import {
+  formatStrategyInstrumentIdentity,
+  parseStrategyInstrumentIdentity
+} from '../../../utils/strategyInstrument.js'
+
 export const SCRIPT_TEMPLATE_CATALOG = []
 
 export function normalizeScriptTemplate (raw) {
@@ -54,19 +59,8 @@ export function normalizePercentParamValue (raw) {
   return n
 }
 
-export function percentParamToRatio (value) {
-  const n = Number(value)
-  if (!Number.isFinite(n)) return 0
-  return n
-}
-
 export function formatStrategyInstrument (config = {}) {
-  const market = String(config.market_category || config.market || 'Crypto').trim() || 'Crypto'
-  const symbol = String(config.symbol || '').trim().toUpperCase()
-  if (!symbol) return ''
-  if (market !== 'Crypto') return `${market}:${symbol}`
-  const marketType = String(config.market_type || config.marketType || 'spot').toLowerCase() === 'swap' ? 'swap' : 'spot'
-  return `Crypto:${symbol}@${marketType}`
+  return formatStrategyInstrumentIdentity(config, { includeConfigExchange: true })
 }
 
 function replacePrimaryTimeframeReferences (source, previousTimeframe, nextTimeframe) {
@@ -119,8 +113,27 @@ export function applyStrategyRuntimeConfigToCode (code, config = {}) {
     )
     next = next.replace(
       /(context\.set_benchmark\(\s*)["'][^"']+["'](\s*\))/m,
-      `$1${JSON.stringify(config.market_category === 'Crypto' ? `Crypto:${String(config.symbol || '').trim().toUpperCase()}@spot` : instrument)}$2`
+      `$1${JSON.stringify(config.market_category === 'Crypto'
+        ? formatStrategyInstrumentIdentity({
+          ...config,
+          symbol: parseStrategyInstrumentIdentity(config.symbol, config).symbol,
+          market_type: 'spot'
+        })
+        : instrument)}$2`
     )
+  }
+  if (String(config.market_category || '') === 'Crypto' && config.market_type) {
+    if (String(config.market_type).toLowerCase() === 'spot') {
+      next = next.replace(
+        /^(\s*)context\.allow_leverage\(([^)]*)\)\s*$/m,
+        '$1# runtime_product_leverage: context.allow_leverage($2)'
+      )
+    } else {
+      next = next.replace(
+        /^(\s*)#\s*runtime_product_leverage:\s*context\.allow_leverage\(([^)]*)\)\s*$/m,
+        '$1context.allow_leverage($2)'
+      )
+    }
   }
   if (timeframe) {
     const previousTimeframe = extractStrategyRuntimeConfigFromCode(source).timeframe
@@ -161,18 +174,22 @@ export function extractStrategyRuntimeConfigFromCode (code) {
     source.match(/context\.set_exchange\(\s*["']([^"']+)["']/m)
   const directionMatch = source.match(/^\s*g\.trade_direction\s*=\s*["'](long|short|both)["']/im) ||
     source.match(/^\s*#\s*trade_direction\s*:\s*(long|short|both)\b/im)
+  const equityTakeProfitMatch = source.match(/^\s*EQUITY_TAKE_PROFIT\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?)\s*$/im)
+  const equityStopLossMatch = source.match(/^\s*EQUITY_STOP_LOSS\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?)\s*$/im)
   const instrument = String((instrumentMatch && instrumentMatch[1]) || '').trim()
-  const match = instrument.match(/^([^:]+):(.+)$/i)
   const result = {}
-  if (match) {
-    const productMatch = match[2].match(/^(.*)@(spot|swap)$/i)
-    result.market_category = match[1]
-    result.symbol = String(productMatch ? productMatch[1] : match[2]).toUpperCase()
-    result.market_type = match[1] === 'Crypto' ? String((productMatch && productMatch[2]) || 'spot').toLowerCase() : 'spot'
+  if (instrument) {
+    const parsed = parseStrategyInstrumentIdentity(instrument)
+    result.market_category = parsed.market
+    result.symbol = parsed.symbol
+    result.market_type = parsed.marketType
+    if (parsed.exchangeId) result.exchange_id = parsed.exchangeId
   }
   if (timeframeMatch && timeframeMatch[1]) result.timeframe = String(timeframeMatch[1]).trim()
   if (exchangeMatch && exchangeMatch[1]) result.exchange_id = String(exchangeMatch[1]).trim().toLowerCase()
   if (directionMatch && directionMatch[1]) result.trade_direction = String(directionMatch[1]).trim().toLowerCase()
+  if (equityTakeProfitMatch) result.equity_take_profit_pct = Math.max(0, Number(equityTakeProfitMatch[1]) || 0)
+  if (equityStopLossMatch) result.equity_stop_loss_pct = Math.max(0, Number(equityStopLossMatch[1]) || 0)
   return result
 }
 
@@ -555,16 +572,6 @@ export function buildTemplateParamValues (templateOrKey, overrides = {}) {
     } else {
       acc[param.name] = raw
     }
-    return acc
-  }, {})
-}
-
-export function buildRuntimeParamValues (params = [], overrides = {}) {
-  return (params || []).filter(param => param && param.name && !isRuntimeReservedParam(param.name)).reduce((acc, param) => {
-    const raw = Object.prototype.hasOwnProperty.call(overrides, param.name)
-      ? overrides[param.name]
-      : param.default
-    acc[param.name] = param.type === 'percent' ? percentParamToRatio(raw) : raw
     return acc
   }, {})
 }

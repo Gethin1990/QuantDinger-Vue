@@ -16,14 +16,6 @@
       </template>
     </a-alert>
 
-    <div class="settings-header">
-      <h2 class="page-title">
-        <a-icon type="setting" />
-        <span>{{ $t('settings.title') }}</span>
-      </h2>
-      <p class="page-desc">{{ $t('settings.description') }}</p>
-    </div>
-
     <a-spin :spinning="loading">
       <div class="settings-layout">
         <aside class="settings-nav">
@@ -213,7 +205,34 @@
                         </div>
                       </a-checkbox-group>
                     </template>
-                    <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password'">
+                    <template v-else-if="entry.item.type === 'venue_multiselect'">
+                      <a-alert
+                        class="trading-venue-alert"
+                        type="info"
+                        show-icon
+                        :message="$t('settings.venues.title')"
+                        :description="$t('settings.venues.description')"
+                      />
+                      <a-checkbox-group
+                        v-decorator="[entry.item.key, { initialValue: getCsvListValue(entry.groupKey, entry.item.key, entry.item.default) }]"
+                        class="trading-venue-selector"
+                      >
+                        <section v-for="group in tradingVenueGroups(entry.item)" :key="group.key" class="trading-venue-group">
+                          <h4>{{ group.title }}</h4>
+                          <div class="trading-venue-grid">
+                            <label v-for="venue in group.items" :key="venue.id" class="trading-venue-card">
+                              <a-checkbox :value="venue.id" />
+                              <provider-logo :provider="venue.id" :size="30" />
+                              <span class="trading-venue-copy">
+                                <strong>{{ venue.name }}</strong>
+                                <small>{{ venue.description }}</small>
+                              </span>
+                            </label>
+                          </div>
+                        </section>
+                      </a-checkbox-group>
+                    </template>
+                    <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password' && entry.item.type !== 'venue_multiselect'">
                       {{ $t('settings.default') }}: {{ entry.item.default }}
                     </div>
                   </a-form-item>
@@ -403,22 +422,67 @@
                   <div>
                     <h4>{{ $t('settings.universeSync.title') }}</h4>
                     <p>{{ $t('settings.universeSync.description') }}</p>
+                    <p class="universe-sync-capacity">{{ $t('settings.universeSync.capacity', universeExecutionLimits) }}</p>
                   </div>
-                  <a-button type="primary" :loading="universeSyncing" @click="handleUniverseSync">
-                    <a-icon type="sync" />
-                    {{ universeSyncing ? $t('settings.universeSync.syncing') : $t('settings.universeSync.sync') }}
-                  </a-button>
+                  <div class="universe-sync-actions">
+                    <a-button icon="plus" @click="openSystemUniverseCreate">
+                      {{ $t('settings.universeSync.add') }}
+                    </a-button>
+                    <label>
+                      <span>{{ $t('settings.universeSync.historyStart') }}</span>
+                      <a-date-picker
+                        v-model="universeHistoryFrom"
+                        :allow-clear="false"
+                        :disabled-date="disabledUniverseHistoryDate"
+                      />
+                    </label>
+                    <a-button type="primary" :loading="universeSyncing" @click="handleUniverseSync">
+                      <a-icon type="sync" />
+                      {{ universeSyncing ? $t('settings.universeSync.syncing') : $t('settings.universeSync.sync') }}
+                    </a-button>
+                  </div>
                 </div>
                 <a-spin :spinning="universeLoading">
                   <a-checkbox-group v-model="selectedUniverseCodes" class="universe-sync-list">
-                    <div v-for="item in systemUniverseRows" :key="item.id" class="universe-sync-row">
-                      <a-checkbox v-if="syncableUniverseCodes.includes(item.code)" :value="item.code" />
+                    <div v-for="item in systemUniverseRows" :key="item.id" class="universe-sync-row" :class="{ 'is-hidden': item.status === 'hidden' }">
+                      <a-checkbox
+                        v-if="syncableUniverseCodes.includes(item.code)"
+                        :value="item.code"
+                        :disabled="item.status === 'hidden'"
+                      />
                       <span v-else class="universe-checkbox-spacer" />
                       <div class="universe-sync-name"><strong>{{ universeAdminLabel(item) }}</strong><span>{{ item.market }}</span></div>
                       <div><span>{{ $t('settings.universeSync.members') }}</span><strong>{{ Number(item.member_count || 0).toLocaleString() }}</strong></div>
                       <div><span>{{ $t('settings.universeSync.version') }}</span><strong>{{ item.source_version || universeSnapshotDate(item) }}</strong></div>
-                      <div><span>{{ $t('settings.universeSync.historyFrom') }}</span><strong>{{ item.history_from || '-' }}</strong></div>
-                      <a-tag :color="item.status === 'active' ? 'green' : 'orange'">{{ item.status }}</a-tag>
+                      <div><span>{{ $t('settings.universeSync.historyFrom') }}</span><strong>{{ universeHistoryLabel(item) }}</strong></div>
+                      <div class="universe-row-state">
+                        <a-tag v-if="item.status === 'hidden'" color="default">{{ $t('settings.universeSync.hidden') }}</a-tag>
+                        <a-tag :color="universeCapacityColor(item)">{{ universeCapacityLabel(item) }}</a-tag>
+                      </div>
+                      <div class="universe-row-actions">
+                        <a-tooltip :title="$t('settings.universeSync.edit')">
+                          <a-button type="link" icon="edit" @click="openSystemUniverseEdit(item)" />
+                        </a-tooltip>
+                        <a-tooltip :title="item.status === 'hidden' ? $t('settings.universeSync.show') : $t('settings.universeSync.hide')">
+                          <a-button
+                            type="link"
+                            :icon="item.status === 'hidden' ? 'eye' : 'eye-invisible'"
+                            :loading="universeVisibilityId === item.id"
+                            @click="toggleSystemUniverseVisibility(item)"
+                          />
+                        </a-tooltip>
+                        <a-popconfirm
+                          :title="$t('settings.universeSync.deleteConfirm', { name: universeAdminLabel(item) })"
+                          :ok-text="$t('settings.universeSync.delete')"
+                          :cancel-text="$t('settings.universeSync.cancel')"
+                          ok-type="danger"
+                          @confirm="removeSystemUniverse(item)"
+                        >
+                          <a-tooltip :title="$t('settings.universeSync.delete')">
+                            <a-button type="link" class="universe-delete-button" icon="delete" :loading="universeDeletingId === item.id" />
+                          </a-tooltip>
+                        </a-popconfirm>
+                      </div>
                     </div>
                   </a-checkbox-group>
                 </a-spin>
@@ -655,7 +719,34 @@
                             </div>
                           </a-checkbox-group>
                         </template>
-                        <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password'">
+                        <template v-else-if="entry.item.type === 'venue_multiselect'">
+                          <a-alert
+                            class="trading-venue-alert"
+                            type="info"
+                            show-icon
+                            :message="$t('settings.venues.title')"
+                            :description="$t('settings.venues.description')"
+                          />
+                          <a-checkbox-group
+                            v-decorator="[entry.item.key, { initialValue: getCsvListValue(activeGroupKey, entry.item.key, entry.item.default) }]"
+                            class="trading-venue-selector"
+                          >
+                            <section v-for="group in tradingVenueGroups(entry.item)" :key="group.key" class="trading-venue-group">
+                              <h4>{{ group.title }}</h4>
+                              <div class="trading-venue-grid">
+                                <label v-for="venue in group.items" :key="venue.id" class="trading-venue-card">
+                                  <a-checkbox :value="venue.id" />
+                                  <provider-logo :provider="venue.id" :size="30" />
+                                  <span class="trading-venue-copy">
+                                    <strong>{{ venue.name }}</strong>
+                                    <small>{{ venue.description }}</small>
+                                  </span>
+                                </label>
+                              </div>
+                            </section>
+                          </a-checkbox-group>
+                        </template>
+                        <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password' && entry.item.type !== 'venue_multiselect'">
                           {{ $t('settings.default') }}: {{ entry.item.default }}
                         </div>
                       </a-form-item>
@@ -666,13 +757,21 @@
 
               <div v-else>
                 <a-alert
-                  v-if="activeGroupKey === 'data_source'"
+                  v-if="researchSettingsIntro"
                   class="research-data-intro"
-                  type="success"
+                  :type="researchSettingsIntro.type"
                   show-icon
-                  :message="tOr('settings.research.zeroConfigTitle', 'The base report works without extra data API keys')"
-                  :description="tOr('settings.research.zeroConfigDesc', 'Built-in public sources cover the base workflow. Add providers only when needed.')"
+                  :message="researchSettingsIntro.title"
+                  :description="researchSettingsIntro.description"
                 />
+                <div v-if="activeGroupKey === 'data_source'" class="research-market-map">
+                  <span class="research-market-map-label">{{ tOr('settings.research.marketMap', 'Configure only the markets you use') }}</span>
+                  <div class="research-market-tags">
+                    <a-tag v-for="market in researchMarketGuide" :key="market.key" :color="market.color">
+                      <a-icon :type="market.icon" /> {{ market.label }}
+                    </a-tag>
+                  </div>
+                </div>
                 <a-row :gutter="24">
                   <a-col
                     v-for="entry in currentDisplayEntries"
@@ -682,9 +781,9 @@
                     :md="entry.type !== 'field' ? 24 : 12"
                     :lg="entry.type !== 'field' ? 24 : 12"
                   >
-                    <div v-if="entry.type === 'heading'" class="settings-subsection-heading">
+                    <div v-if="entry.type === 'heading'" class="settings-subsection-heading" :class="`subsection-${entry.tone || 'default'}`">
                       <div class="settings-subsection-title-row">
-                        <span>{{ entry.title }}</span>
+                        <span><a-icon v-if="entry.icon" :type="entry.icon" /> {{ entry.title }}</span>
                         <a-tag v-if="entry.badge" :color="entry.badgeColor || 'blue'">{{ entry.badge }}</a-tag>
                       </div>
                       <small>{{ entry.description }}</small>
@@ -824,7 +923,34 @@
                           </div>
                         </a-checkbox-group>
                       </template>
-                      <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password'">
+                      <template v-else-if="entry.item.type === 'venue_multiselect'">
+                        <a-alert
+                          class="trading-venue-alert"
+                          type="info"
+                          show-icon
+                          :message="$t('settings.venues.title')"
+                          :description="$t('settings.venues.description')"
+                        />
+                        <a-checkbox-group
+                          v-decorator="[entry.item.key, { initialValue: getCsvListValue(activeGroupKey, entry.item.key, entry.item.default) }]"
+                          class="trading-venue-selector"
+                        >
+                          <section v-for="group in tradingVenueGroups(entry.item)" :key="group.key" class="trading-venue-group">
+                            <h4>{{ group.title }}</h4>
+                            <div class="trading-venue-grid">
+                              <label v-for="venue in group.items" :key="venue.id" class="trading-venue-card">
+                                <a-checkbox :value="venue.id" />
+                                <provider-logo :provider="venue.id" :size="30" />
+                                <span class="trading-venue-copy">
+                                  <strong>{{ venue.name }}</strong>
+                                  <small>{{ venue.description }}</small>
+                                </span>
+                              </label>
+                            </div>
+                          </section>
+                        </a-checkbox-group>
+                      </template>
+                      <div class="field-default" v-if="entry.item.default && entry.item.type !== 'boolean' && entry.item.type !== 'password' && entry.item.type !== 'venue_multiselect'">
                         {{ $t('settings.default') }}: {{ entry.item.default }}
                       </div>
                     </a-form-item>
@@ -873,20 +999,90 @@
         {{ $t('settings.save') }}
       </a-button>
     </div>
+
+    <a-modal
+      v-model="systemUniverseEditorVisible"
+      :title="editingSystemUniverseId ? $t('settings.universeSync.editTitle') : $t('settings.universeSync.addTitle')"
+      :confirm-loading="systemUniverseSaving"
+      :ok-text="$t('settings.universeSync.save')"
+      :cancel-text="$t('settings.universeSync.cancel')"
+      width="680px"
+      @ok="saveSystemUniverse"
+      @cancel="resetSystemUniverseEditor"
+    >
+      <div class="system-universe-form">
+        <div class="system-universe-form-grid">
+          <label>
+            <span>{{ $t('settings.universeSync.name') }}</span>
+            <a-input v-model="systemUniverseForm.name" :max-length="160" />
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.code') }}</span>
+            <a-input v-model="systemUniverseForm.code" :disabled="Boolean(editingSystemUniverseId)" :max-length="80" />
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.market') }}</span>
+            <a-select v-model="systemUniverseForm.market">
+              <a-select-option v-for="market in systemUniverseMarkets" :key="market" :value="market">
+                {{ $t(`universeManager.market.${market}`) }}
+              </a-select-option>
+            </a-select>
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.type') }}</span>
+            <a-select v-model="systemUniverseForm.universeType">
+              <a-select-option v-for="type in systemUniverseTypes" :key="type" :value="type">
+                {{ $t(`settings.universeSync.type.${type}`) }}
+              </a-select-option>
+            </a-select>
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.memberEffectiveFrom') }}</span>
+            <a-date-picker
+              v-model="systemUniverseForm.historyFrom"
+              :allow-clear="false"
+              :disabled-date="disabledUniverseHistoryDate"
+            />
+          </label>
+        </div>
+        <label class="system-universe-members-field">
+          <span>
+            {{ $t('settings.universeSync.memberSymbols') }}
+            <small>{{ systemUniverseMemberCount.toLocaleString() }} / {{ systemUniverseMemberLimit.toLocaleString() }}</small>
+          </span>
+          <a-textarea
+            v-model="systemUniverseForm.memberText"
+            :rows="12"
+            :placeholder="$t('settings.universeSync.memberPlaceholder')"
+          />
+        </label>
+        <p class="system-universe-form-hint">{{ $t('settings.universeSync.memberHint') }}</p>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script>
 import { getSettingsSchema, getSettingsValues, saveSettings, getOpenRouterBalance, getMarketCatalogOverview, syncMarketCatalog } from '@/api/settings'
 import { getMarketModules } from '@/api/marketModules'
-import { getSystemUniverseOverview, syncSystemUniverses } from '@/api/universe'
+import {
+  createSystemUniverse,
+  deleteSystemUniverse,
+  getSystemUniverseOverview,
+  getUniverseMembers,
+  setSystemUniverseVisibility,
+  syncSystemUniverses,
+  updateSystemUniverse
+} from '@/api/universe'
 import { deleteAdminMembershipPlan, getAdminMembershipPlans, saveAdminMembershipPlans } from '@/api/billing'
 import { baseMixin } from '@/store/app-mixin'
 import FundamentalSyncPanel from './FundamentalSyncPanel.vue'
+import ProviderLogo from '@/components/ProviderLogo/ProviderLogo.vue'
+import moment from 'moment'
 
 export default {
   name: 'Settings',
-  components: { FundamentalSyncPanel },
+  components: { FundamentalSyncPanel, ProviderLogo },
   mixins: [baseMixin],
   data () {
     return {
@@ -913,6 +1109,22 @@ export default {
       universeSyncing: false,
       universeOverview: null,
       selectedUniverseCodes: [],
+      universeHistoryFrom: moment().subtract(3, 'years').startOf('year'),
+      systemUniverseEditorVisible: false,
+      systemUniverseSaving: false,
+      editingSystemUniverseId: 0,
+      universeVisibilityId: 0,
+      universeDeletingId: 0,
+      systemUniverseMarkets: ['USStock', 'HKStock', 'CNStock', 'Crypto'],
+      systemUniverseTypes: ['index', 'etf', 'market_cap', 'market', 'industry', 'manual'],
+      systemUniverseForm: {
+        name: '',
+        code: '',
+        market: 'USStock',
+        universeType: 'index',
+        historyFrom: moment().subtract(3, 'years').startOf('year'),
+        memberText: ''
+      },
       selectedLlmProvider: '',
       billingPlans: [],
       billingPlansSaving: false,
@@ -951,7 +1163,7 @@ export default {
         {
           key: 'core',
           title: this.tOr('settings.nav.core', 'Core setup'),
-          keys: ['auth', 'ai', 'trading', 'market_modules']
+          keys: ['features', 'auth', 'ai', 'trading', 'market_modules']
         },
         {
           key: 'research',
@@ -1014,7 +1226,44 @@ export default {
       if (this.activeGroupKey === 'search') {
         return this.buildCategorizedEntries(items, this.searchSectionDefinitions(), 'search')
       }
+      if (this.activeGroupKey === 'agent') {
+        return this.buildCategorizedEntries(items, this.agentSectionDefinitions(), 'agent')
+      }
       return this.buildSettingEntries(items, this.activeGroupKey)
+    },
+    researchSettingsIntro () {
+      if (this.activeGroupKey === 'data_source') {
+        return {
+          type: 'success',
+          title: this.tOr('settings.research.zeroConfigTitle', 'The base report works without extra data API keys'),
+          description: this.tOr('settings.research.zeroConfigDesc', 'Built-in public sources cover the base workflow. Configure shared settings, then only the markets you use.')
+        }
+      }
+      if (this.activeGroupKey === 'search') {
+        return {
+          type: 'info',
+          title: this.tOr('settings.search.sharedTitle', 'Search is shared by every market'),
+          description: this.tOr('settings.search.sharedDesc', 'Choose one provider. US stocks, Hong Kong stocks, crypto, futures and FX all reuse it.')
+        }
+      }
+      if (this.activeGroupKey === 'agent') {
+        return {
+          type: 'info',
+          title: this.tOr('settings.agent.optionalTitle', 'Agent and calibration are optional'),
+          description: this.tOr('settings.agent.optionalDesc', 'Self-hosted users can keep the defaults until enough validated reports exist for calibration.')
+        }
+      }
+      return null
+    },
+    researchMarketGuide () {
+      return [
+        { key: 'shared', icon: 'share-alt', color: 'blue', label: this.tOr('settings.research.market.shared', 'Shared') },
+        { key: 'us', icon: 'stock', color: 'geekblue', label: this.tOr('settings.research.market.us', 'US stocks') },
+        { key: 'hk', icon: 'bank', color: 'cyan', label: this.tOr('settings.research.market.hk', 'Hong Kong stocks') },
+        { key: 'crypto', icon: 'block', color: 'purple', label: this.tOr('settings.research.market.crypto', 'Crypto') },
+        { key: 'futures', icon: 'line-chart', color: 'orange', label: this.tOr('settings.research.market.futures', 'Futures') },
+        { key: 'forex', icon: 'swap', color: 'green', label: this.tOr('settings.research.market.forex', 'FX') }
+      ]
     },
     // Flattened, filtered search hits. Match is case-insensitive against the
     // localized label, the localized description and the raw ENV key, so
@@ -1078,6 +1327,19 @@ export default {
     },
     syncableUniverseCodes () {
       return (this.universeOverview && this.universeOverview.syncable_codes) || []
+    },
+    universeExecutionLimits () {
+      const limits = (this.universeOverview && this.universeOverview.execution_limits) || {}
+      return {
+        standard: Number(limits.standard || 600).toLocaleString(),
+        daily: Number(limits.daily || 1200).toLocaleString()
+      }
+    },
+    systemUniverseMemberCount () {
+      return this.parseSystemUniverseMemberText(this.systemUniverseForm.memberText).length
+    },
+    systemUniverseMemberLimit () {
+      return Number(this.universeExecutionLimits.daily || 1200)
     },
     catalogStatusType () {
       const status = this.catalogLatest && this.catalogLatest.status
@@ -1374,13 +1636,164 @@ export default {
     universeSnapshotDate (item) {
       return (item.metadata && item.metadata.snapshot_as_of) || (item.updated_at ? String(item.updated_at).slice(0, 10) : '-')
     },
+    universeHistoryLabel (item) {
+      const historyMode = item && item.metadata && item.metadata.history_mode
+      if (historyMode === 'fixed_current_constituents' && item.history_from) {
+        return this.$t('settings.universeSync.fixedCurrentHistory', { date: item.history_from })
+      }
+      if (!item || !item.history_sync_supported) return this.$t('settings.universeSync.currentSnapshotOnly')
+      return item.history_from || '-'
+    },
+    universeCapacityColor (item) {
+      const limits = (this.universeOverview && this.universeOverview.execution_limits) || {}
+      const memberCount = Number(item.member_count || 0)
+      if (memberCount === 0) return 'orange'
+      const dailyEligible = typeof item.daily_frequency_eligible === 'boolean'
+        ? item.daily_frequency_eligible
+        : memberCount <= Number(limits.daily || 1200)
+      const standardEligible = typeof item.standard_frequency_eligible === 'boolean'
+        ? item.standard_frequency_eligible
+        : memberCount <= Number(limits.standard || 600)
+      if (!dailyEligible) return 'red'
+      if (!standardEligible) return 'orange'
+      return item.status === 'active' ? 'green' : 'orange'
+    },
+    universeCapacityLabel (item) {
+      const limits = (this.universeOverview && this.universeOverview.execution_limits) || {}
+      const memberCount = Number(item.member_count || 0)
+      if (memberCount === 0) return this.$t('settings.universeSync.pendingSync')
+      const dailyEligible = typeof item.daily_frequency_eligible === 'boolean'
+        ? item.daily_frequency_eligible
+        : memberCount <= Number(limits.daily || 1200)
+      const standardEligible = typeof item.standard_frequency_eligible === 'boolean'
+        ? item.standard_frequency_eligible
+        : memberCount <= Number(limits.standard || 600)
+      if (!dailyEligible) return this.$t('settings.universeSync.overCapacity')
+      if (!standardEligible) return this.$t('settings.universeSync.dailyOnly')
+      return this.$t('settings.universeSync.ready')
+    },
+    disabledUniverseHistoryDate (current) {
+      return current && current.endOf('day').isAfter(moment().endOf('day'))
+    },
+    parseSystemUniverseMemberText (value) {
+      const seen = new Set()
+      return String(value || '')
+        .split(/[\n,;]+/)
+        .map(symbol => symbol.trim())
+        .filter(symbol => {
+          const key = symbol.toUpperCase()
+          if (!symbol || seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+    },
+    resetSystemUniverseEditor () {
+      this.editingSystemUniverseId = 0
+      this.systemUniverseForm = {
+        name: '',
+        code: '',
+        market: 'USStock',
+        universeType: 'index',
+        historyFrom: this.universeHistoryFrom ? this.universeHistoryFrom.clone() : moment().subtract(3, 'years').startOf('year'),
+        memberText: ''
+      }
+    },
+    openSystemUniverseCreate () {
+      this.resetSystemUniverseEditor()
+      this.systemUniverseEditorVisible = true
+    },
+    async openSystemUniverseEdit (item) {
+      this.universeLoading = true
+      try {
+        const res = await getUniverseMembers(item.id)
+        const payload = (res && res.data) || {}
+        this.editingSystemUniverseId = item.id
+        this.systemUniverseForm = {
+          name: item.name || item.code,
+          code: item.code,
+          market: item.market,
+          universeType: item.universe_type || 'manual',
+          historyFrom: moment(item.history_from || moment().format('YYYY-MM-DD')),
+          memberText: (payload.members || []).map(member => member.symbol).join('\n')
+        }
+        this.systemUniverseEditorVisible = true
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.memberLoadFailed'))
+      } finally {
+        this.universeLoading = false
+      }
+    },
+    async saveSystemUniverse () {
+      const name = this.systemUniverseForm.name.trim()
+      const code = this.systemUniverseForm.code.trim()
+      const symbols = this.parseSystemUniverseMemberText(this.systemUniverseForm.memberText)
+      if (!name || (!this.editingSystemUniverseId && !code) || !symbols.length) {
+        this.$message.warning(this.$t('settings.universeSync.requiredFields'))
+        return
+      }
+      if (symbols.length > this.systemUniverseMemberLimit) {
+        this.$message.warning(this.$t('settings.universeSync.memberLimit', { limit: this.systemUniverseMemberLimit.toLocaleString() }))
+        return
+      }
+      const data = {
+        name,
+        code,
+        market: this.systemUniverseForm.market,
+        universeType: this.systemUniverseForm.universeType,
+        historyFrom: this.systemUniverseForm.historyFrom.format('YYYY-MM-DD'),
+        members: symbols.map(symbol => ({ market: this.systemUniverseForm.market, symbol }))
+      }
+      this.systemUniverseSaving = true
+      try {
+        if (this.editingSystemUniverseId) await updateSystemUniverse(this.editingSystemUniverseId, data)
+        else await createSystemUniverse(data)
+        this.$message.success(this.$t('settings.universeSync.saved'))
+        this.systemUniverseEditorVisible = false
+        this.resetSystemUniverseEditor()
+        await this.refreshUniverseOverview()
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.saveFailed'))
+      } finally {
+        this.systemUniverseSaving = false
+      }
+    },
+    async toggleSystemUniverseVisibility (item) {
+      this.universeVisibilityId = item.id
+      try {
+        const visible = item.status === 'hidden'
+        await setSystemUniverseVisibility(item.id, visible)
+        this.selectedUniverseCodes = this.selectedUniverseCodes.filter(code => code !== item.code)
+        this.$message.success(this.$t(visible ? 'settings.universeSync.shown' : 'settings.universeSync.hiddenSuccess'))
+        await this.refreshUniverseOverview()
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.visibilityFailed'))
+      } finally {
+        this.universeVisibilityId = 0
+      }
+    },
+    async removeSystemUniverse (item) {
+      this.universeDeletingId = item.id
+      try {
+        await deleteSystemUniverse(item.id)
+        this.selectedUniverseCodes = this.selectedUniverseCodes.filter(code => code !== item.code)
+        this.$message.success(this.$t('settings.universeSync.deleted'))
+        await this.refreshUniverseOverview()
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.deleteFailed'))
+      } finally {
+        this.universeDeletingId = 0
+      }
+    },
     async refreshUniverseOverview () {
       this.universeLoading = !this.universeOverview
       try {
         const res = await getSystemUniverseOverview()
         if (res.code === 1) {
           this.universeOverview = res.data
-          if (!this.selectedUniverseCodes.length) this.selectedUniverseCodes = [...(res.data.syncable_codes || [])]
+          if (!this.selectedUniverseCodes.length) {
+            const visibleCodes = new Set((res.data.universes || []).filter(item => item.status === 'active').map(item => item.code))
+            this.selectedUniverseCodes = (res.data.syncable_codes || []).filter(code => visibleCodes.has(code))
+          }
         }
       } finally {
         this.universeLoading = false
@@ -1393,9 +1806,26 @@ export default {
       }
       this.universeSyncing = true
       try {
-        const res = await syncSystemUniverses({ codes: this.selectedUniverseCodes })
+        const historyFrom = this.universeHistoryFrom && this.universeHistoryFrom.format('YYYY-MM-DD')
+        const res = await syncSystemUniverses({
+          codes: this.selectedUniverseCodes,
+          history_from: historyFrom
+        })
         if (res.code === 1) {
-          this.$message.success(this.$t('settings.universeSync.started'))
+          const warnings = res.data && Array.isArray(res.data.warnings) ? res.data.warnings : []
+          if (warnings.length) {
+            const codes = warnings.map(item => {
+              const row = this.systemUniverseRows.find(universe => universe.code === item.code)
+              return row ? this.universeAdminLabel(row) : item.code
+            }).join(', ')
+            const fixedHistoryApplied = warnings.every(item => item.warning === 'universe.currentMembershipBackfilled')
+            const messageKey = fixedHistoryApplied
+              ? 'settings.universeSync.fixedHistoryWithCodes'
+              : 'settings.universeSync.historyUnavailableWithCodes'
+            this.$message.warning(this.$t(messageKey, { codes }))
+          } else {
+            this.$message.success(this.$t('settings.universeSync.started'))
+          }
           await this.refreshUniverseOverview()
         }
       } catch (error) {
@@ -1556,44 +1986,116 @@ export default {
     dataSourceSectionDefinitions () {
       return [
         {
-          key: 'preferences',
-          title: this.tOr('settings.research.section.preferences', 'Report behavior'),
-          description: this.tOr('settings.research.section.preferencesDesc', 'Report-level choices for data tier and risk budgeting.'),
-          badge: this.tOr('settings.option.PROFESSIONAL_REPORT_DATA_TIER.community', 'Free / low-cost (recommended)'),
+          key: 'shared',
+          title: this.tOr('settings.research.market.shared', 'Shared settings'),
+          description: this.tOr('settings.research.market.sharedDesc', 'Used by every professional report. Local deployments can keep the recommended defaults.'),
+          badge: this.tOr('settings.research.badge.recommended', 'Recommended defaults'),
           badgeColor: 'green',
+          icon: 'share-alt',
+          tone: 'shared',
           keys: [
             'PROFESSIONAL_REPORT_DATA_TIER',
-            'PROFESSIONAL_REPORT_RISK_BUDGET_PCT'
-          ]
+            'PROFESSIONAL_REPORT_RISK_BUDGET_PCT',
+            'FAST_ANALYSIS_INCLUDE_GLOBAL_NEWS'
+          ],
+          advancedKeys: []
         },
         {
-          key: 'community',
-          title: this.tOr('settings.research.section.community', 'Free / simple setup'),
-          description: this.tOr('settings.research.section.communityDesc', 'Optional low-friction sources for US stocks, Hong Kong stocks, crypto, and macro data.'),
-          badge: 'US · HK · Crypto',
+          key: 'macro',
+          title: this.tOr('settings.research.market.macro', 'Shared macro and event data'),
+          description: this.tOr('settings.research.market.macroDesc', 'Optional shared inputs for equities, futures and FX. Configure only services you already use.'),
+          badge: this.tOr('settings.research.badge.optional', 'Optional'),
           badgeColor: 'blue',
-          keys: [
-            'CRYPTO_PUBLIC_DEFAULT_EXCHANGE',
-            'FINNHUB_API_KEY',
-            'FINNHUB_FREE_ONLY',
-            'TWELVE_DATA_API_KEY',
-            'FRED_API_KEY',
-            'BLS_API_KEY',
-            'BEA_API_KEY'
-          ]
-        },
-        {
-          key: 'professional',
-          title: this.tOr('settings.research.section.professional', 'Professional data'),
-          description: this.tOr('settings.research.section.professionalDesc', 'Configure only providers covered by your paid plan and data-use rights.'),
-          badge: this.tOr('settings.option.PROFESSIONAL_REPORT_DATA_TIER.professional', 'Professional'),
-          badgeColor: 'purple',
+          icon: 'global',
+          tone: 'macro',
           keys: [
             'TRADING_ECONOMICS_CLIENT',
             'TRADING_ECONOMICS_KEY',
+            'FRED_API_KEY',
+            'BLS_API_KEY',
+            'BEA_API_KEY'
+          ],
+          advancedKeys: [
+            'TRADING_ECONOMICS_BASE_URL',
+            'TRADING_ECONOMICS_TIMEOUT',
+            'FRED_BASE_URL',
+            'FRED_TIMEOUT',
+            'BLS_BASE_URL',
+            'BLS_TIMEOUT',
+            'BEA_BASE_URL',
+            'BEA_TIMEOUT'
+          ]
+        },
+        {
+          key: 'us',
+          title: this.tOr('settings.research.market.us', 'US stock data'),
+          description: this.tOr('settings.research.market.usDesc', 'Finnhub enhances quotes, profiles and company news. Sentiment integration is optional.'),
+          badge: this.tOr('settings.research.badge.keyOptional', 'API key optional'),
+          badgeColor: 'geekblue',
+          icon: 'stock',
+          tone: 'us',
+          keys: [
+            'FINNHUB_API_KEY',
+            'FINNHUB_FREE_ONLY',
+            'ALPHA_VANTAGE_API_KEY'
+          ],
+          advancedKeys: [
+            'ALPHA_VANTAGE_BASE_URL',
+            'ALPHA_VANTAGE_TIMEOUT',
+            'ALPHA_VANTAGE_NEWS_LIMIT',
+            'ADANOS_API_KEY',
+            'ADANOS_SENTIMENT_SOURCE',
+            'ADANOS_API_BASE_URL'
+          ]
+        },
+        {
+          key: 'hk',
+          title: this.tOr('settings.research.market.hk', 'Hong Kong stock data'),
+          description: this.tOr('settings.research.market.hkDesc', 'Twelve Data is an optional K-line enhancement. Built-in public sources remain available.'),
+          badge: this.tOr('settings.research.badge.keyOptional', 'API key optional'),
+          badgeColor: 'cyan',
+          icon: 'bank',
+          tone: 'hk',
+          keys: ['TWELVE_DATA_API_KEY'],
+          advancedKeys: []
+        },
+        {
+          key: 'crypto',
+          title: this.tOr('settings.research.market.crypto', 'Crypto data'),
+          description: this.tOr('settings.research.market.cryptoDesc', 'Public exchange data works without a key. CoinGlass and CryptoQuant add derivatives and on-chain depth.'),
+          badge: this.tOr('settings.research.badge.publicReady', 'Public data ready'),
+          badgeColor: 'purple',
+          icon: 'block',
+          tone: 'crypto',
+          keys: [
+            'CRYPTO_PUBLIC_DEFAULT_EXCHANGE',
             'COINGLASS_API_KEY',
             'CRYPTOQUANT_API_KEY'
-          ]
+          ],
+          advancedKeys: []
+        },
+        {
+          key: 'futures',
+          title: this.tOr('settings.research.market.futures', 'Futures data'),
+          description: this.tOr('settings.research.market.futuresDesc', 'CFTC positioning and public contract data are built in. Add shared macro providers above only when needed.'),
+          badge: this.tOr('settings.research.badge.noSetup', 'No setup required'),
+          badgeColor: 'orange',
+          icon: 'line-chart',
+          tone: 'futures',
+          keys: [],
+          advancedKeys: [],
+          alwaysVisible: true
+        },
+        {
+          key: 'forex',
+          title: this.tOr('settings.research.market.forex', 'FX data'),
+          description: this.tOr('settings.research.market.forexDesc', 'Tiingo is an optional quote source. Shared FRED and event data above add policy and macro context.'),
+          badge: this.tOr('settings.research.badge.keyOptional', 'API key optional'),
+          badgeColor: 'green',
+          icon: 'swap',
+          tone: 'forex',
+          keys: ['TIINGO_API_KEY'],
+          advancedKeys: []
         }
       ]
     },
@@ -1605,18 +2107,76 @@ export default {
           description: this.tOr('settings.search.section.primaryDesc', 'Choose one primary provider. Keyless fallbacks remain available.'),
           badge: this.tOr('settings.research.section.community', 'Free / simple setup'),
           badgeColor: 'green',
-          keys: ['SEARCH_PROVIDER', 'TAVILY_API_KEYS', 'SEARCH_SEARXNG_BASE_URL']
+          icon: 'search',
+          tone: 'shared',
+          keys: ['SEARCH_PROVIDER', 'TAVILY_API_KEYS'],
+          advancedKeys: [
+            'SEARCH_MAX_RESULTS',
+            'SEARCH_TIMEOUT',
+            'SEARCH_SEARXNG_BASE_URL',
+            'SEARCH_GDELT_BASE_URL',
+            'SEARCH_DDG_BASE_URL'
+          ]
         },
         {
           key: 'optional',
           title: this.tOr('settings.search.section.optional', 'Optional news providers'),
           description: this.tOr('settings.search.section.optionalDesc', 'Add only the service you already use.'),
+          icon: 'read',
+          tone: 'macro',
           keys: [
-            'ALPHA_VANTAGE_API_KEY',
             'SERPAPI_KEYS',
             'SEARCH_GOOGLE_API_KEY',
             'SEARCH_GOOGLE_CX',
             'SEARCH_BING_API_KEY'
+          ],
+          advancedKeys: []
+        }
+      ]
+    },
+    agentSectionDefinitions () {
+      return [
+        {
+          key: 'deployment',
+          title: this.tOr('settings.agent.section.deployment', 'Deployment and permissions'),
+          description: this.tOr('settings.agent.section.deploymentDesc', 'Self-hosted is the safe default. Live trading remains off unless explicitly enabled.'),
+          badge: this.tOr('settings.agent.badge.shared', 'Cross-market'),
+          badgeColor: 'blue',
+          icon: 'deployment-unit',
+          tone: 'shared',
+          keys: ['QUANTDINGER_DEPLOYMENT_MODE', 'AGENT_LIVE_TRADING_ENABLED'],
+          advancedKeys: ['AGENT_JOBS_MAX_WORKERS']
+        },
+        {
+          key: 'quality',
+          title: this.tOr('settings.agent.section.quality', 'Analysis stability'),
+          description: this.tOr('settings.agent.section.qualityDesc', 'Multi-model voting can improve stability but increases latency and LLM cost.'),
+          badge: this.tOr('settings.research.badge.optional', 'Optional'),
+          badgeColor: 'purple',
+          icon: 'cluster',
+          tone: 'crypto',
+          keys: ['ENABLE_AI_ENSEMBLE', 'AI_ENSEMBLE_MODELS'],
+          advancedKeys: []
+        },
+        {
+          key: 'calibration',
+          title: this.tOr('settings.agent.section.calibration', 'Validation and calibration'),
+          description: this.tOr('settings.agent.section.calibrationDesc', 'Enable only after enough historical reports have matured and can be validated.'),
+          badge: this.tOr('settings.agent.badge.needsSamples', 'Requires samples'),
+          badgeColor: 'orange',
+          icon: 'experiment',
+          tone: 'futures',
+          keys: [
+            'ENABLE_REFLECTION_WORKER',
+            'ENABLE_CONFIDENCE_CALIBRATION',
+            'AI_CALIBRATION_MARKETS'
+          ],
+          advancedKeys: [
+            'REFLECTION_WORKER_INTERVAL_SEC',
+            'REFLECTION_MIN_AGE_DAYS',
+            'REFLECTION_VALIDATE_LIMIT',
+            'AI_CALIBRATION_LOOKBACK_DAYS',
+            'AI_CALIBRATION_MIN_SAMPLES'
           ]
         }
       ]
@@ -1627,21 +2187,46 @@ export default {
       const entries = []
       definitions.forEach(section => {
         const sectionItems = section.keys.map(key => byKey.get(key)).filter(Boolean)
-        if (!sectionItems.length) return
-        sectionItems.forEach(item => claimed.add(item.key))
+        const sectionAdvancedItems = (section.advancedKeys || []).map(key => byKey.get(key)).filter(Boolean)
+        if (!sectionItems.length && !sectionAdvancedItems.length && !section.alwaysVisible) return
+        const claimedSectionItems = [...sectionItems, ...sectionAdvancedItems]
+        claimedSectionItems.forEach(item => claimed.add(item.key))
         entries.push({
           type: 'heading',
           key: `${scope}-${section.key}-heading`,
           title: section.title,
           description: section.description,
           badge: section.badge,
-          badgeColor: section.badgeColor
+          badgeColor: section.badgeColor,
+          icon: section.icon,
+          tone: section.tone
         })
         entries.push(...sectionItems.map(item => ({
           type: 'field',
           key: `${scope}-${section.key}-${item.key}`,
           item
         })))
+        if (sectionAdvancedItems.length) {
+          const advancedScope = `${scope}:${section.key}:advanced`
+          const expanded = this.isAdvancedExpanded(advancedScope)
+          entries.push({
+            type: 'advanced-toggle',
+            key: `${scope}-${section.key}-advanced-toggle`,
+            scope: advancedScope,
+            expanded,
+            label: expanded
+              ? this.tOr('settings.advanced.hide', 'Hide advanced settings')
+              : this.formatMessage('settings.advanced.show', 'Show advanced settings ({count})', { count: String(sectionAdvancedItems.length) }),
+            description: this.tOr('settings.advanced.description', 'Endpoints, timeouts, and tuning controls normally do not need to be changed.')
+          })
+          if (expanded) {
+            entries.push(...sectionAdvancedItems.map(item => ({
+              type: 'field',
+              key: `${scope}-${section.key}-advanced-${item.key}`,
+              item
+            })))
+          }
+        }
       })
 
       const advancedItems = (items || []).filter(item => !claimed.has(item.key))
@@ -1818,6 +2403,7 @@ export default {
 
     getGroupIcon (groupKey) {
       const icons = {
+        features: 'control',
         brand: 'crown',
         contact: 'customer-service',
         social: 'team',
@@ -1928,6 +2514,31 @@ export default {
           features: []
         }
       })
+    },
+
+    tradingVenueGroups (item) {
+      const brokerIds = new Set(['alpaca', 'ibkr', 'tiger', 'webull'])
+      const options = this.getSelectOptions(item)
+      const rows = options.map(option => {
+        const id = String(option.value || '').trim().toLowerCase()
+        return {
+          id,
+          name: this.$t(`settings.venues.name.${id}`),
+          description: this.$t(`settings.venues.desc.${id}`)
+        }
+      })
+      return [
+        {
+          key: 'brokers',
+          title: this.$t('settings.venues.brokers'),
+          items: rows.filter(row => brokerIds.has(row.id))
+        },
+        {
+          key: 'crypto',
+          title: this.$t('settings.venues.crypto'),
+          items: rows.filter(row => !brokerIds.has(row.id))
+        }
+      ].filter(group => group.items.length)
     },
 
     marketStatusColor (status) {
@@ -2051,7 +2662,7 @@ export default {
                 }
                 if (item.type === 'boolean') {
                   value = value ? 'True' : 'False'
-                } else if (item.type === 'market_multiselect') {
+                } else if (item.type === 'market_multiselect' || item.type === 'venue_multiselect') {
                   value = Array.isArray(value) ? value.join(',') : String(value || '')
                 }
                 data[groupKey][item.key] = value
@@ -2069,6 +2680,12 @@ export default {
               this.showRestartTip = true
             }
             this.loadSettings()
+            const featureKeys = ['BILLING_ENABLED', 'MARKETPLACE_ENABLED', 'ENABLE_REGISTRATION']
+            const updatedKeys = (res.data && res.data.updated_keys) || []
+            if (updatedKeys.some(key => featureKeys.includes(key))) {
+              await this.$store.dispatch('LoadFeatureConfig', { force: true }).catch(() => {})
+              window.setTimeout(() => window.location.reload(), 250)
+            }
             // Brand / contact / social / legal live under the same .env. Refresh
             // the global brand store so logo / footer / version label reflect
             // the change without a hard reload.
@@ -2104,31 +2721,6 @@ export default {
     border-radius: 8px;
   }
 
-  .settings-header {
-    margin-bottom: 24px;
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      color: #1e3a5f;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .anticon {
-        font-size: 28px;
-        color: var(--primary-color, #1890ff);
-      }
-    }
-
-    .page-desc {
-      color: #64748b;
-      font-size: 14px;
-      margin: 0;
-    }
-  }
-
   .settings-layout {
     display: flex;
     gap: 20px;
@@ -2142,7 +2734,7 @@ export default {
     // 240px and forced a horizontal scrollbar in the side rail).
     flex: 0 0 280px;
     position: sticky;
-    top: 88px;
+    top: 16px;
     background: #fff;
     border-radius: @border-radius;
     box-shadow: @card-shadow;
@@ -2275,8 +2867,11 @@ export default {
 
     .settings-subsection-heading {
       margin: 6px 0 16px;
-      padding-top: 18px;
+      padding: 18px 14px 14px;
       border-top: 1px solid #f1f5f9;
+      border-left: 4px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
 
       .settings-subsection-title-row {
         display: flex;
@@ -2290,6 +2885,10 @@ export default {
         color: #1e3a5f;
         font-size: 14px;
         font-weight: 700;
+
+        .anticon {
+          margin-right: 6px;
+        }
       }
 
       small {
@@ -2299,11 +2898,48 @@ export default {
         font-size: 12px;
         line-height: 1.6;
       }
+
+      &.subsection-shared { border-left-color: #1890ff; }
+      &.subsection-macro { border-left-color: #13c2c2; }
+      &.subsection-us { border-left-color: #2f54eb; }
+      &.subsection-hk { border-left-color: #08979c; }
+      &.subsection-crypto { border-left-color: #722ed1; }
+      &.subsection-futures { border-left-color: #fa8c16; }
+      &.subsection-forex { border-left-color: #52c41a; }
     }
 
     .research-data-intro {
       margin-bottom: 18px;
       border-radius: 8px;
+    }
+
+    .research-market-map {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .research-market-map-label {
+      color: #334155;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .research-market-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+
+      .ant-tag {
+        margin: 0;
+      }
     }
 
     .advanced-settings-toggle {
@@ -2532,7 +3168,6 @@ export default {
     .password-field {
       ::v-deep .secret-masked-input {
         -webkit-text-security: disc;
-        text-security: disc;
         font-family: text-security-disc, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
 
@@ -2636,6 +3271,73 @@ export default {
         background: #fff7ed;
       }
     }
+
+    .trading-venue-alert {
+      margin-bottom: 14px;
+    }
+
+    .trading-venue-selector {
+      width: 100%;
+    }
+
+    .trading-venue-group + .trading-venue-group {
+      margin-top: 18px;
+    }
+
+    .trading-venue-group h4 {
+      margin: 0 0 10px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .trading-venue-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .trading-venue-card {
+      display: flex;
+      min-width: 0;
+      min-height: 76px;
+      align-items: center;
+      gap: 11px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+
+      &:hover {
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 48%, #e2e8f0);
+        background: #fff;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+      }
+    }
+
+    .trading-venue-copy {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 3px;
+
+      strong {
+        overflow: hidden;
+        color: #1e293b;
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        color: #64748b;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+    }
   }
 
   .settings-footer {
@@ -2674,16 +3376,6 @@ export default {
       .contact-link {
         color: #69c0ff;
         &:hover { color: #91d5ff; }
-      }
-    }
-
-    .settings-header {
-      .page-title {
-        color: #e0e6ed;
-      }
-
-      .page-desc {
-        color: #8b949e;
       }
     }
 
@@ -2731,6 +3423,7 @@ export default {
 
       .settings-subsection-heading {
         border-top-color: rgba(255, 255, 255, 0.08);
+        background: #202020;
 
         span {
           color: #e0e6ed;
@@ -2763,6 +3456,15 @@ export default {
           color: #d2a8ff !important;
           background: rgba(179, 127, 235, 0.12) !important;
         }
+      }
+
+      .research-market-map {
+        border-color: rgba(255, 255, 255, 0.1);
+        background: #202020;
+      }
+
+      .research-market-map-label {
+        color: #c9d1d9;
       }
 
       .advanced-settings-toggle {
@@ -2931,6 +3633,26 @@ export default {
           background: rgba(187, 128, 9, 0.12);
         }
       }
+
+      .trading-venue-group h4 {
+        color: #c9d1d9;
+      }
+
+      .trading-venue-card {
+        border-color: rgba(255, 255, 255, 0.09);
+        background: #161b22;
+
+        &:hover {
+          border-color: color-mix(in srgb, var(--primary-color, #1890ff) 48%, transparent);
+          background: #1f2630;
+          box-shadow: none;
+        }
+      }
+
+      .trading-venue-copy {
+        strong { color: #e0e6ed; }
+        small { color: #8b949e; }
+      }
     }
 
     .settings-footer {
@@ -2956,6 +3678,10 @@ export default {
       position: static;
       width: 100%;
       max-height: 280px;
+    }
+
+    .trading-venue-grid {
+      grid-template-columns: 1fr;
     }
 
     .settings-detail {
@@ -3024,9 +3750,18 @@ export default {
     span { color: #8c8c8c; word-break: break-word; }
   }
   .universe-sync-list { display: flex; width: 100%; flex-direction: column; gap: 8px; }
+  .universe-sync-capacity { margin-top: 4px; color: #8c8c8c; font-size: 12px; }
+  .universe-sync-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-end;
+    gap: 10px;
+    label { display: flex; flex-direction: column; gap: 5px; }
+    label > span { color: #8c8c8c; font-size: 11px; }
+  }
   .universe-sync-row {
     display: grid;
-    grid-template-columns: 24px minmax(150px, 1.5fr) repeat(3, minmax(105px, 1fr)) auto;
+    grid-template-columns: 24px minmax(170px, 1fr) 100px minmax(150px, 200px) 130px minmax(100px, auto) 112px;
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
@@ -3035,10 +3770,32 @@ export default {
     background: #fff;
   }
   .universe-checkbox-spacer { width: 16px; }
+  .universe-sync-row.is-hidden { opacity: 0.66; }
   .universe-sync-name,
   .universe-sync-row > div { display: flex; min-width: 0; flex-direction: column; }
   .universe-sync-row span { color: #8c8c8c; font-size: 11px; }
   .universe-sync-row strong { overflow: hidden; color: #1f2937; text-overflow: ellipsis; white-space: nowrap; }
+  .universe-row-state { align-items: flex-start; gap: 3px; }
+  .universe-row-state .ant-tag { margin: 0; }
+  .universe-row-actions { flex-direction: row !important; justify-content: flex-end; }
+  .universe-row-actions .ant-btn { padding: 0 7px; }
+  .universe-delete-button { color: #ff4d4f; }
+}
+
+.system-universe-form {
+  .system-universe-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  label { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+  label > span { color: #596579; font-size: 12px; font-weight: 600; }
+  .ant-select,
+  .ant-calendar-picker { width: 100%; }
+  .system-universe-members-field { margin-top: 16px; }
+  .system-universe-members-field > span { display: flex; justify-content: space-between; }
+  .system-universe-members-field small { color: #8c8c8c; font-weight: 400; }
+  .system-universe-form-hint { margin: 7px 0 0; color: #8c8c8c; font-size: 12px; }
 }
 
 .theme-dark .market-catalog-panel {
@@ -3055,21 +3812,23 @@ export default {
 
   .catalog-table th {
     color: #9da7b3;
-    background: #20242a;
+    background: #181818;
   }
-  .catalog-table td { background: #171a1f; }
+  .catalog-table td { background: #141414; }
   .catalog-table th,
   .catalog-table td,
   .catalog-market-item { border-color: rgba(255, 255, 255, 0.1); }
-  .catalog-market-item { background: #171a1f; }
+  .catalog-market-item { background: #141414; }
   .catalog-action-row p { color: #8b949e; }
   .catalog-failure-item span { color: #9da7b3; }
-  .universe-sync-row { border-color: rgba(255, 255, 255, 0.1); background: #171a1f; }
+  .universe-sync-row { border-color: rgba(255, 255, 255, 0.1); background: #141414; }
   .universe-sync-row strong { color: #e6edf3; }
   .universe-sync-row span { color: #8b949e; }
+  .universe-sync-capacity,
+  .universe-sync-actions label > span { color: #8b949e; }
 
   ::v-deep .catalog-stats .ant-statistic {
-    background: #171a1f;
+    background: #141414;
     border-color: rgba(255, 255, 255, 0.1);
   }
   ::v-deep .catalog-stats .ant-statistic-title { color: #9da7b3; }
@@ -3103,25 +3862,28 @@ export default {
 
   ::v-deep .catalog-failures.ant-collapse {
     color: #e6edf3;
-    background: #171a1f;
+    background: #141414;
     border-color: rgba(255, 255, 255, 0.1);
   }
   ::v-deep .catalog-failures .ant-collapse-item { border-color: rgba(255, 255, 255, 0.1); }
   ::v-deep .catalog-failures .ant-collapse-header { color: #d8dee4; }
   ::v-deep .catalog-failures .ant-collapse-content {
     color: #d8dee4;
-    background: #12151a;
+    background: #101010;
     border-color: rgba(255, 255, 255, 0.1);
   }
+  ::v-deep .system-universe-form label > span { color: #b8c0cc; }
 }
 
 @media (max-width: 768px) {
   .market-catalog-panel {
     .catalog-action-row { flex-direction: column; }
     .catalog-action-row .ant-btn { width: 100%; }
+    .universe-sync-actions { width: 100%; align-items: stretch; flex-direction: column; }
     .catalog-stats ::v-deep .ant-statistic { margin-bottom: 12px; }
     .universe-sync-row { grid-template-columns: 24px minmax(0, 1fr) auto; }
-    .universe-sync-row > div:not(.universe-sync-name) { display: none; }
+    .universe-sync-row > div:not(.universe-sync-name):not(.universe-row-actions) { display: none; }
+    .system-universe-form .system-universe-form-grid { grid-template-columns: 1fr; }
   }
 }
 

@@ -62,7 +62,10 @@
           >
             <span class="universe-card__head">
               <span class="universe-card__name">{{ universeLabel(item) }}</span>
-              <a-tag :color="item.code === 'watchlist' ? 'gold' : item.is_system ? 'blue' : 'green'">{{ scopeLabel(item) }}</a-tag>
+              <a-tag
+                :class="{ 'universe-card__scope--watchlist': item.code === 'watchlist' }"
+                :color="item.code === 'watchlist' ? undefined : item.is_system ? 'blue' : 'green'"
+              >{{ scopeLabel(item) }}</a-tag>
             </span>
             <span class="universe-card__code">{{ item.code }}</span>
             <span class="universe-card__stats">
@@ -136,14 +139,26 @@
           <section class="universe-detail__section universe-detail__members">
             <div class="universe-detail__section-head">
               <h4>{{ $t('universeManager.viewMembers') }}</h4>
-              <a-tag>{{ members.length }} {{ $t('universeManager.symbols') }}</a-tag>
+              <div class="universe-member-controls">
+                <a-tag>{{ members.length }} {{ $t('universeManager.symbols') }}</a-tag>
+                <a-pagination
+                  v-if="members.length > memberPageSize"
+                  :current="memberPage"
+                  :pageSize="memberPageSize"
+                  :total="members.length"
+                  size="small"
+                  show-less-items
+                  class="universe-member-pagination"
+                  @change="changeMemberPage"
+                />
+              </div>
             </div>
             <a-spin :spinning="membersLoading">
-              <div v-if="members.length" class="universe-member-table-wrap">
+              <div v-if="members.length" ref="memberTableWrap" class="universe-member-table-wrap">
                 <table class="universe-member-table">
                   <thead><tr><th>{{ $t('universeManager.symbol') }}</th><th>{{ $t('universeManager.memberName') }}</th><th>{{ $t('universeManager.market') }}</th><th>{{ $t('universeManager.weight') }}</th><th v-if="isEditable(selected)" class="universe-member-table__action">{{ $t('universeManager.actions') }}</th></tr></thead>
                   <tbody>
-                    <tr v-for="member in members.slice(0, 100)" :key="`${member.market}:${member.symbol}`">
+                    <tr v-for="member in pagedMembers" :key="`${member.market}:${member.symbol}`">
                       <td><code>{{ member.symbol }}</code></td>
                       <td>{{ member.name || '-' }}</td>
                       <td>{{ marketLabel(member.market) }}</td>
@@ -163,7 +178,7 @@
                   </tbody>
                 </table>
               </div>
-              <a-empty v-else-if="!membersLoading" :description="$t('universeLibrary.noMembers')" />
+              <a-empty v-if="!membersLoading && !members.length" :description="$t('universeLibrary.noMembers')" />
             </a-spin>
           </section>
         </div>
@@ -229,6 +244,8 @@ export default {
       removingMemberKey: '',
       universes: [],
       members: [],
+      memberPage: 1,
+      memberPageSize: 50,
       memberCache: Object.create(null),
       memberRequestId: 0,
       selected: null,
@@ -255,6 +272,10 @@ export default {
     },
     canSaveUniverse () {
       return Boolean(String(this.createForm.name || '').trim() && String(this.createForm.members || '').trim())
+    },
+    pagedMembers () {
+      const start = (this.memberPage - 1) * this.memberPageSize
+      return this.members.slice(start, start + this.memberPageSize)
     }
   },
   watch: {
@@ -312,6 +333,7 @@ export default {
       if (!preferred) {
         this.selected = null
         this.members = []
+        this.memberPage = 1
         this.membersLoading = false
         return
       }
@@ -320,6 +342,8 @@ export default {
     },
     async selectUniverse (item, force = false) {
       this.selected = item
+      this.memberPage = 1
+      this.$nextTick(this.resetMemberScroll)
       const cacheKey = String(item.id)
       if (!force && this.memberCache[cacheKey]) {
         this.members = this.memberCache[cacheKey]
@@ -380,6 +404,13 @@ export default {
     },
     memberKey (member) {
       return [member.market, member.symbol, member.exchange_id, member.market_type, member.instrument_id].map(value => String(value || '')).join(':')
+    },
+    changeMemberPage (page) {
+      this.memberPage = Number(page) || 1
+      this.$nextTick(this.resetMemberScroll)
+    },
+    resetMemberScroll () {
+      if (this.$refs.memberTableWrap) this.$refs.memberTableWrap.scrollTop = 0
     },
     openCreate () {
       this.createForm = { name: '', market: 'USStock', members: '' }
@@ -457,6 +488,7 @@ export default {
         const nextMembers = this.members.filter(item => this.memberKey(item) !== key)
         await replaceUniverseMembers(this.selected.id, nextMembers)
         this.members = nextMembers
+        this.memberPage = Math.min(this.memberPage, Math.max(1, Math.ceil(nextMembers.length / this.memberPageSize)))
         this.$set(this.memberCache, String(this.selected.id), nextMembers)
         this.$set(this.selected, 'member_count', nextMembers.length)
         this.$message.success(this.$t('universeManager.memberRemoved'))
@@ -490,10 +522,21 @@ export default {
 
 <style lang="less">
 .universe-library-modal {
+  --universe-accent: var(--primary-color, #1890ff);
+
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
 
   .ant-modal { top: 32px; padding-bottom: 32px; }
   .ant-modal-body { padding: 20px 24px 24px; overflow: hidden; }
+  .ant-modal-title { font-family: inherit; font-size: 18px; font-weight: 700; line-height: 1.4; }
+  .ant-btn,
+  .ant-input,
+  .ant-select,
+  .ant-radio-button-wrapper,
+  .ant-alert,
+  .ant-tag { font-family: inherit; }
 }
 .universe-library-intro,.universe-library-tools,.universe-detail__heading,.universe-detail__section-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .universe-library-intro{margin-bottom:14px;padding:14px 16px;border:1px solid #e6e9ef;border-radius:10px;background:#fafbfc}.universe-library-intro>.ant-btn{display:inline-flex;height:34px;align-items:center;justify-content:center;line-height:1;white-space:nowrap}.universe-library-intro strong,.universe-library-intro span{display:block}.universe-library-intro strong{margin-bottom:4px;color:#172033;font-size:15px}.universe-library-intro span{color:#6b7280;font-size:13px}.universe-library-alert{margin-bottom:14px}.universe-library-tools{margin-bottom:14px;justify-content:flex-start}.universe-library-tools .ant-input-affix-wrapper{width:270px}.universe-library-tools>.ant-select{width:150px}.universe-library-workspace{display:grid;grid-template-columns:360px minmax(0,1fr);height:min(620px,calc(100vh - 292px));min-height:390px;overflow:hidden;border:1px solid #e6e9ef;border-radius:10px}.universe-library-list{min-height:0;padding:12px;overflow-y:auto;overscroll-behavior:contain;border-right:1px solid #e6e9ef;background:#f7f8fa}.universe-card{display:block;width:100%;margin:0 0 9px;padding:12px;border:1px solid #e2e6ec;border-radius:8px;color:inherit;text-align:left;background:#fff;cursor:pointer}.universe-card:hover,.universe-card--active{border-color:var(--primary-color,#52c41a);box-shadow:0 0 0 2px rgba(82,196,26,.1)}.universe-card__head,.universe-card__stats{display:flex;align-items:center;justify-content:space-between;gap:8px}.universe-card__name{color:#172033;font-size:14px;font-weight:700}.universe-card__code,.universe-detail__eyebrow{color:#8a94a6;font-family:Consolas,Monaco,monospace;font-size:11px}.universe-card__stats{margin-top:10px;color:#7b8494;font-size:11px}.universe-card__stats strong{color:#475467}.universe-card__selected{display:block;margin-top:9px;color:var(--primary-color,#52c41a);font-size:11px}.universe-detail{min-height:0;padding:22px;overflow-y:auto;overscroll-behavior:contain;background:#fff}.universe-detail__heading{align-items:flex-start}.universe-detail__heading h3{margin:4px 0 6px;color:#172033;font-size:21px}.universe-detail__heading p{margin:0;color:#667085}.universe-detail__actions{display:flex;gap:8px}.universe-detail__facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:20px 0}.universe-detail__facts>div{padding:11px 12px;border:1px solid #e7eaf0;border-radius:8px;background:#fafbfc}.universe-detail__facts span,.universe-detail__facts strong{display:block}.universe-detail__facts span{margin-bottom:4px;color:#8a94a6;font-size:11px}.universe-detail__facts strong{color:#273044;font-size:12px}.universe-detail__section{margin-top:18px}.universe-detail__section h4{margin:0 0 9px;color:#273044;font-size:13px}.universe-detail__section pre{margin:0;padding:13px;border-radius:8px;color:#d8dee9;background:#141414;font-family:Consolas,Monaco,monospace}.universe-detail__members{min-height:230px}.universe-member-table-wrap{max-height:280px;overflow:auto;border:1px solid #e7eaf0;border-radius:8px}.universe-member-table{width:100%;border-collapse:collapse}.universe-member-table th,.universe-member-table td{padding:9px 11px;border-bottom:1px solid #edf0f3;text-align:left}.universe-member-table th{position:sticky;top:0;color:#667085;background:#f7f8fa;font-size:11px}.universe-member-table td{font-size:12px}.universe-detail-empty{margin-top:180px}.universe-create-label{display:block;margin:14px 0 6px;font-weight:700}.universe-create-full{width:100%}.universe-create-modal small{display:block;margin-top:6px;color:#8a94a6}
@@ -521,31 +564,31 @@ export default {
 
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
     z-index: 1;
-    border-color: #faad14;
-    color: #171717;
-    background: #faad14;
-    box-shadow: -1px 0 0 0 #faad14;
+    border-color: var(--universe-accent);
+    color: #fff;
+    background: var(--universe-accent);
+    box-shadow: -1px 0 0 0 var(--universe-accent);
   }
 
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover {
-    border-color: #ffc53d;
-    color: #171717;
-    background: #ffc53d;
+    border-color: color-mix(in srgb, var(--universe-accent) 84%, #fff);
+    color: #fff;
+    background: color-mix(in srgb, var(--universe-accent) 84%, #fff);
   }
 
   .universe-apply-button.ant-btn-primary {
     min-height: 36px;
-    border-color: #faad14;
-    color: #171717;
-    background: #faad14;
-    box-shadow: 0 4px 12px rgba(250, 173, 20, .18);
+    border-color: var(--universe-accent);
+    color: #fff;
+    background: var(--universe-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--universe-accent) 18%, transparent);
   }
 
   .universe-apply-button.ant-btn-primary:hover,
   .universe-apply-button.ant-btn-primary:focus {
-    border-color: #ffc53d;
-    color: #171717;
-    background: #ffc53d;
+    border-color: color-mix(in srgb, var(--universe-accent) 84%, #fff);
+    color: #fff;
+    background: color-mix(in srgb, var(--universe-accent) 84%, #fff);
   }
 
   .universe-apply-button.ant-btn-primary[disabled] {
@@ -562,20 +605,20 @@ export default {
   padding: 0 16px;
   align-items: center;
   justify-content: center;
-  border-color: #d48806;
-  color: #874d00;
+  border-color: color-mix(in srgb, var(--universe-accent) 55%, #d8dee8);
+  color: var(--universe-accent);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  background: #fff7e6;
-  box-shadow: 0 2px 8px rgba(250, 173, 20, .12);
+  background: color-mix(in srgb, var(--universe-accent) 7%, #fff);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--universe-accent) 12%, transparent);
 }
 
 .universe-create-button.ant-btn:hover,
 .universe-create-button.ant-btn:focus {
-  border-color: #faad14;
-  color: #613400;
-  background: #fff1b8;
+  border-color: var(--universe-accent);
+  color: var(--universe-accent);
+  background: color-mix(in srgb, var(--universe-accent) 12%, #fff);
 }
 
 .universe-library-tools {
@@ -596,43 +639,133 @@ export default {
 }
 
 .universe-card:hover {
+  border-color: var(--universe-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--universe-accent) 14%, transparent);
   transform: translateY(-1px);
 }
 
 .universe-card--active {
-  border-color: #faad14;
-  background: #fffdf3;
-  box-shadow: inset 3px 0 0 #faad14, 0 0 0 1px rgba(250, 173, 20, .16);
+  border-color: var(--universe-accent);
+  background: color-mix(in srgb, var(--universe-accent) 5%, #fff);
+  box-shadow: inset 3px 0 0 var(--universe-accent), 0 0 0 1px color-mix(in srgb, var(--universe-accent) 16%, transparent);
+}
+
+.universe-card__scope--watchlist {
+  border-color: color-mix(in srgb, var(--universe-accent) 28%, transparent);
+  color: var(--universe-accent);
+  background: color-mix(in srgb, var(--universe-accent) 8%, #fff);
 }
 
 .universe-member-table-wrap {
-  max-height: none;
-  overflow: visible;
+  max-height: min(360px, calc(100vh - 480px));
+  min-height: 180px;
+  overflow: auto;
+  isolation: isolate;
+  background: #fff;
+}
+
+.universe-member-table {
+  border-spacing: 0;
+  border-collapse: separate;
+  font-family: inherit;
+  table-layout: fixed;
+}
+
+.universe-member-table th,
+.universe-member-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+  font-family: inherit;
+  line-height: 1.45;
+}
+
+.universe-member-table th {
+  z-index: 2;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 #e7eaf0;
+}
+
+.universe-member-table td {
+  overflow: hidden;
+  color: #273044;
+  background: #fff;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.universe-member-table td code {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+}
+
+.universe-member-pagination {
+  margin: 0;
+}
+
+.universe-detail__members .universe-detail__section-head,
+.universe-member-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.universe-detail__members .universe-detail__section-head {
+  flex-wrap: wrap;
+}
+
+.universe-member-controls {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.universe-library-modal--dark {
+  .universe-member-table-wrap,
+  .universe-member-table td {
+    background: #1d1d1d;
+  }
+
+  .universe-member-table td {
+    color: rgba(255, 255, 255, .82);
+  }
+
+  .universe-member-table th {
+    color: rgba(255, 255, 255, .62);
+    background: #242424;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .1);
+  }
 }
 
 .universe-library-modal--dark {
   .universe-create-button.ant-btn {
-    border-color: rgba(250, 173, 20, .72);
-    color: #ffd666;
-    background: rgba(250, 173, 20, .11);
+    border-color: color-mix(in srgb, var(--universe-accent) 65%, #303030);
+    color: color-mix(in srgb, var(--universe-accent) 72%, #fff);
+    background: color-mix(in srgb, var(--universe-accent) 12%, #181818);
     box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
   }
 
   .universe-create-button.ant-btn:hover,
   .universe-create-button.ant-btn:focus {
-    border-color: #faad14;
-    color: #ffe58f;
-    background: rgba(250, 173, 20, .19);
+    border-color: var(--universe-accent);
+    color: color-mix(in srgb, var(--universe-accent) 62%, #fff);
+    background: color-mix(in srgb, var(--universe-accent) 20%, #181818);
   }
 
   .universe-card--active {
-    border-color: #faad14;
-    background: rgba(250, 173, 20, .075);
-    box-shadow: inset 3px 0 0 #faad14, 0 0 0 1px rgba(250, 173, 20, .14);
+    border-color: var(--universe-accent);
+    background: color-mix(in srgb, var(--universe-accent) 10%, #1d1d1d);
+    box-shadow: inset 3px 0 0 var(--universe-accent), 0 0 0 1px color-mix(in srgb, var(--universe-accent) 16%, transparent);
   }
 
   .universe-card__selected {
-    color: #ffd666;
+    color: color-mix(in srgb, var(--universe-accent) 72%, #fff);
+  }
+
+  .universe-card__scope--watchlist {
+    border-color: color-mix(in srgb, var(--universe-accent) 32%, #303030);
+    color: color-mix(in srgb, var(--universe-accent) 72%, #fff);
+    background: color-mix(in srgb, var(--universe-accent) 12%, #181818);
   }
 
   .universe-apply-button.ant-btn-primary[disabled] {
@@ -643,18 +776,20 @@ export default {
 }
 
 .universe-create-modal {
+  --universe-accent: var(--primary-color, #1890ff);
+
   .ant-btn-primary {
-    border-color: #faad14;
-    color: #171717;
+    border-color: var(--universe-accent);
+    color: #fff;
     font-weight: 700;
-    background: #faad14;
+    background: var(--universe-accent);
   }
 
   .ant-btn-primary:hover,
   .ant-btn-primary:focus {
-    border-color: #ffc53d;
-    color: #171717;
-    background: #ffc53d;
+    border-color: color-mix(in srgb, var(--universe-accent) 84%, #fff);
+    color: #fff;
+    background: color-mix(in srgb, var(--universe-accent) 84%, #fff);
   }
 
   .ant-btn-primary[disabled] {

@@ -2,7 +2,7 @@
   <div class="setting-drawer" :class="{ 'setting-drawer--dark': isDarkDrawer }">
     <a-drawer
       v-if="visible"
-      width="300"
+      :width="drawerWidth"
       placement="right"
       @close="onClose"
       :closable="true"
@@ -12,39 +12,59 @@
     >
       <div class="setting-drawer-index-content">
 
-        <div :style="{ marginBottom: '24px' }">
-          <h3 class="setting-drawer-index-title">{{ $t('app.setting.pagestyle') }}</h3>
+        <section class="setting-section">
+          <div class="setting-section__heading">
+            <span class="setting-section__icon"><a-icon type="layout" /></span>
+            <h3 class="setting-drawer-index-title">{{ $t('app.setting.pagestyle') }}</h3>
+          </div>
 
           <div class="setting-drawer-index-blockChecbox">
             <a-tooltip>
               <template slot="title">
                 {{ $t('app.setting.pagestyle.dark') }}
               </template>
-              <div class="setting-drawer-index-item" @click="handleMenuTheme('realdark')">
+              <button
+                type="button"
+                class="setting-drawer-index-item"
+                :class="{ 'setting-drawer-index-item--active': isDarkNavTheme }"
+                :aria-label="$t('app.setting.pagestyle.dark')"
+                @click="handleMenuTheme('realdark')"
+              >
                 <img src="https://gw.alipayobjects.com/zos/rmsportal/LCkqqYNmvBEbokSDscrm.svg" alt="dark" />
+                <span>{{ $t('app.setting.pagestyle.dark') }}</span>
                 <div class="setting-drawer-index-selectIcon" v-if="isDarkNavTheme">
                   <a-icon type="check"/>
                 </div>
-              </div>
+              </button>
             </a-tooltip>
 
             <a-tooltip>
               <template slot="title">
                 {{ $t('app.setting.pagestyle.light') }}
               </template>
-              <div class="setting-drawer-index-item" @click="handleMenuTheme('light')">
+              <button
+                type="button"
+                class="setting-drawer-index-item"
+                :class="{ 'setting-drawer-index-item--active': currentNavTheme === 'light' }"
+                :aria-label="$t('app.setting.pagestyle.light')"
+                @click="handleMenuTheme('light')"
+              >
                 <img src="https://gw.alipayobjects.com/zos/rmsportal/jpRkZQMyYRryryPNtyIC.svg" alt="light" />
+                <span>{{ $t('app.setting.pagestyle.light') }}</span>
                 <div class="setting-drawer-index-selectIcon" v-if="currentNavTheme === 'light'">
                   <a-icon type="check"/>
                 </div>
-              </div>
+              </button>
             </a-tooltip>
           </div>
-        </div>
+        </section>
 
         <!-- Theme color selector controls app-level accent styles. -->
-        <div :style="{ marginBottom: '24px' }">
-          <h3 class="setting-drawer-index-title">{{ $t('app.setting.themecolor') }}</h3>
+        <section class="setting-section">
+          <div class="setting-section__heading">
+            <span class="setting-section__icon"><a-icon type="bg-colors" /></span>
+            <h3 class="setting-drawer-index-title">{{ $t('app.setting.themecolor') }}</h3>
+          </div>
 
           <div class="setting-drawer-theme-color-list">
             <a-tooltip class="setting-drawer-theme-color-colorBlock" v-for="(item, index) in colorList" :key="index">
@@ -54,6 +74,7 @@
               <button
                 type="button"
                 class="setting-drawer-theme-color-swatch"
+                :class="{ 'setting-drawer-theme-color-swatch--active': item.color === currentPrimaryColor }"
                 :style="{ backgroundColor: item.color }"
                 @click="changeColor(item.color)"
               >
@@ -62,8 +83,7 @@
             </a-tooltip>
 
           </div>
-        </div>
-        <a-divider />
+        </section>
 
         <!-- Navigation Mode and Content Width are hidden -->
         <div :style="{ marginBottom: '24px', display: 'none' }">
@@ -134,10 +154,11 @@
             </a-list>
           </div>
         </div>
-        <a-divider />
-
-        <div :style="{ marginBottom: '24px' }">
-          <h3 class="setting-drawer-index-title">{{ $t('app.setting.othersettings') }}</h3>
+        <section class="setting-section setting-section--compact">
+          <div class="setting-section__heading">
+            <span class="setting-section__icon"><a-icon type="sliders" /></span>
+            <h3 class="setting-drawer-index-title">{{ $t('app.setting.othersettings') }}</h3>
+          </div>
           <div>
             <a-list :split="false">
               <a-list-item>
@@ -154,8 +175,7 @@
               </a-list-item>
             </a-list>
           </div>
-        </div>
-        <a-divider />
+        </section>
         <slot />
       </div>
     </a-drawer>
@@ -165,7 +185,7 @@
 <script>
 import SettingItem from './SettingItem'
 import config from '@/config/defaultSettings'
-import { updateTheme, updateColorWeak, getColorList } from './settingConfig'
+import { updateColorWeak, getColorList } from './settingConfig'
 import { baseMixin } from '@/store/app-mixin'
 
 export default {
@@ -218,6 +238,9 @@ export default {
     isDarkDrawer () {
       return this.isDarkNavTheme
     },
+    drawerWidth () {
+      return this.isMobile ? '100%' : 420
+    },
     isDarkNavTheme () {
       return this.currentNavTheme === 'dark' || this.currentNavTheme === 'realdark'
     }
@@ -226,10 +249,6 @@ export default {
 
   },
   mounted () {
-    // Apply the saved theme color without showing the loading message.
-    document.documentElement.style.setProperty('--primary-color', this.currentPrimaryColor)
-    updateTheme(this.currentPrimaryColor, true)
-    updateTheme(this.currentPrimaryColor, true)
     if (this.currentColorWeak !== config.colorWeak) {
       updateColorWeak(this.currentColorWeak)
     }
@@ -312,8 +331,6 @@ export default {
     changeColor (color) {
       if (this.currentPrimaryColor !== color) {
         this.$emit('change', { type: 'primaryColor', value: color })
-        document.documentElement.style.setProperty('--primary-color', color)
-        updateTheme(color)
       }
     },
     handleFixedHeader (fixed) {
@@ -342,85 +359,218 @@ export default {
   :deep(.ant-drawer-content),
   :deep(.ant-drawer-wrapper-body),
   :deep(.ant-drawer-body) {
-    background: #fff;
-    color: rgba(15, 23, 42, 0.86);
+    color: #1f2937;
+    background: #f5f6f8;
+  }
+
+  :deep(.ant-drawer-body) {
+    padding: 20px 18px 28px !important;
   }
 
   :deep(.ant-drawer-close) {
-    color: rgba(15, 23, 42, 0.58);
-  }
+    top: 14px;
+    right: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: #64748b;
+    background: rgba(15, 23, 42, 0.05);
+    border-radius: 9px;
 
-  :deep(.ant-divider) {
-    background: rgba(15, 23, 42, 0.08);
+    &:hover {
+      color: var(--primary-color, #1890ff);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, #fff);
+    }
   }
 
   .setting-drawer-index-content {
-    .setting-drawer-index-title {
-      color: rgba(15, 23, 42, 0.9);
-      font-weight: 700;
+    display: grid;
+    gap: 16px;
+    padding-top: 4px;
+  }
+
+  .setting-section {
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e6e9ee;
+    border-radius: 12px;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045);
+  }
+
+  .setting-section__heading {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 30px;
+    margin-bottom: 14px;
+    padding-right: 34px;
+  }
+
+  .setting-section__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    color: var(--primary-color, #1890ff);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, #fff);
+    border-radius: 8px;
+  }
+
+  .setting-drawer-index-title {
+    margin: 0;
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .setting-drawer-index-blockChecbox {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .setting-drawer-index-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    min-height: 72px;
+    padding: 10px;
+    color: #64748b;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: left;
+    background: #f8fafc;
+    border: 1px solid #e5e9ef;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 38%, #dce2ea);
+      transform: translateY(-1px);
     }
 
-    .setting-drawer-index-blockChecbox {
-      display: flex;
-
-      .setting-drawer-index-item {
-        margin-right: 16px;
-        position: relative;
-        border-radius: 4px;
-        cursor: pointer;
-
-        img {
-          width: 48px;
-        }
-
-        .setting-drawer-index-selectIcon {
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 100%;
-          padding-top: 15px;
-          padding-left: 24px;
-          height: 100%;
-          color: var(--primary-color, #1890ff);
-          font-size: 14px;
-          font-weight: 700;
-        }
-      }
-    }
-    .setting-drawer-theme-color-list {
-      display: grid;
-      grid-template-columns: repeat(8, 24px);
-      gap: 10px;
-      min-height: 28px;
-      align-items: center;
+    &--active {
+      color: #1f2937;
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 6%, #fff);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 52%, #dce2ea);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #1890ff) 10%, transparent);
     }
 
-    .setting-drawer-theme-color-colorBlock {
-      display: inline-flex;
-    }
-
-    .setting-drawer-theme-color-swatch {
-      width: 24px;
-      height: 24px;
+    img {
+      width: 58px;
+      height: 44px;
+      object-fit: cover;
       border-radius: 6px;
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      cursor: pointer;
-      padding: 0;
-      text-align: center;
-      color: #fff;
-      font-weight: 700;
-      line-height: 22px;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
-      transition: transform 0.16s ease, box-shadow 0.16s ease;
+    }
 
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
-      }
+    > span {
+      min-width: 0;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+  }
 
-      i {
-        font-size: 14px;
-      }
+  .setting-drawer-index-selectIcon {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: #fff;
+    font-size: 10px;
+    background: var(--primary-color, #1890ff);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+  }
+
+  .setting-drawer-theme-color-list {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    align-items: center;
+    gap: 8px;
+  }
+
+  .setting-drawer-theme-color-colorBlock {
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .setting-drawer-theme-color-swatch {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: #fff;
+    font-weight: 700;
+    line-height: 26px;
+    text-align: center;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+
+    &:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
+    }
+
+    &--active {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px currentColor, 0 5px 12px rgba(15, 23, 42, 0.2);
+    }
+
+    i {
+      font-size: 13px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+    }
+  }
+
+  .setting-section--compact {
+    :deep(.ant-list-item) {
+      min-height: 42px;
+      padding: 10px 11px;
+      background: #f8fafc;
+      border: 1px solid #e8ebf0;
+    }
+
+    :deep(.ant-list-item:first-child) {
+      border-radius: 9px 9px 0 0;
+    }
+
+    :deep(.ant-list-item:last-child) {
+      margin-top: -1px;
+      border-radius: 0 0 9px 9px;
+    }
+
+    :deep(.ant-list-item-meta-title) {
+      margin: 0;
+      color: #475569;
+      font-size: 12px;
+    }
+  }
+
+  &.setting-drawer--dark {
+    :deep(.ant-drawer-content),
+    :deep(.ant-drawer-wrapper-body),
+    :deep(.ant-drawer-body) {
+      background: #080808 !important;
+      color: rgba(226, 232, 240, 0.86) !important;
     }
   }
 
@@ -431,59 +581,97 @@ export default {
     :deep(.ant-drawer-content),
     :deep(.ant-drawer-wrapper-body),
     :deep(.ant-drawer-body) {
-      background: #171717 !important;
-      color: rgba(226, 232, 240, 0.86) !important;
+      color: #e6e6e6 !important;
+      background: #080808 !important;
     }
 
     :deep(.ant-drawer-close) {
-      color: rgba(226, 232, 240, 0.66) !important;
+      color: #a8a8a8 !important;
+      background: #171717;
 
       &:hover {
         color: var(--primary-color, #1890ff) !important;
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 13%, #171717);
       }
     }
 
-    :deep(.ant-divider) {
-      background: rgba(255, 255, 255, 0.1) !important;
+    .setting-section {
+      background: #111;
+      border-color: #2d2d2d;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
     }
 
-    :deep(.ant-list-item-meta-title),
-    :deep(.ant-list-item-meta-title > div) {
-      color: rgba(226, 232, 240, 0.86) !important;
+    .setting-section__icon {
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, #151515);
     }
 
-    :deep(.ant-list-item) {
-      color: rgba(226, 232, 240, 0.78) !important;
+    .setting-drawer-index-title {
+      color: #ededed;
     }
 
-    :deep(.ant-select-selection) {
-      background: #222 !important;
-      border-color: rgba(255, 255, 255, 0.14) !important;
-      color: rgba(226, 232, 240, 0.86) !important;
-    }
+    .setting-drawer-index-item {
+      color: #a8a8a8;
+      background: #181818;
+      border-color: #303030;
 
-    :deep(.ant-select-arrow),
-    :deep(.ant-select-selection-selected-value) {
-      color: rgba(226, 232, 240, 0.78) !important;
-    }
-
-    .setting-drawer-index-content {
-      .setting-drawer-index-title {
-        color: rgba(248, 250, 252, 0.92);
+      &:hover {
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 46%, #303030);
       }
 
-      .setting-drawer-index-item {
-        background: rgba(255, 255, 255, 0.04);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-
-        img {
-          opacity: 0.9;
-        }
+      &--active {
+        color: #ededed;
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, #171717);
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 58%, #303030);
       }
 
-      .setting-drawer-theme-color-swatch {
-        border-color: rgba(255, 255, 255, 0.14);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
+      img {
+        opacity: 0.92;
+      }
+    }
+
+    .setting-drawer-index-selectIcon {
+      border-color: #111;
+    }
+
+    .setting-drawer-theme-color-swatch {
+      box-shadow: 0 3px 9px rgba(0, 0, 0, 0.42);
+
+      &--active {
+        border-color: #111;
+      }
+    }
+
+    .setting-section--compact {
+      :deep(.ant-list-item) {
+        color: #b8b8b8 !important;
+        background: #181818;
+        border-color: #2d2d2d;
+      }
+
+      :deep(.ant-list-item-meta-title),
+      :deep(.ant-list-item-meta-title > div) {
+        color: #b8b8b8 !important;
+      }
+    }
+  }
+
+  @media (max-width: 520px) {
+    :deep(.ant-drawer-body) {
+      padding: 18px 14px 24px !important;
+    }
+
+    .setting-section {
+      padding: 14px;
+    }
+
+    .setting-drawer-index-item {
+      grid-template-columns: 50px minmax(0, 1fr);
+      min-height: 66px;
+      padding: 8px;
+
+      img {
+        width: 50px;
+        height: 38px;
       }
     }
   }
@@ -494,13 +682,13 @@ export default {
 body.dark .setting-drawer,
 body.realdark .setting-drawer,
 .setting-drawer.setting-drawer--dark {
-  --setting-drawer-bg: #11161c;
-  --setting-drawer-panel: #171c22;
-  --setting-drawer-panel-soft: #202833;
-  --setting-drawer-border: #2b3542;
-  --setting-drawer-text: #e6edf5;
-  --setting-drawer-muted: #a4b2c2;
-  --setting-drawer-subtle: #738295;
+  --setting-drawer-bg: #080808;
+  --setting-drawer-panel: #111111;
+  --setting-drawer-panel-soft: #181818;
+  --setting-drawer-border: #2d2d2d;
+  --setting-drawer-text: #e6e6e6;
+  --setting-drawer-muted: #a8a8a8;
+  --setting-drawer-subtle: #737373;
 }
 
 body.dark .setting-drawer .ant-drawer-content,

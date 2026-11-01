@@ -13,14 +13,27 @@
 
       <template #menuHeaderRender>
         <div class="sidebar-logo-wrapper" :class="{ 'sidebar-logo-wrapper--collapsed': collapsed }">
-          <img v-if="collapsed" :src="collapsedLogo" class="sidebar-logo sidebar-logo--collapsed" :alt="brandConfig.app_name" />
-          <img v-else :src="currentLogo" class="sidebar-logo" :alt="brandConfig.app_name" />
+          <brand-identity
+            :name="brandName"
+            :theme="settings.theme"
+            :compact="collapsed"
+            :wide-logo="currentRemoteLogo"
+            :compact-logo="collapsedRemoteLogo"
+          />
         </div>
       </template>
       <template #headerContentRender>
-        <div>
+        <div class="layout-page-context">
+          <span class="layout-page-context__title">{{ currentPageTitle }}</span>
           <a-tooltip :title="$t('menu.header.refreshPage')">
-            <a-icon type="reload" style="font-size: 18px;cursor: pointer;" @click="handleRefresh" />
+            <button
+              type="button"
+              class="layout-page-context__refresh"
+              :aria-label="$t('menu.header.refreshPage')"
+              @click="handleRefresh"
+            >
+              <a-icon type="reload" />
+            </button>
           </a-tooltip>
         </div>
       </template>
@@ -45,23 +58,25 @@
 
       <setting-drawer ref="settingDrawer" :settings="settings" @change="handleSettingChange">
         <div class="setting-drawer-support">
-          <div class="support-block">
-            <div class="support-title">{{ $t('menu.footer.contactUs') }}</div>
-            <div class="support-links">
-              <a :href="menuFooterConfig.contact.support_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.support') }}</a>
-              <span class="separator">|</span>
-              <a :href="menuFooterConfig.contact.feature_request_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.featureRequest') }}</a>
+          <div class="support-grid">
+            <div class="support-block">
+              <div class="support-title">{{ $t('menu.footer.contactUs') }}</div>
+              <div class="support-links">
+                <a :href="menuFooterConfig.contact.support_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.support') }}</a>
+                <span class="separator">|</span>
+                <a :href="menuFooterConfig.contact.feature_request_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.featureRequest') }}</a>
+              </div>
+            </div>
+            <div class="support-block">
+              <div class="support-title">{{ $t('menu.footer.getSupport') }}</div>
+              <div class="support-links">
+                <a :href="'mailto:' + menuFooterConfig.contact.email">{{ $t('menu.footer.email') }}</a>
+                <span class="separator">|</span>
+                <a :href="menuFooterConfig.contact.live_chat_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.liveChat') }}</a>
+              </div>
             </div>
           </div>
-          <div class="support-block">
-            <div class="support-title">{{ $t('menu.footer.getSupport') }}</div>
-            <div class="support-links">
-              <a :href="'mailto:' + menuFooterConfig.contact.email">{{ $t('menu.footer.email') }}</a>
-              <span class="separator">|</span>
-              <a :href="menuFooterConfig.contact.live_chat_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.liveChat') }}</a>
-            </div>
-          </div>
-          <div class="support-block" v-if="menuFooterConfig.social_accounts && menuFooterConfig.social_accounts.length > 0">
+          <div class="support-block support-block--social" v-if="menuFooterConfig.social_accounts && menuFooterConfig.social_accounts.length > 0">
             <div class="support-title">{{ $t('menu.footer.socialAccounts') }}</div>
             <div class="support-socials">
               <a
@@ -94,8 +109,10 @@
             >{{ $t('menu.footer.privacyPolicy') }}</a>
             <a v-else @click="showPrivacyModal = true">{{ $t('menu.footer.privacyPolicy') }}</a>
           </div>
-          <div class="support-copy">{{ menuFooterConfig.copyright }}</div>
-          <div class="support-version">V{{ appVersion }}</div>
+          <div class="support-meta">
+            <div class="support-copy">{{ menuFooterConfig.copyright }}</div>
+            <div class="support-version">V{{ appVersion }}</div>
+          </div>
         </div>
       </setting-drawer>
       <template #rightContentRender>
@@ -109,6 +126,7 @@
               class="top-admin-shortcut"
               :class="{ 'top-admin-shortcut--active': topAdminShortcutActive }"
               type="button"
+              :aria-label="topAdminTitle"
             >
               <a-icon type="setting" />
               <span>{{ topAdminTitle }}</span>
@@ -236,11 +254,9 @@ import defaultSettings from '@/config/defaultSettings'
 import RightContent from '@/components/GlobalHeader/RightContent'
 import SettingDrawer from '@/components/SettingDrawer/SettingDrawer'
 import MultiTab from '@/components/MultiTab'
+import BrandIdentity from '@/components/BrandIdentity'
 import RouteView from './RouteView'
 import { Icon } from '@iconify/vue2'
-import logoLight from '@/assets/logo.png'
-import logoDark from '@/assets/logo_w.png'
-import slogoImg from '@/assets/slogo.png'
 
 export default {
   name: 'BasicLayout',
@@ -248,6 +264,7 @@ export default {
     SettingDrawer,
     RightContent,
     MultiTab,
+    BrandIdentity,
     RouteView,
     Icon
     // GlobalFooter,
@@ -261,7 +278,7 @@ export default {
       isDev: process.env.NODE_ENV === 'development' || process.env.VUE_APP_PREVIEW === 'true',
 
       // base - menus moved to computed property
-      collapsed: false,
+      collapsed: this.$store.state.app.sideCollapsed,
       title: defaultSettings.title,
       settings: {
         layout: defaultSettings.layout, // 'sidemenu', 'topmenu'
@@ -297,7 +314,7 @@ export default {
       const routes = this.mainMenu.find(item => item.path === '/')
       const children = (routes && routes.children) || []
       if (this.settings.layout !== 'topmenu') {
-        return children
+        return this.buildSideMenu(children)
       }
       return this.buildTopMenuGroups(children)
     },
@@ -307,8 +324,15 @@ export default {
         : (this.settings.theme === 'dark' ? 'dark' : 'light')
       return {
         ...this.settings,
-        theme
+        theme,
+        siderWidth: 208,
+        collapsedWidth: 60
       }
+    },
+    currentPageTitle () {
+      const title = this.$route && this.$route.meta && this.$route.meta.title
+      if (!title) return this.title
+      return this.$te && this.$te(title) ? this.$t(title) : title
     },
     showAdminMenuDivider () {
       const routes = this.mainMenu.find(item => item.path === '/')
@@ -326,16 +350,18 @@ export default {
       const buildVersion = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.0.0-dev'
       return (this.brandConfig && this.brandConfig.app_version) || defaultSettings.appVersion || buildVersion
     },
-    currentLogo () {
+    brandName () {
+      return (this.brandConfig && this.brandConfig.app_name) || defaultSettings.title
+    },
+    currentRemoteLogo () {
       const theme = this.settings.theme
       const isDark = theme === 'dark' || theme === 'realdark'
-      const remote = isDark
+      return isDark
         ? (this.brandConfig.logos && this.brandConfig.logos.dark)
         : (this.brandConfig.logos && this.brandConfig.logos.light)
-      return remote || (isDark ? logoDark : logoLight)
     },
-    collapsedLogo () {
-      return (this.brandConfig.logos && this.brandConfig.logos.collapsed) || slogoImg
+    collapsedRemoteLogo () {
+      return (this.brandConfig.logos && this.brandConfig.logos.collapsed) || ''
     },
     topAdminPaths () {
       return ['/user-manage', '/agent-tokens', '/ai-skills', '/settings']
@@ -395,11 +421,9 @@ export default {
       if (val) {
         this.settings.primaryColor = val
         document.documentElement.style.setProperty('--primary-color', val)
-        if (process.env.NODE_ENV !== 'production' || process.env.VUE_APP_PREVIEW === 'true') {
-          updateTheme(val, this.isInitialThemeColorLoad)
-          if (this.isInitialThemeColorLoad) {
-            this.isInitialThemeColorLoad = false
-          }
+        updateTheme(val, this.isInitialThemeColorLoad)
+        if (this.isInitialThemeColorLoad) {
+          this.isInitialThemeColorLoad = false
         }
       }
     }, { immediate: true })
@@ -550,7 +574,41 @@ export default {
     }
   },
   methods: {
-    i18nRender,
+    i18nRender (key) {
+      const label = i18nRender(key)
+      return this.$createElement('span', {
+        class: 'sidebar-menu-label',
+        attrs: {
+          title: label
+        }
+      }, [label])
+    },
+    buildSideMenu (routes) {
+      const order = [
+        '/ai-asset-analysis',
+        '/indicator-community',
+        '/indicator-ide',
+        '/strategy-ide',
+        '/backtest-center',
+        '/strategy-center',
+        '/broker-accounts',
+        '/billing',
+        '/profile',
+        '/user-manage',
+        '/agent-tokens',
+        '/ai-skills',
+        '/settings'
+      ]
+      const priorities = order.reduce((result, path, index) => {
+        result[path] = index
+        return result
+      }, {})
+      return routes.slice().sort((left, right) => {
+        const leftPriority = priorities[left.path] ?? Number.MAX_SAFE_INTEGER
+        const rightPriority = priorities[right.path] ?? Number.MAX_SAFE_INTEGER
+        return leftPriority - rightPriority
+      })
+    },
     buildTopMenuGroups (routes) {
       const accountMenuPaths = ['/billing', '/profile']
       const topAdminMenuPaths = ['/user-manage', '/agent-tokens', '/ai-skills', '/settings']
@@ -906,29 +964,15 @@ export default {
 .sidebar-logo-wrapper {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   width: 100%;
   height: 100%;
-  padding: 0 16px;
+  padding: 0;
   box-sizing: border-box;
-
-  .sidebar-logo {
-    display: block;
-    max-width: 100%;
-    max-height: 40px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-
-  .sidebar-logo--collapsed {
-    max-height: 32px;
-    max-width: 100%;
-  }
 
   &--collapsed {
     justify-content: center;
-    padding: 0 8px;
+    padding: 0;
   }
 }
 
@@ -941,15 +985,9 @@ export default {
   > div {
     display: flex;
     align-items: center;
+    justify-content: center;
     width: 100%;
     height: 100%;
-  }
-
-  img {
-    width: auto !important;
-    height: auto !important;
-    max-height: 40px;
-    max-width: 85%;
   }
 
   h1 {
@@ -961,12 +999,6 @@ export default {
   padding: 0 !important;
   justify-content: center;
 
-  img {
-    max-width: 80% !important;
-    max-height: 32px !important;
-    width: auto !important;
-    height: auto !important;
-  }
 }
 
 /* 完全隐藏所有 footer */
@@ -1116,7 +1148,7 @@ export default {
             }
 
             .social-icon-svg {
-              width: 15x;
+              width: 15px;
               height: 15px;
               color: currentColor;
             }
@@ -1386,20 +1418,46 @@ export default {
 }
 
 .setting-drawer-support {
-  margin-top: 4px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
-  color: rgba(15, 23, 42, 0.72);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  color: #64748b;
+  background: #fff;
+  border: 1px solid #e6e9ee;
+  border-radius: 12px;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045);
+
+  .support-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
 
   .support-block {
-    margin-bottom: 14px;
+    min-width: 0;
+    margin: 0;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e7eaf0;
+    border-radius: 9px;
+  }
+
+  .support-block--social {
+    padding: 12px 0 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid #edf0f3;
+    border-radius: 0;
   }
 
   .support-title {
-    margin-bottom: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(15, 23, 42, 0.86);
+    margin-bottom: 7px;
+    color: #334155;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
 
   .support-links,
@@ -1407,16 +1465,39 @@ export default {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
+    gap: 5px;
+    font-size: 11px;
     line-height: 1.6;
 
     a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1 1 auto;
+      min-height: 25px;
+      padding: 3px 7px;
       color: var(--primary-color, #1890ff);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 6%, #fff);
+      border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 15%, #e6e9ee);
+      border-radius: 7px;
+      white-space: nowrap;
+
+      &:hover {
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 11%, #fff);
+      }
     }
 
     .separator {
-      color: rgba(100, 116, 139, 0.58);
+      display: none;
+    }
+  }
+
+  .support-legal {
+    padding-top: 13px;
+    border-top: 1px solid #edf0f3;
+
+    a {
+      flex: 0 0 auto;
     }
   }
 
@@ -1430,12 +1511,12 @@ export default {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 6px;
-    color: rgba(15, 23, 42, 0.72);
-    background: rgba(248, 250, 252, 0.85);
+    width: 30px;
+    height: 30px;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e7eaf0;
+    border-radius: 8px;
     transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 
     &:hover {
@@ -1445,19 +1526,37 @@ export default {
     }
   }
 
+  .support-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 11px;
+    border-top: 1px solid #edf0f3;
+  }
+
+  .support-copy,
+  .support-version {
+    color: #94a3b8;
+    font-size: 10px;
+  }
+
   .support-copy {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(15, 23, 42, 0.08);
-    font-size: 11px;
-    color: rgba(100, 116, 139, 0.78);
+    min-width: 0;
+    line-height: 1.45;
   }
 
   .support-version {
-    margin-top: 4px;
-    font-size: 10px;
+    flex: 0 0 auto;
     letter-spacing: 0.06em;
-    color: rgba(100, 116, 139, 0.58);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 380px) {
+    .support-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }
 
@@ -1465,24 +1564,46 @@ body.dark .setting-drawer-support,
 body.realdark .setting-drawer-support,
 .basic-layout-wrapper.dark .setting-drawer-support,
 .basic-layout-wrapper.realdark .setting-drawer-support {
-  border-top-color: rgba(255, 255, 255, 0.1);
-  color: rgba(226, 232, 240, 0.72);
+  color: #a8a8a8;
+  background: #111;
+  border-color: #2d2d2d;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+
+  .support-block {
+    background: #181818;
+    border-color: #303030;
+  }
+
+  .support-block--social {
+    background: transparent;
+    border-color: #2d2d2d;
+  }
+
+  .support-legal,
+  .support-meta {
+    border-top-color: #2d2d2d;
+  }
 
   .support-title {
-    color: rgba(248, 250, 252, 0.9);
+    color: #ededed;
   }
 
   .support-links,
   .support-legal {
-    .separator {
-      color: rgba(148, 163, 184, 0.58);
+    a {
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, #171717);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 22%, #2d2d2d);
+
+      &:hover {
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 16%, #171717);
+      }
     }
   }
 
   .support-social {
-    color: rgba(226, 232, 240, 0.74);
-    border-color: rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    color: #b8b8b8;
+    background: #181818;
+    border-color: #303030;
 
     &:hover {
       color: var(--primary-color, #1890ff);
@@ -1492,12 +1613,11 @@ body.realdark .setting-drawer-support,
   }
 
   .support-copy {
-    border-top-color: rgba(255, 255, 255, 0.1);
-    color: rgba(148, 163, 184, 0.75);
+    color: #737373;
   }
 
   .support-version {
-    color: rgba(148, 163, 184, 0.58);
+    color: #737373;
   }
 }
 

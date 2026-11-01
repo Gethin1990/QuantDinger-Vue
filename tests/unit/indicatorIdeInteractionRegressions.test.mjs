@@ -17,6 +17,17 @@ const indicatorIdeSource = fs.readFileSync(indicatorIdePath, 'utf8')
 const klineChartSource = fs.readFileSync(klineChartPath, 'utf8')
 const strategyIdeSource = fs.readFileSync(strategyIdePath, 'utf8')
 
+test('indicator workspace exposes a constrained and persistent horizontal resizer', () => {
+  assert.match(indicatorIdeSource, /class="ide-workspace-resizer"/)
+  assert.match(indicatorIdeSource, /@mousedown="startWorkspaceResize"/)
+  assert.match(indicatorIdeSource, /@dblclick="resetWorkspaceSplit"/)
+  assert.match(indicatorIdeSource, /workspaceSplitBounds \(\)/)
+  assert.match(indicatorIdeSource, /const codeMin = Math\.min\(420/)
+  assert.match(indicatorIdeSource, /const chartMin = Math\.min\(520/)
+  assert.match(indicatorIdeSource, /workspaceSplitRatio: this\.workspaceSplitRatio/)
+  assert.match(indicatorIdeSource, /<span>\{\{ \$t\('indicatorIde\.hideCode'\) \}\}<\/span>/)
+})
+
 test('indicator-to-strategy conversion has a parameter parser', () => {
   assert.match(
     indicatorIdeSource,
@@ -43,6 +54,27 @@ test('initial left-edge layout events do not trigger history loading', () => {
     klineChartSource,
     /formattedData\.length < visibleNeed[\s\S]*?loadMoreHistoryDataForScroll/
   )
+})
+
+test('derived live candles preserve a manually selected historical viewport', () => {
+  assert.match(klineChartSource, /captureChartViewport\(chart\)/)
+  assert.match(klineChartSource, /replaceChartData\(chartDisplayData\(\), \{ preserveViewport: true \}\)/)
+  assert.doesNotMatch(klineChartSource, /mergedData\.length > 500 \? mergedData\.slice\(-500\)/)
+})
+
+test('derived live candles restore the viewport before the browser can paint a reset position', () => {
+  const replaceStart = klineChartSource.indexOf('const replaceChartData = (rows, options = {}) => {')
+  const replaceEnd = klineChartSource.indexOf('const flushRealtimeChartBar = (bar) => {', replaceStart)
+  const replaceSource = klineChartSource.slice(replaceStart, replaceEnd)
+
+  assert.ok(replaceStart >= 0 && replaceEnd > replaceStart)
+  assert.match(replaceSource, /const afterApply = \(\) => \{[\s\S]*?restoreChartViewport\(chart, viewport\)/)
+  assert.doesNotMatch(replaceSource, /requestAnimationFrame/)
+})
+
+test('measure overlay separates bar count and duration without mojibake', () => {
+  assert.match(klineChartSource, /metaText \+= ` · \$\{timeSpan\}`/)
+  assert.doesNotMatch(klineChartSource, /鐠\?|锟斤拷|\uFFFD/u)
 })
 
 test('indicator conversion route opens before strategy route initialization can replace it', () => {
@@ -89,6 +121,41 @@ test('indicator conversion resolves Crypto source context without falling back t
       instrument: 'Crypto:SOL/USDT@binance:spot'
     }
   )
+})
+
+test('indicator conversion normalizes decorated and previously duplicated Crypto identities', () => {
+  assert.deepEqual(
+    resolveIndicatorStrategyContext({
+      market: 'Crypto',
+      symbol: 'BTC/USDT@BINANCE:SPOT@spot',
+      exchange_id: 'binance',
+      market_type: 'spot',
+      timeframe: '15m'
+    }),
+    {
+      market: 'Crypto',
+      symbol: 'BTC/USDT',
+      exchangeId: 'binance',
+      marketType: 'spot',
+      timeframe: '15m',
+      instrument: 'Crypto:BTC/USDT@binance:spot'
+    }
+  )
+})
+
+test('indicator conversion keeps an explicit source product ahead of stale fallback metadata', () => {
+  const resolved = resolveIndicatorStrategyContext({
+    market: 'Crypto',
+    symbol: 'BTC/USDT@okx:swap',
+    exchange_id: 'binance',
+    market_type: 'spot',
+    timeframe: '15m'
+  })
+
+  assert.equal(resolved.instrument, 'Crypto:BTC/USDT@okx:swap')
+  assert.equal(resolved.symbol, 'BTC/USDT')
+  assert.equal(resolved.exchangeId, 'okx')
+  assert.equal(resolved.marketType, 'swap')
 })
 
 test('indicator conversion keeps the strategy identity separate from the venue native id', () => {

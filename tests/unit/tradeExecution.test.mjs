@@ -22,7 +22,7 @@ test('price deviation preserves direction and missing references', () => {
 
 test('execution labels are available in every supported locale', () => {
   for (const locale of Object.values(messages)) {
-    for (const key of ['price', 'reference', 'deviation', 'note', 'deviationHint', 'orderId', 'pnlHint', 'gridPnlHint', 'pairPending', 'feesPending', 'entryOrders', 'exitOrder', 'gridPendingSummary', 'exchangePnl', 'systemPnl', 'gridNetPnl', 'exchangePnlHint', 'excluding_fees', 'venue_defined', 'reportPending', 'reportPendingWithSystem', 'reportUnavailable', 'spotPnlNotApplicable', 'orderTotalElsewhere', 'reportSource', 'reportedQuantity', 'systemSummary']) {
+    for (const key of ['price', 'reference', 'deviation', 'fillSummary', 'qualitySummary', 'note', 'deviationHint', 'orderId', 'pnlHint', 'gridPnlHint', 'pairPending', 'feesPending', 'entryOrders', 'exitOrder', 'gridPendingSummary', 'exchangePnl', 'systemPnl', 'gridNetPnl', 'exchangePnlHint', 'excluding_fees', 'venue_defined', 'reportPending', 'reportPendingWithSystem', 'reportUnavailable', 'spotPnlNotApplicable', 'orderTotalElsewhere', 'reportSource', 'reportedQuantity', 'systemSummary']) {
       assert.ok(locale[`trading-assistant.execution.${key}`])
     }
     for (const key of ['positionCost', 'marketValue', 'averageEntryPrice']) {
@@ -44,7 +44,7 @@ test('records table stays visible alongside its execution note', async () => {
   assert.deepEqual(compiled.errors, [])
   for (const [records, loading, expected] of [[[{ id: 1 }], false, true], [[], false, false], [[], true, true]]) {
     const instance = new Vue({
-      data: () => ({ records, isRecordsLoading: loading, isDark: false, hasCostSummary: false, costSummary: null, costSummaryItems: [], columns: [] }),
+      data: () => ({ records, isRecordsLoading: loading, isDark: false, portfolio: false, hasCostSummary: false, costSummary: null, costSummaryItems: [], columns: [] }),
       methods: { $t: key => key },
       render: new Function(compiled.render),
       staticRenderFns: compiled.staticRenderFns.map(code => new Function(code))

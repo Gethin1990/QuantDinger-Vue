@@ -3,10 +3,11 @@
 #   pnpm run build
 #   docker build -f Dockerfile.prebuilt -t quantdinger-frontend:local .
 
-ARG NGINX_IMAGE=nginx:1.25-alpine
+ARG NGINX_IMAGE=nginx:1.30.6-alpine3.24-slim
 FROM ${NGINX_IMAGE}
 
-RUN apk add --no-cache curl
+RUN apk upgrade --no-cache \
+    && apk add --no-cache curl
 
 ENV NGINX_ENVSUBST_FILTER=BACKEND_URL \
     BACKEND_URL=http://backend:5000

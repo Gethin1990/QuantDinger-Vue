@@ -1,15 +1,5 @@
 <template>
   <div class="agent-tokens-page qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
-    <div class="page-header">
-      <h2 class="page-title">
-        <a-icon type="api" />
-        <span>{{ $t('agentTokens.title') || 'Agent Tokens' }}</span>
-      </h2>
-      <p class="page-desc">
-        {{ $t('agentTokens.description') || 'Issue and manage tokens that let external AI agents (Cursor, Claude Code, Codex, MCP, custom bots) call this QuantDinger instance through /api/agent/v1.' }}
-      </p>
-    </div>
-
     <a-tabs v-model="activeTab" class="manage-tabs">
       <!-- Tokens tab -->
       <a-tab-pane key="tokens" :tab="$t('agentTokens.tabTokens') || 'Tokens'">
@@ -486,33 +476,6 @@ export default {
 .agent-tokens-page {
   padding: 16px;
 
-  .page-header {
-    margin-bottom: 24px;
-    max-width: 720px;
-
-    .page-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 0 0 8px 0;
-      font-size: 24px;
-      font-weight: 700;
-      color: #1e3a5f;
-
-      .anticon {
-        font-size: 28px;
-        color: var(--primary-color, #1890ff);
-      }
-    }
-
-    .page-desc {
-      margin: 0;
-      color: #64748b;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-  }
-
   .toolbar {
     display: flex;
     align-items: center;
@@ -577,11 +540,6 @@ export default {
 
   /* ===== Dark theme ===== */
   &.theme-dark {
-    .page-header {
-      .page-title { color: rgba(255, 255, 255, 0.9); }
-      .page-desc { color: rgba(255, 255, 255, 0.55); }
-    }
-
     .toolbar .entries-label { color: rgba(255, 255, 255, 0.55); }
 
     .hint { color: rgba(255, 255, 255, 0.55); }

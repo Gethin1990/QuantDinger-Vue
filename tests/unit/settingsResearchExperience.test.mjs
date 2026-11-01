@@ -6,6 +6,52 @@ import settingsResearchOverrides from '../../src/locales/settings-research-overr
 
 const locales = Object.keys(settingsResearchOverrides)
 
+const researchExperienceKeys = [
+  'settings.research.zeroConfigTitle',
+  'settings.research.zeroConfigDesc',
+  'settings.research.marketMap',
+  'settings.research.market.shared',
+  'settings.research.market.sharedDesc',
+  'settings.research.market.macro',
+  'settings.research.market.macroDesc',
+  'settings.research.market.us',
+  'settings.research.market.usDesc',
+  'settings.research.market.hk',
+  'settings.research.market.hkDesc',
+  'settings.research.market.crypto',
+  'settings.research.market.cryptoDesc',
+  'settings.research.market.futures',
+  'settings.research.market.futuresDesc',
+  'settings.research.market.forex',
+  'settings.research.market.forexDesc',
+  'settings.research.badge.recommended',
+  'settings.research.badge.optional',
+  'settings.research.badge.keyOptional',
+  'settings.research.badge.publicReady',
+  'settings.research.badge.noSetup',
+  'settings.research.section.community',
+  'settings.search.section.primary',
+  'settings.search.section.primaryDesc',
+  'settings.search.section.optional',
+  'settings.search.section.optionalDesc',
+  'settings.search.sharedTitle',
+  'settings.search.sharedDesc',
+  'settings.agent.optionalTitle',
+  'settings.agent.optionalDesc',
+  'settings.agent.section.deployment',
+  'settings.agent.section.deploymentDesc',
+  'settings.agent.section.quality',
+  'settings.agent.section.qualityDesc',
+  'settings.agent.section.calibration',
+  'settings.agent.section.calibrationDesc',
+  'settings.agent.badge.shared',
+  'settings.agent.badge.needsSamples',
+  'settings.advanced.show',
+  'settings.advanced.hide',
+  'settings.advanced.description',
+  'settings.desc.ALPHA_VANTAGE_API_KEY'
+]
+
 const canonicalLabels = {
   'settings.option.LLM_PROVIDER.atlascloud': 'AtlasCloud',
   'settings.option.LLM_PROVIDER.deepseek': 'DeepSeek',
@@ -33,17 +79,56 @@ test('provider and API brands keep canonical names in every locale', () => {
   }
 })
 
-test('research settings are grouped and advanced controls start collapsed', () => {
+test('research settings have complete copy in every supported locale', () => {
+  assert.deepEqual(locales.sort(), [
+    'ar-SA', 'de-DE', 'en-US', 'fr-FR', 'ja-JP', 'ko-KR',
+    'ru-RU', 'th-TH', 'vi-VN', 'zh-CN', 'zh-TW'
+  ])
+  for (const locale of locales) {
+    const messages = settingsResearchOverrides[locale]
+    for (const key of researchExperienceKeys) {
+      assert.equal(typeof messages[key], 'string', `${locale}.${key}`)
+      assert.ok(messages[key].trim(), `${locale}.${key} is not empty`)
+    }
+  }
+})
+
+test('research settings are grouped by market and advanced controls start collapsed', () => {
   const source = readFileSync(
     new URL('../../src/views/settings/index.vue', import.meta.url),
     'utf8'
   )
   assert.match(source, /dataSourceSectionDefinitions \(\)/)
   assert.match(source, /searchSectionDefinitions \(\)/)
-  assert.match(source, /settings\.research\.section\.community/)
-  assert.match(source, /settings\.research\.section\.professional/)
+  assert.match(source, /agentSectionDefinitions \(\)/)
+  for (const market of ['shared', 'us', 'hk', 'crypto', 'futures', 'forex']) {
+    assert.match(source, new RegExp(`settings\\.research\\.market\\.${market}`))
+  }
+  assert.match(source, /advancedKeys/)
   assert.match(source, /advancedExpanded: \{\}/)
   assert.match(source, /settings\.research\.zeroConfigTitle/)
+  assert.match(source, /settings\.search\.sharedTitle/)
+  assert.match(source, /settings\.agent\.optionalTitle/)
+})
+
+test('market-specific credentials appear only in their intended research sections', () => {
+  const source = readFileSync(
+    new URL('../../src/views/settings/index.vue', import.meta.url),
+    'utf8'
+  )
+  for (const key of [
+    'FINNHUB_API_KEY',
+    'ALPHA_VANTAGE_API_KEY',
+    'TWELVE_DATA_API_KEY',
+    'COINGLASS_API_KEY',
+    'CRYPTOQUANT_API_KEY',
+    'TIINGO_API_KEY'
+  ]) {
+    assert.match(source, new RegExp(key))
+  }
+  assert.match(source, /CFTC positioning and public contract data are built in/)
+  assert.match(source, /'FINNHUB_FREE_ONLY',\s*'ALPHA_VANTAGE_API_KEY'/)
+  assert.match(source, /'ALPHA_VANTAGE_BASE_URL',\s*'ALPHA_VANTAGE_TIMEOUT',\s*'ALPHA_VANTAGE_NEWS_LIMIT'/)
 })
 
 test('professional report runtime controls are represented in the settings UI', () => {

@@ -3,7 +3,8 @@
     <div class="positions-section">
       <a-alert
         v-if="showReconciliationAlert"
-        class="position-reconciliation-alert"
+        class="ownership-warning-alert position-reconciliation-alert"
+        :class="{ 'is-dark': isDark }"
         type="warning"
         show-icon
         :message="reconciliationMessage"
@@ -27,6 +28,24 @@
         show-icon
         :message="$t('strategyCenter.console.virtualPositionsHint')"
       />
+      <div v-if="portfolio && positions.length" class="portfolio-position-summary">
+        <div>
+          <span>{{ $t('strategyCenter.console.currentPositions') }}</span>
+          <strong>{{ positionSummary.count }}</strong>
+        </div>
+        <div>
+          <span>{{ $t('trading-assistant.table.positionCost') }}</span>
+          <strong>{{ formatMoney(positionSummary.cost) }}</strong>
+        </div>
+        <div>
+          <span>{{ $t('trading-assistant.table.marketValue') }}</span>
+          <strong>{{ formatMoney(positionSummary.marketValue) }}</strong>
+        </div>
+        <div>
+          <span>{{ $t('trading-assistant.table.unrealizedPnl') }}</span>
+          <strong :class="pnlClass(positionSummary.unrealizedPnl)">{{ formatSignedMoney(positionSummary.unrealizedPnl) }}</strong>
+        </div>
+      </div>
       <div v-if="positions.length === 0 && !loading" class="empty-state strategy-tab-empty" :class="{ 'is-compact': compact }">
         <template v-if="compact">
           <a-icon type="inbox" />
@@ -42,7 +61,7 @@
         :pagination="false"
         size="small"
         rowKey="id"
-        :scroll="{ x: compact ? 1060 : 1260 }"
+        :scroll="{ x: compact ? (portfolio ? 1130 : 1060) : (portfolio ? 1380 : 1260) }"
       >
         <template slot="symbol" slot-scope="text, record">
           <strong>{{ record.symbol || text }}</strong>
@@ -63,6 +82,9 @@
         </template>
         <template slot="size" slot-scope="text, record">
           {{ parseFloat(record.size || text || 0).toFixed(4) }}
+        </template>
+        <template slot="weight" slot-scope="text, record">
+          <strong class="position-weight">{{ formatPercent(getPositionWeight(record)) }}</strong>
         </template>
         <template slot="positionCost" slot-scope="text, record">
           <span v-if="getPositionCost(record) > 0">{{ formatMoney(getPositionCost(record)) }}</span>
@@ -120,19 +142,21 @@
       :width="1120"
       destroy-on-close
     >
-      <a-alert
-        class="ownership-risk-alert"
-        type="warning"
-        show-icon
-        :message="$t('strategyCenter.positionOwnership.riskTitle')"
-        :description="$t(ownershipExchangeId === 'alpaca' ? 'strategyCenter.positionOwnership.alpacaRiskDescription' : 'strategyCenter.positionOwnership.riskDescription')"
-      />
-      <a-alert
-        class="ownership-risk-alert"
-        type="info"
-        show-icon
-        :message="$t(ownershipExchangeId === 'alpaca' ? 'strategyCenter.positionOwnership.alpacaHelp' : 'strategyCenter.positionOwnership.toleranceHelp')"
-      />
+      <div class="ownership-guidance" :class="{ 'is-dark': isDark }">
+        <div class="ownership-guidance__main">
+          <span class="ownership-guidance__icon">
+            <a-icon type="safety-certificate" />
+          </span>
+          <div class="ownership-guidance__copy">
+            <strong>{{ $t('strategyCenter.positionOwnership.riskTitle') }}</strong>
+            <p>{{ $t(ownershipExchangeId === 'alpaca' ? 'strategyCenter.positionOwnership.alpacaRiskDescription' : 'strategyCenter.positionOwnership.riskDescription') }}</p>
+          </div>
+        </div>
+        <div class="ownership-guidance__note">
+          <a-icon type="info-circle" />
+          <span>{{ $t(ownershipExchangeId === 'alpaca' ? 'strategyCenter.positionOwnership.alpacaHelp' : 'strategyCenter.positionOwnership.toleranceHelp') }}</span>
+        </div>
+      </div>
       <a-table
         :columns="ownershipColumns"
         :data-source="ownershipRows"
@@ -185,7 +209,8 @@
       </a-table>
       <a-alert
         v-if="ownershipRows.some(row => row.repair_kind === 'allocation_shortfall')"
-        class="ownership-risk-alert"
+        class="ownership-warning-alert ownership-shortfall-alert"
+        :class="{ 'is-dark': isDark }"
         type="warning"
         show-icon
         :message="$t('strategyCenter.positionOwnership.shortfall')"
@@ -221,6 +246,10 @@ export default {
     leverage: {
       type: [Number, String],
       default: 1
+    },
+    portfolio: {
+      type: Boolean,
+      default: false
     },
     compact: {
       type: Boolean,
@@ -269,7 +298,7 @@ export default {
     },
     columns () {
       if (this.compact) {
-        return [
+        const columns = [
           {
             title: this.$t('trading-assistant.table.symbol'),
             dataIndex: 'symbol',
@@ -291,6 +320,14 @@ export default {
             width: 118,
             scopedSlots: { customRender: 'size' }
           },
+          ...(this.portfolio
+            ? [{
+                title: this.$t('strategyV2.backtest.weight'),
+                key: 'weight',
+                width: 92,
+                scopedSlots: { customRender: 'weight' }
+              }]
+            : []),
           {
             title: `${this.$t('trading-assistant.table.positionCost')} / ${this.$t('trading-assistant.table.marketValue')}`,
             key: 'value_summary',
@@ -309,15 +346,18 @@ export default {
             width: 170,
             scopedSlots: { customRender: 'pnlSummary' }
           },
-          {
-            title: this.$t('trading-assistant.form.leverage'),
-            key: 'leverage',
-            width: 86,
-            scopedSlots: { customRender: 'leverage' }
-          }
+          ...(this.portfolio
+            ? []
+            : [{
+                title: this.$t('trading-assistant.form.leverage'),
+                key: 'leverage',
+                width: 86,
+                scopedSlots: { customRender: 'leverage' }
+              }])
         ]
+        return columns
       }
-      return [
+      const columns = [
         {
           title: this.$t('trading-assistant.table.symbol'),
           dataIndex: 'symbol',
@@ -339,6 +379,14 @@ export default {
           width: 120,
           scopedSlots: { customRender: 'size' }
         },
+        ...(this.portfolio
+          ? [{
+              title: this.$t('strategyV2.backtest.weight'),
+              key: 'weight',
+              width: 100,
+              scopedSlots: { customRender: 'weight' }
+            }]
+          : []),
         {
           title: this.$t('trading-assistant.table.positionCost'),
           dataIndex: 'position_cost',
@@ -389,6 +437,7 @@ export default {
           scopedSlots: { customRender: 'capitalContribution' }
         }
       ]
+      return columns
     },
     ownershipColumns () {
       const quantitySlot = { customRender: 'ownershipQty' }
@@ -407,6 +456,15 @@ export default {
       if (String(this.marketType || '').toLowerCase() === 'spot') return 1
       const parsed = parseFloat(this.leverage)
       return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+    },
+    positionSummary () {
+      return this.positions.reduce((summary, position) => {
+        summary.count += 1
+        summary.cost += this.getPositionCost(position)
+        summary.marketValue += this.getMarketValue(position)
+        summary.unrealizedPnl += Number(position.unrealized_pnl || 0)
+        return summary
+      }, { count: 0, cost: 0, marketValue: 0, unrealizedPnl: 0 })
     }
   },
   watch: {
@@ -531,14 +589,20 @@ export default {
               updated_at: position.updated_at || position.updatedAt || ''
             }
           })
+          this.emitSummary()
         } else {
           this.positions = []
           this.reconciliation = { status: 'not_checked', notes: [], account_positions: [] }
+          this.emitSummary()
         }
       } catch (error) {
         this.positions = []
         this.reconciliation = { status: 'not_checked', notes: [], account_positions: [] }
+        this.emitSummary()
       }
+    },
+    emitSummary () {
+      this.$emit('summary-change', { ...this.positionSummary })
     },
     hasValidPrice (price) {
       const value = parseFloat(price)
@@ -589,6 +653,10 @@ export default {
       if (size > 0 && cp > 0) return size * cp
       return this.getPositionCost(record)
     },
+    getPositionWeight (record) {
+      if (this.positionSummary.marketValue <= 0) return 0
+      return this.getMarketValue(record) / this.positionSummary.marketValue * 100
+    },
     startPolling () {
       this.stopPolling()
       this.positionPoller = createVisibilityPolling(() => this.loadPositions(), 15000, {
@@ -611,7 +679,6 @@ export default {
 </script>
 
 <style lang="less" scoped>
-@primary-color: #1890ff;
 @success-color: #0ecb81;
 @danger-color: #f6465d;
 
@@ -649,7 +716,6 @@ export default {
   .position-reconciliation-alert,
   .virtual-account-alert {
     margin-bottom: 12px;
-    border-radius: 6px;
   }
 
   .ownership-toolbar {
@@ -667,8 +733,55 @@ export default {
 
   &.theme-dark .ownership-toolbar {
     color: #aeb7c4;
-    border-color: #363c4e;
-    background: #20232b;
+    border-color: #333333;
+    background: #181818;
+  }
+
+  .portfolio-position-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+      padding: 9px 11px;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      background: #f8fafc;
+    }
+
+    span {
+      overflow: hidden;
+      color: #7a8594;
+      font-size: 11px;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      color: #243044;
+      font-size: 14px;
+      font-weight: 680;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .position-weight {
+    color: var(--primary-color, #1890ff);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.theme-dark .portfolio-position-summary > div {
+    border-color: #333333;
+    background: #181818;
+
+    span { color: #8f98a5; }
+    strong { color: #e0e4e9; }
   }
 
   ::v-deep .ant-table {
@@ -724,15 +837,15 @@ export default {
     }
 
     ::v-deep .ant-table-thead > tr > th {
-      background: #2a2e39 !important;
+      background: #222222 !important;
       color: #d1d4dc !important;
-      border-bottom-color: #363c4e !important;
+      border-bottom-color: #333333 !important;
     }
 
     ::v-deep .ant-table-tbody > tr > td {
       background: #1c1c1c !important;
       color: #d1d4dc !important;
-      border-bottom-color: #363c4e !important;
+      border-bottom-color: #333333 !important;
     }
   }
 
@@ -785,7 +898,187 @@ export default {
   }
 }
 
-.ownership-risk-alert {
+.ownership-guidance {
   margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
+  border-radius: 10px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color, #1890ff) 5%, #fff) 0%, #fff 72%);
+
+  &__main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 15px 11px;
+  }
+
+  &__icon {
+    display: inline-flex;
+    flex: 0 0 30px;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin-top: 1px;
+    border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
+    border-radius: 8px;
+    color: var(--primary-color, #1890ff);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, transparent);
+    font-size: 15px;
+  }
+
+  &__copy {
+    min-width: 0;
+
+    strong {
+      display: block;
+      color: #253044;
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+
+    p {
+      margin: 4px 0 0;
+      color: #667085;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+  }
+
+  &__note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 15px 10px 57px;
+    border-top: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
+    color: #758095;
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 2%, transparent);
+    font-size: 12px;
+    line-height: 1.5;
+
+    .anticon {
+      margin-top: 3px;
+      color: var(--primary-color, #1890ff);
+    }
+  }
+
+  &.is-dark {
+    border-color: color-mix(in srgb, var(--primary-color, #1890ff) 30%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color, #1890ff) 10%, #1b1d20) 0%, #1b1d20 72%);
+
+    .ownership-guidance__icon {
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 30%, transparent);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent);
+    }
+
+    .ownership-guidance__copy {
+      strong { color: #e5e9ef; }
+      p { color: #a8b0bc; }
+    }
+
+    .ownership-guidance__note {
+      border-top-color: rgba(255, 255, 255, 0.07);
+      color: #949eab;
+      background: rgba(255, 255, 255, 0.015);
+    }
+  }
+}
+
+.ownership-warning-alert {
+  position: relative;
+  overflow: hidden;
+  padding: 13px 15px 13px 58px;
+  border: 1px solid rgba(217, 169, 40, 0.28);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(217, 169, 40, 0.08) 0%, #fff 72%);
+  box-shadow: inset 3px 0 0 rgba(217, 169, 40, 0.52);
+
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120px;
+    height: 100%;
+    content: '';
+    pointer-events: none;
+    background: radial-gradient(circle at top right, rgba(217, 169, 40, 0.09), transparent 68%);
+  }
+
+  ::v-deep .ant-alert-icon {
+    top: 13px;
+    left: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    color: #b7791f;
+    font-size: 14px;
+    background: rgba(217, 169, 40, 0.12);
+    border: 1px solid rgba(217, 169, 40, 0.24);
+    border-radius: 8px;
+  }
+
+  ::v-deep .ant-alert-message {
+    position: relative;
+    color: #463819;
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.45;
+  }
+
+  ::v-deep .ant-alert-description {
+    position: relative;
+    margin-top: 4px;
+    color: #766943;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  ::v-deep .ant-btn-link {
+    height: auto;
+    padding: 2px 0 0;
+    color: #9a6b00;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  &.is-dark {
+    border-color: rgba(217, 169, 40, 0.3);
+    background: linear-gradient(135deg, rgba(217, 169, 40, 0.1) 0%, #1b1d20 72%);
+    box-shadow: inset 3px 0 0 rgba(217, 169, 40, 0.58);
+
+    &::before {
+      background: radial-gradient(circle at top right, rgba(217, 169, 40, 0.08), transparent 68%);
+    }
+
+    ::v-deep .ant-alert-icon {
+      color: #e0b84d;
+      background: rgba(217, 169, 40, 0.13);
+      border-color: rgba(217, 169, 40, 0.28);
+    }
+
+    ::v-deep .ant-alert-message {
+      color: #e8e3d7;
+    }
+
+    ::v-deep .ant-alert-description {
+      color: #aaa394;
+    }
+
+    ::v-deep .ant-btn-link {
+      color: #d9a928;
+
+      &:hover,
+      &:focus {
+        color: #edc85f;
+      }
+    }
+  }
+}
+
+.ownership-shortfall-alert {
+  margin-top: 16px;
 }
 </style>

@@ -202,7 +202,19 @@ export default {
     tone (value) { const number = Number(value || 0); return number > 0 ? 'positive' : number < 0 ? 'negative' : '' },
     signedCell (value, digits = 2) { return this.$createElement('span', { class: this.tone(value) }, `${Number(value) > 0 ? '+' : ''}${this.formatNumber(value, digits)}`) },
     percentCell (value) { return this.$createElement('span', { class: this.tone(value) }, `${Number(value) > 0 ? '+' : ''}${this.formatRate(value)}`) },
-    correlationCellStyle (value) { const alpha = Math.min(0.8, Math.abs(Number(value || 0)) * 0.75 + 0.08); return { background: Number(value) >= 0 ? `rgba(82,196,26,${alpha})` : `rgba(255,77,79,${alpha})` } }
+    correlationCellStyle (value) {
+      const number = Number(value || 0)
+      const intensity = Math.abs(number)
+      const alpha = this.isDark
+        ? Math.min(0.8, intensity * 0.75 + 0.08)
+        : Math.min(0.42, intensity * 0.34 + 0.06)
+      return {
+        background: number >= 0
+          ? `rgba(82,196,26,${alpha})`
+          : `rgba(255,77,79,${alpha})`,
+        color: this.isDark ? '#fff' : '#1f2937'
+      }
+    }
   }
 }
 </script>
@@ -225,13 +237,16 @@ export default {
 .factor-tabs { margin-top: 12px; }
 .overview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .overview-card { display: flex; min-height: 76px; flex-direction: column; justify-content: space-between; }
-.correlation-grid { display: grid; gap: 1px; overflow: auto; border: 1px solid #303030; background: #303030; }
-.correlation-head, .correlation-cell, .correlation-corner { display: flex; min-height: 48px; align-items: center; justify-content: center; padding: 8px; background: #111; }
-.correlation-head { color: #a3a3a3; font-size: 11px; font-weight: 700; }
-.correlation-cell { color: #fff; font-variant-numeric: tabular-nums; }
+.correlation-grid { display: grid; gap: 1px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #e2e8f0; }
+.correlation-head, .correlation-cell, .correlation-corner { display: flex; min-height: 48px; align-items: center; justify-content: center; padding: 8px; background: #fff; }
+.correlation-head, .correlation-corner { background: #f8fafc; }
+.correlation-head { color: #475569; font-size: 11px; font-weight: 700; }
+.correlation-cell { color: #1f2937; font-variant-numeric: tabular-nums; }
 .factor-result.theme-dark .metric-card, .factor-result.theme-dark .overview-card { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
 .factor-result.theme-dark .metric-card strong, .factor-result.theme-dark .overview-card strong, .factor-result.theme-dark .chart-heading h3 { color: #e5e7eb; }
 .factor-result.theme-dark .chart-card { border-color: rgba(255,255,255,.1); }
+.factor-result.theme-dark .correlation-grid { border-color: #303030; background: #303030; }
+.factor-result.theme-dark .correlation-head, .factor-result.theme-dark .correlation-corner { color: #a3a3a3; background: #111; }
 ::v-deep .factor-tooltip { min-width: 190px; }
 ::v-deep .factor-tooltip-date { margin-bottom: 5px; color: #8c8c8c; font-weight: 600; }
 ::v-deep .factor-tooltip-row { display: grid; grid-template-columns: 14px minmax(90px, 1fr) auto; align-items: center; gap: 5px; line-height: 24px; }

@@ -73,6 +73,13 @@ test('symbol search is global and offers an inferred symbol when providers retur
   assert.match(searchMethod, /if \(!this\.symbolOptions\.length\)/)
   assert.match(searchMethod, /this\.inferSymbolFromText\(kw\)/)
   assert.match(workbench, /const plainTicker = value\.trim\(\)\.match/)
+  assert.ok(
+    workbench.indexOf('const marketPair = value.match') < workbench.indexOf('const pair = value.match'),
+    'explicit market prefixes must be resolved before slash-pair inference'
+  )
+  assert.match(workbench, /FOREX: 'Forex'/)
+  assert.match(workbench, /FUTURES: 'Futures'/)
+  assert.match(searchMethod, /symbol: \(inferred && inferred\.symbol\) \|\| kw\.toUpperCase\(\)/)
 })
 
 test('professional report formats prices using the instrument quote currency', () => {
@@ -161,6 +168,54 @@ test('professional evidence table inherits report theme colors in dark mode', ()
   assert.match(report, /\.evidence-collapse \/deep\/ \.ant-collapse-content[\s\S]*?background: var\(--report-bg\)/)
   assert.match(report, /\.evidence-row strong, \.evidence-row > span \{ color: var\(--report-text\)/)
   assert.match(report, /\.theme-dark \/deep\/ \.ant-progress-circle \.ant-progress-text[\s\S]*?color: var\(--report-text\) !important/)
+})
+
+test('professional loading workflow follows the active theme color', () => {
+  const report = read('src/views/ai-analysis/components/ProfessionalAnalysisReport.vue')
+
+  assert.doesNotMatch(report, /loadingScope" :key="item" color="blue"/)
+  assert.match(report, /\.research-loading__mark[\s\S]*?var\(--primary-color/)
+  assert.match(report, /\.research-stage\.is-active \.research-stage__icon[\s\S]*?var\(--primary-color/)
+  assert.match(report, /\.research-scope \/deep\/ \.ant-tag[\s\S]*?var\(--primary-color/)
+  assert.match(report, /getPropertyValue\('--primary-color'\)/)
+})
+
+test('professional evidence rows constrain long labels and observations', () => {
+  const report = read('src/views/ai-analysis/components/ProfessionalAnalysisReport.vue')
+
+  assert.match(report, /class="evidence-metric"/)
+  assert.match(report, /:title="evidenceValueTitle\(item\)"/)
+  assert.match(report, /\.evidence-head > \*, \.evidence-row > \* \{ min-width: 0; \}/)
+  assert.match(report, /\.evidence-metric strong, \.evidence-metric small, \.evidence-provider[\s\S]*?text-overflow: ellipsis/)
+  assert.match(report, /\.evidence-observed[\s\S]*?-webkit-line-clamp: 2/)
+})
+
+test('new research workflow copy is localized for every supported language', async () => {
+  const { default: messages } = await import('../../src/locales/professional-report-overrides.js')
+  const english = messages['en-US']
+  const keys = Object.keys(english).filter(key => key.startsWith('fastAnalysis.loading') || key.startsWith('fastAnalysis.priceChart'))
+
+  for (const [locale, localeMessages] of Object.entries(messages)) {
+    for (const key of keys) assert.equal(typeof localeMessages[key], 'string', `${locale} missing ${key}`)
+    if (locale !== 'en-US') {
+      assert.notEqual(localeMessages['fastAnalysis.loadingTitle'], english['fastAnalysis.loadingTitle'], `${locale} loading title must be localized`)
+      assert.notEqual(localeMessages['fastAnalysis.loadingActivity.risk'], english['fastAnalysis.loadingActivity.risk'], `${locale} risk activity must be localized`)
+    }
+  }
+})
+
+test('diagnose command uses the final curated translation layer', async () => {
+  const { default: messages } = await import('../../src/locales/ai-analysis-workbench-overrides.js')
+  const workbench = read('src/views/ai-analysis/components/CopilotWorkbench.vue')
+
+  assert.equal(messages['zh-CN']['aiAssetAnalysis.copilot.diagnoseCommand'], '诊断 {market}:{symbol}')
+  assert.equal(messages['zh-TW']['aiAssetAnalysis.copilot.diagnoseCommand'], '診斷 {market}:{symbol}')
+  for (const localeMessages of Object.values(messages)) {
+    assert.doesNotMatch(localeMessages['aiAssetAnalysis.copilot.diagnoseCommand'], /显示|數字/)
+  }
+  assert.match(workbench, /displayDiagnoseText \(value\)/)
+  assert.match(workbench, /session\.title\) \|\| text\.untitled/)
+  assert.match(workbench, /renderMarkdown\(displayDiagnoseText\(msg\.content\)\)/)
 })
 
 test('professional reports support anonymous read-only snapshot links', () => {

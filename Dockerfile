@@ -11,8 +11,8 @@
 # does no compilation — only file copies and a small apk add — so the
 # arm64 manifest entry is cheap.
 
-ARG NODE_IMAGE=node:18-alpine
-ARG NGINX_IMAGE=nginx:1.25-alpine
+ARG NODE_IMAGE=node:22.23.4-alpine3.24
+ARG NGINX_IMAGE=nginx:1.30.6-alpine3.24-slim
 
 FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS builder
 ARG APP_VERSION=""
@@ -38,7 +38,8 @@ RUN if [ -n "$APP_VERSION" ] || [ -n "$GIT_TAG" ]; then \
 
 FROM ${NGINX_IMAGE}
 
-RUN apk add --no-cache curl
+RUN apk upgrade --no-cache \
+    && apk add --no-cache curl
 
 # Pin the envsubst filter so only ${BACKEND_URL} is substituted — otherwise
 # nginx's own $-variables ($host, $remote_addr, ...) would also be clobbered.

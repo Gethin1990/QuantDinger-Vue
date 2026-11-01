@@ -1,66 +1,144 @@
 <template>
   <div class="billing-page qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
-    <div class="page-header">
-      <h2 class="page-title">
-        <a-icon type="wallet" />
-        <span>{{ $t('billing.title') }}</span>
-      </h2>
-      <p class="page-desc">{{ $t('billing.desc') }}</p>
-    </div>
+    <section class="billing-hero">
+      <div class="hero-copy">
+        <h2 class="page-title">{{ $t('billing.title') }}</h2>
+        <p class="page-desc">{{ $t('billing.valueDesc') }}</p>
+        <div class="hero-rule">
+          <span class="rule-label">{{ $t('billing.vipRule.title') }}</span>
+          <span>{{ $t('billing.vipRule.desc') }}</span>
+        </div>
+      </div>
 
-    <a-card :bordered="false" class="snapshot-card">
-      <div class="snapshot-row">
-        <div class="snap-item">
+      <div class="account-snapshot">
+        <div class="snapshot-block credits-snapshot">
           <div class="snap-label">{{ $t('billing.snapshot.credits') }}</div>
           <div class="snap-value">{{ formatCredits(billing.credits) }}</div>
         </div>
-        <div class="snap-item">
+        <div class="snapshot-divider" />
+        <div class="snapshot-block vip-snapshot">
           <div class="snap-label">{{ $t('billing.snapshot.vip') }}</div>
-          <div class="snap-value">
-            <a-tag v-if="billing.is_lifetime" color="purple">
-              <a-icon type="crown" /> {{ $t('billing.snapshot.lifetime') || 'Lifetime' }}
-            </a-tag>
-            <a-tag v-else-if="billing.is_vip" color="gold">
-              <a-icon type="crown" /> VIP
-            </a-tag>
-            <a-tag v-else>{{ $t('billing.snapshot.notVip') }}</a-tag>
-            <span v-if="billing.vip_expires_at && !billing.is_lifetime" class="vip-exp">
-              {{ $t('billing.snapshot.expires') }}: {{ formatDate(billing.vip_expires_at) }}
+          <div class="snap-value vip-value">
+            <span v-if="billing.is_lifetime" class="vip-state is-lifetime">
+              {{ $t('billing.snapshot.lifetime') }}
             </span>
+            <span v-else-if="billing.is_vip" class="vip-state is-active">VIP</span>
+            <span v-else class="vip-state is-inactive">{{ $t('billing.snapshot.notVip') }}</span>
+          </div>
+          <div v-if="billing.vip_expires_at && !billing.is_lifetime" class="vip-exp">
+            {{ $t('billing.snapshot.expires') }}: {{ formatDate(billing.vip_expires_at) }}
           </div>
         </div>
       </div>
-      <a-alert
-        style="margin-top: 12px;"
-        type="info"
-        show-icon
-        :message="$t('billing.vipRule.title')"
-        :description="$t('billing.vipRule.desc')"
-      />
-    </a-card>
+    </section>
 
     <a-alert
       v-if="billing.is_lifetime"
       style="margin-top: 16px;"
       type="success"
       show-icon
-      :message="$t('billing.lifetimeTopupHint') || '你已是永久会员，购买月度/年度套餐相当于补充积分包，不影响永久会员状态。'"
+      :message="$t('billing.lifetimeTopupHint')"
     />
 
-    <a-row :gutter="16" style="margin-top: 16px;">
-      <a-col v-for="plan in planItems" :key="plan.code" :xs="24" :sm="12" :lg="planColumnSpan">
-        <a-card :bordered="false" class="plan-card" :class="{ highlight: plan.is_popular }">
-          <a-tag v-if="plan.is_popular" color="gold" class="popular-badge">{{ tr('billing.popular', 'Popular') }}</a-tag>
-          <div class="plan-title">{{ planDisplayName(plan) }}</div>
-          <div class="plan-price">${{ plan.price_usd }} <span class="plan-unit">{{ plan.is_lifetime ? $t('billing.once') : `/ ${plan.duration_days} ${tr('billing.days', 'days')}` }}</span></div>
-          <div class="plan-benefit" v-if="plan.description">{{ plan.description }}</div>
-          <div class="plan-benefit" v-if="plan.credits_once">+{{ plan.credits_once }} {{ $t('billing.credits') }}</div>
-          <div class="plan-benefit" v-if="plan.credits_monthly">{{ $t('billing.lifetimeMonthly') }} +{{ plan.credits_monthly }} {{ $t('billing.credits') }}</div>
-          <div class="plan-benefit">{{ $t('billing.strategyLimit', { count: plan.strategy_limit }) }}</div>
-          <a-button type="primary" block :loading="purchasing === plan.code" @click="buy(plan.code)">{{ $t('billing.buyNow') }}</a-button>
-        </a-card>
-      </a-col>
-    </a-row>
+    <section class="plans-section">
+      <div class="plans-heading">
+        <div>
+          <h3>{{ $t('billing.choosePlan') }}</h3>
+          <p>{{ $t('billing.choosePlanHint') }}</p>
+        </div>
+      </div>
+
+      <div class="library-entitlement" :class="{ 'is-loading': freeAssetCountsLoading }">
+        <div class="library-entitlement-copy">
+          <span class="library-entitlement-label">{{ $t('billing.libraryEntitlement.label') }}</span>
+          <strong>{{ $t('billing.libraryEntitlement.title') }}</strong>
+        </div>
+        <div class="library-entitlement-counts">
+          <span>
+            <b>{{ freeAssetCountsLoading ? '—' : formatCredits(freeAssetCounts.strategy_count) }}</b>
+            {{ $t('billing.libraryEntitlement.strategies') }}
+          </span>
+          <i />
+          <span>
+            <b>{{ freeAssetCountsLoading ? '—' : formatCredits(freeAssetCounts.indicator_count) }}</b>
+            {{ $t('billing.libraryEntitlement.indicators') }}
+          </span>
+        </div>
+        <span class="library-entitlement-note">{{ $t('billing.libraryEntitlement.note') }}</span>
+      </div>
+
+      <div class="plans-grid">
+        <article
+          v-for="plan in planItems"
+          :key="plan.code"
+          class="plan-card"
+          :class="{ highlight: isRecommendedPlan(plan), lifetime: plan.is_lifetime }"
+        >
+          <div v-if="isRecommendedPlan(plan)" class="popular-badge">
+            <span>{{ $t('billing.recommended') }}</span>
+          </div>
+
+          <div class="plan-heading">
+            <div>
+              <div class="plan-title">{{ planDisplayName(plan) }}</div>
+              <div class="plan-duration">
+                {{ plan.is_lifetime ? $t('billing.once') : `${plan.duration_days} ${$t('billing.days')}` }}
+              </div>
+            </div>
+          </div>
+
+          <div class="plan-price-row">
+            <span class="plan-currency">$</span>
+            <span class="plan-price">{{ plan.price_usd }}</span>
+            <span class="plan-unit">{{ plan.is_lifetime ? $t('billing.once') : `/ ${plan.duration_days} ${$t('billing.days')}` }}</span>
+          </div>
+
+          <div class="plan-value-row">
+            <span>{{ planValueText(plan) }}</span>
+            <span v-if="planSavingsPercent(plan)" class="savings-label">
+              {{ $t('billing.saveComparedMonthly', { percent: planSavingsPercent(plan) }) }}
+            </span>
+          </div>
+
+          <div class="plan-divider" />
+
+          <div class="benefits-label">{{ $t('billing.included') }}</div>
+          <div class="plan-benefits">
+            <div v-if="plan.credits_once" class="plan-benefit is-primary">
+              <a-icon type="check-circle" theme="filled" />
+              <span>+{{ formatCredits(plan.credits_once) }} {{ $t('billing.credits') }}</span>
+            </div>
+            <div v-if="plan.credits_monthly" class="plan-benefit is-primary">
+              <a-icon type="check-circle" theme="filled" />
+              <span>{{ $t('billing.lifetimeMonthly') }} +{{ formatCredits(plan.credits_monthly) }} {{ $t('billing.credits') }}</span>
+            </div>
+            <div class="plan-benefit is-primary">
+              <a-icon type="check-circle" theme="filled" />
+              <span>{{ $t('billing.benefitVipLibrary') }}</span>
+            </div>
+            <div class="plan-benefit">
+              <a-icon type="check-circle" theme="filled" />
+              <span>{{ $t('billing.benefitUpdates') }}</span>
+            </div>
+            <div class="plan-benefit">
+              <a-icon type="check-circle" theme="filled" />
+              <span>{{ $t('billing.strategyLimit', { count: plan.strategy_limit }) }}</span>
+            </div>
+          </div>
+
+          <a-button
+            class="plan-action"
+            :type="isRecommendedPlan(plan) ? 'primary' : 'default'"
+            block
+            :loading="purchasing === plan.code"
+            @click="buy(plan.code)"
+          >
+            <span>{{ planActionLabel(plan) }}</span>
+            <a-icon type="arrow-right" />
+          </a-button>
+        </article>
+      </div>
+    </section>
 
     <a-modal
       v-model="methodPickerVisible"
@@ -346,7 +424,7 @@
 
 <script>
 import { mapState } from 'vuex'
-import { getMembershipPlans, listCryptoChains, createCryptoOrder, getCryptoOrder, createStripeCheckout } from '@/api/billing'
+import { getMembershipPlans, getFreeMarketAssetCounts, listCryptoChains, createCryptoOrder, getCryptoOrder, createStripeCheckout } from '@/api/billing'
 
 export default {
   name: 'BillingPage',
@@ -360,9 +438,12 @@ export default {
     planItems () {
       return Object.values(this.plans || {}).sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
     },
-    planColumnSpan () {
-      const count = Math.max(1, Math.min(4, this.planItems.length))
-      return Math.floor(24 / count)
+    recommendedPlanCode () {
+      const recurringPlans = this.planItems.filter(plan => !plan.is_lifetime)
+      const recommended = recurringPlans.find(plan => plan.is_popular) || recurringPlans.reduce((current, plan) => {
+        return !current || Number(plan.duration_days) > Number(current.duration_days) ? plan : current
+      }, null)
+      return recommended ? recommended.code : ''
     },
     activeCurrency () {
       return (this.usdtOrder && this.usdtOrder.currency) || this.selectedCurrency || 'USDT'
@@ -463,6 +544,11 @@ export default {
       methodPickerVisible: false,
       paymentMethods: [],
       selectedCurrency: 'USDT',
+      freeAssetCountsLoading: true,
+      freeAssetCounts: {
+        strategy_count: 0,
+        indicator_count: 0
+      },
       billing: {
         credits: 0,
         is_vip: false,
@@ -474,9 +560,15 @@ export default {
   },
   created () {
     this.load()
+    this.loadFreeMarketAssetCounts()
     if (this.$route.query.payment === 'stripe_success') {
       this.$message.success(this.tr('billing.stripeSuccess', 'Payment completed. Credits will refresh after Stripe confirms it.'))
       window.setTimeout(() => this.load(), 2000)
+    }
+  },
+  activated () {
+    if (!this.freeAssetCountsLoading) {
+      this.loadFreeMarketAssetCounts()
     }
   },
   beforeDestroy () {
@@ -520,6 +612,22 @@ export default {
         this.loading = false
       }
     },
+    async loadFreeMarketAssetCounts () {
+      this.freeAssetCountsLoading = true
+      try {
+        const res = await getFreeMarketAssetCounts()
+        if (res && res.code === 1 && res.data) {
+          this.freeAssetCounts = {
+            strategy_count: Number(res.data.strategy_count || 0),
+            indicator_count: Number(res.data.indicator_count || 0)
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load free marketplace asset counts', e)
+      } finally {
+        this.freeAssetCountsLoading = false
+      }
+    },
     formatCredits (v) {
       if (!v && v !== 0) return '0'
       return Number(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -528,6 +636,40 @@ export default {
       const key = `billing.plan.${plan.code}`
       const translated = this.$t(key)
       return translated && translated !== key ? translated : (plan.name || plan.code)
+    },
+    isRecommendedPlan (plan) {
+      return Boolean(plan && plan.code === this.recommendedPlanCode)
+    },
+    monthlyReferencePlan () {
+      return this.planItems.find(plan => !plan.is_lifetime && Number(plan.duration_days) > 0 && Number(plan.duration_days) <= 31)
+    },
+    monthlyEquivalent (plan) {
+      const duration = Number(plan && plan.duration_days)
+      const price = Number(plan && plan.price_usd)
+      if (!duration || !Number.isFinite(price) || plan.is_lifetime) return ''
+      return (price / (duration / 30)).toFixed(2).replace(/\.00$/, '')
+    },
+    planSavingsPercent (plan) {
+      if (!plan || plan.is_lifetime) return 0
+      const monthlyPlan = this.monthlyReferencePlan()
+      const duration = Number(plan.duration_days)
+      const monthlyDuration = Number(monthlyPlan && monthlyPlan.duration_days)
+      const monthlyPrice = Number(monthlyPlan && monthlyPlan.price_usd)
+      const price = Number(plan.price_usd)
+      if (!monthlyPlan || plan.code === monthlyPlan.code || !duration || !monthlyDuration || !monthlyPrice || !price) return 0
+      const comparablePrice = monthlyPrice * (duration / monthlyDuration)
+      return Math.max(0, Math.round((1 - price / comparablePrice) * 100))
+    },
+    planValueText (plan) {
+      if (plan.is_lifetime) return this.$t('billing.lifetimeValue')
+      const monthly = this.monthlyEquivalent(plan)
+      if (Number(plan.duration_days) <= 31) return this.$t('billing.flexiblePlan')
+      return this.$t('billing.monthlyEquivalent', { price: monthly })
+    },
+    planActionLabel (plan) {
+      if (plan.is_lifetime) return this.$t('billing.chooseLifetime')
+      if (this.isRecommendedPlan(plan)) return this.$t('billing.chooseRecommended')
+      return this.$t('billing.choosePlanAction')
     },
     formatDate (dateStr) {
       if (!dateStr) return ''
@@ -755,69 +897,430 @@ export default {
 </script>
 
 <style lang="less" scoped>
-/* ===== Page Styles ===== */
 .billing-page {
-  padding: 18px;
+  --billing-page-bg: #f4f6f8;
+  --billing-surface: #ffffff;
+  --billing-surface-muted: #f7f8fa;
+  --billing-border: #e2e6eb;
+  --billing-text: #17202d;
+  --billing-secondary: #596576;
+  --billing-muted: #8993a2;
+  --billing-shadow: 0 12px 32px rgba(23, 32, 45, 0.06);
+  --billing-accent-soft: color-mix(in srgb, var(--primary-color, #13c2c2) 10%, transparent);
+  --billing-accent-border: color-mix(in srgb, var(--primary-color, #13c2c2) 32%, transparent);
+  min-height: 100%;
+  padding: 24px clamp(20px, 3vw, 48px) 56px;
+  color: var(--billing-text);
+  background: var(--billing-page-bg);
 
-  .page-header {
-    margin-bottom: 14px;
-    .page-title {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: rgba(0, 0, 0, 0.85);
+  .billing-hero,
+  .plans-section,
+  > .ant-alert {
+    width: 100%;
+    max-width: 1440px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .billing-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 480px);
+    gap: 32px;
+    min-height: 190px;
+    padding: 30px 34px;
+    border: 1px solid var(--billing-border);
+    border-radius: 16px;
+    background: var(--billing-surface);
+    box-shadow: var(--billing-shadow);
+  }
+
+  .hero-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .page-title {
+    margin: 0;
+    color: var(--billing-text);
+    font-size: clamp(24px, 2vw, 30px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -.02em;
+  }
+
+  .page-desc {
+    max-width: 640px;
+    margin: 8px 0 24px;
+    color: var(--billing-secondary);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .hero-rule {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    max-width: 720px;
+    padding-left: 13px;
+    border-left: 2px solid var(--primary-color, #13c2c2);
+    color: var(--billing-secondary);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .rule-label {
+    flex: 0 0 auto;
+    color: var(--billing-text);
+    font-weight: 700;
+  }
+
+  .account-snapshot {
+    align-self: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+    gap: 24px;
+    width: 100%;
+    padding-left: 32px;
+    border-left: 1px solid var(--billing-border);
+  }
+
+  .snapshot-block {
+    min-width: 0;
+  }
+
+  .snap-label {
+    margin-bottom: 8px;
+    color: var(--billing-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .snap-value {
+    color: var(--billing-text);
+    font-size: 28px;
+    font-weight: 750;
+    line-height: 1.15;
+    letter-spacing: -.025em;
+  }
+
+  .snapshot-divider {
+    width: 1px;
+    height: 64px;
+    margin: 0;
+    background: var(--billing-border);
+  }
+
+  .vip-state {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    vertical-align: middle;
+
+    &.is-active,
+    &.is-lifetime {
+      color: var(--primary-color, #13c2c2);
+      background: var(--billing-accent-soft);
     }
-    .page-desc {
-      margin: 6px 0 0;
-      color: rgba(0, 0, 0, 0.45);
+
+    &.is-inactive {
+      color: var(--billing-secondary);
+      background: var(--billing-surface-muted);
     }
   }
 
-  .snapshot-card {
-    .snapshot-row {
-      display: flex;
-      gap: 18px;
-      flex-wrap: wrap;
+  .vip-exp {
+    margin-top: 7px;
+    color: var(--billing-muted);
+    font-size: 12px;
+  }
+
+  > .ant-alert {
+    border-radius: 8px;
+  }
+
+  .plans-section {
+    margin-top: 30px;
+  }
+
+  .plans-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 16px;
+
+    h3 {
+      margin: 0;
+      color: var(--billing-text);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -.015em;
     }
-    .snap-item {
-      min-width: 220px;
-      .snap-label { color: rgba(0, 0, 0, 0.45); font-size: 12px; }
-      .snap-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
-      .vip-exp { margin-left: 8px; color: rgba(0, 0, 0, 0.55); font-size: 12px; }
+
+    p {
+      margin: 5px 0 0;
+      color: var(--billing-muted);
+      font-size: 13px;
     }
+  }
+
+  .library-entitlement {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto minmax(180px, auto);
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    border: 1px solid var(--billing-accent-border);
+    border-radius: 12px;
+    background: var(--billing-accent-soft);
+
+    &.is-loading {
+      opacity: .72;
+    }
+  }
+
+  .library-entitlement-copy {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+
+    strong {
+      color: var(--billing-text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+  }
+
+  .library-entitlement-label {
+    flex: 0 0 auto;
+    color: var(--primary-color, #13c2c2);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .library-entitlement-counts {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--billing-secondary);
+    font-size: 13px;
+    font-weight: 650;
+
+    span {
+      white-space: nowrap;
+    }
+
+    b {
+      margin-right: 4px;
+      color: var(--primary-color, #13c2c2);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    i {
+      width: 1px;
+      height: 18px;
+      background: var(--billing-accent-border);
+    }
+  }
+
+  .library-entitlement-note {
+    justify-self: end;
+    color: var(--billing-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
   }
 
   .plan-card {
     position: relative;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    margin-top: 12px;
-    &.highlight { border: 1px solid rgba(24, 144, 255, 0.35); }
-    .popular-badge { position: absolute; top: 12px; right: 12px; }
-    .plan-title {
-      font-weight: 700;
-      font-size: 16px;
-      color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    min-height: 410px;
+    padding: 26px;
+    border: 1px solid var(--billing-border);
+    border-radius: 14px;
+    background: var(--billing-surface);
+    box-shadow: 0 4px 16px rgba(23, 32, 45, .035);
+    transition: border-color .2s ease, box-shadow .2s ease;
+
+    &:hover {
+      border-color: var(--billing-accent-border);
+      box-shadow: 0 10px 28px rgba(23, 32, 45, .075);
     }
-    .plan-price {
-      margin-top: 10px;
-      font-size: 28px;
-      font-weight: 800;
-      color: rgba(0, 0, 0, 0.85);
-      .plan-unit {
-        font-size: 12px;
-        font-weight: 500;
-        color: rgba(0, 0, 0, 0.45);
-        margin-left: 6px;
+
+    &.highlight {
+      border-color: var(--primary-color, #13c2c2);
+      box-shadow: 0 8px 24px var(--billing-accent-soft);
+    }
+
+    &.lifetime {
+      border-color: var(--billing-border);
+    }
+  }
+
+  .popular-badge {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border: 1px solid var(--billing-accent-border);
+    border-radius: 5px;
+    color: var(--primary-color, #13c2c2);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .plan-heading {
+    display: flex;
+    align-items: center;
+    min-height: 43px;
+    padding-right: 74px;
+  }
+
+  .plan-title {
+    color: var(--billing-text);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .plan-duration {
+    margin-top: 3px;
+    color: var(--billing-muted);
+    font-size: 12px;
+  }
+
+  .plan-price-row {
+    display: flex;
+    align-items: baseline;
+    margin-top: 26px;
+    color: var(--billing-text);
+  }
+
+  .plan-currency {
+    margin-right: 3px;
+    font-size: 19px;
+    font-weight: 700;
+  }
+
+  .plan-price {
+    font-size: clamp(36px, 3vw, 46px);
+    font-weight: 750;
+    line-height: 1;
+    letter-spacing: -.045em;
+  }
+
+  .plan-unit {
+    margin-left: 8px;
+    color: var(--billing-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .plan-value-row {
+    min-height: 28px;
+    margin-top: 12px;
+    color: var(--billing-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .savings-label {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--primary-color, #13c2c2);
+    background: var(--billing-accent-soft);
+    font-weight: 700;
+  }
+
+  .plan-divider {
+    height: 1px;
+    margin: 18px 0 18px;
+    background: var(--billing-border);
+  }
+
+  .plan-benefits {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .benefits-label {
+    margin-bottom: 12px;
+    color: var(--billing-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .plan-benefit {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    color: var(--billing-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+
+    .anticon {
+      margin-top: 3px;
+      color: var(--primary-color, #13c2c2);
+    }
+
+    &.is-primary {
+      color: var(--billing-text);
+
+      .anticon {
+        color: var(--primary-color, #13c2c2);
       }
     }
-    .plan-benefit {
-      margin: 10px 0 16px;
-      color: rgba(0, 0, 0, 0.65);
-      font-weight: 600;
+  }
+
+  .plan-action {
+    height: 44px;
+    margin-top: 24px;
+    border-color: var(--billing-border);
+    border-radius: 8px;
+    color: var(--billing-text);
+    background: var(--billing-surface-muted);
+    font-weight: 700;
+
+    .anticon {
+      margin-left: 7px;
+      transition: transform .2s ease;
+    }
+
+    &:hover .anticon {
+      transform: translateX(3px);
+    }
+
+    &.ant-btn-primary {
+      border-color: var(--primary-color, #13c2c2);
+      color: #fff;
+      background: var(--primary-color, #13c2c2);
+      box-shadow: none;
     }
   }
 
@@ -827,32 +1330,139 @@ export default {
   }
 
   &.theme-dark {
-    .page-header {
-      .page-title { color: rgba(255, 255, 255, 0.9); }
-      .page-desc { color: rgba(255, 255, 255, 0.55); }
+    --billing-page-bg: #101010;
+    --billing-surface: #181818;
+    --billing-surface-muted: #202020;
+    --billing-border: rgba(255, 255, 255, .09);
+    --billing-text: #f2f3f5;
+    --billing-secondary: #b0b5bd;
+    --billing-muted: #7e858e;
+    --billing-shadow: 0 10px 28px rgba(0, 0, 0, .22);
+
+    .billing-hero {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025), var(--billing-shadow);
     }
-    .snapshot-card {
-      background: #1c1c1c;
-      .snap-item {
-        .snap-label { color: rgba(255, 255, 255, 0.55); }
-        .snap-value { color: rgba(255, 255, 255, 0.9); }
-        .vip-exp { color: rgba(255, 255, 255, 0.6); }
-      }
-    }
+
     .plan-card {
-      background: #1c1c1c;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-      .plan-title { color: rgba(255, 255, 255, 0.9); }
-      .plan-price {
-        color: rgba(255, 255, 255, 0.9);
-        .plan-unit { color: rgba(255, 255, 255, 0.55); }
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .16);
+
+      &:hover {
+        box-shadow: 0 10px 28px rgba(0, 0, 0, .24);
       }
-      .plan-benefit { color: rgba(255, 255, 255, 0.7); }
+
+      &.highlight {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+      }
+    }
+
+    .plan-action:not(.ant-btn-primary) {
+      color: var(--billing-text);
+      background: #202020;
+
+      &:hover {
+        border-color: var(--primary-color, #13c2c2);
+        color: var(--primary-color, #13c2c2);
+      }
+    }
+  }
+
+  @media (max-width: 1080px) {
+    .billing-hero {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    .account-snapshot {
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr;
+      gap: 24px;
+      padding: 22px 0 0;
+      border-top: 1px solid var(--billing-border);
+      border-left: 0;
+    }
+
+    .snapshot-divider {
+      width: 1px;
+      height: 100%;
+      margin: 0;
+    }
+
+    .plans-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .library-entitlement {
+      grid-template-columns: 1fr auto;
+    }
+
+    .library-entitlement-note {
+      grid-column: 1 / -1;
+      justify-self: start;
+    }
+
+    .plan-card:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 700px) {
+    padding: 16px 14px 36px;
+
+    .billing-hero {
+      min-height: auto;
+      padding: 24px 20px;
+      border-radius: 14px;
+    }
+
+    .library-entitlement {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 15px 16px;
+    }
+
+    .library-entitlement-copy {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .page-title {
+      font-size: 24px;
+    }
+
+    .hero-rule {
+      display: grid;
+      gap: 4px;
+    }
+
+    .account-snapshot {
+      display: flex;
+      gap: 18px;
+    }
+
+    .snapshot-divider {
+      width: 100%;
+      height: 1px;
+    }
+
+    .plans-grid {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .plan-card:last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+
+    .plan-card {
+      min-height: 0;
+      padding: 24px 22px;
+      border-radius: 12px;
     }
   }
 }
-
-/* ===== USDT Checkout Modal (unscoped for modal portal) ===== */
 </style>
 
 <style lang="less">

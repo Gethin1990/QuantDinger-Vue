@@ -20,10 +20,6 @@ export function replaceUniverseMembers (universeId, members) {
   return request({ url: `/api/universes/${universeId}/members`, method: 'put', data: { members } })
 }
 
-export function createUniverseSnapshot (universeId, data = {}) {
-  return request({ url: `/api/universes/${universeId}/snapshots`, method: 'post', data })
-}
-
 export function cloneUniverse (universeId, data = {}) {
   return request({ url: `/api/universes/${universeId}/clone`, method: 'post', data })
 }
@@ -33,5 +29,21 @@ export function getSystemUniverseOverview () {
 }
 
 export function syncSystemUniverses (data = {}) {
-  return request({ url: '/api/universes/admin/sync', method: 'post', data })
+  return request({ url: '/api/universes/admin/sync', method: 'post', data, timeout: 600000 })
+}
+
+export function createSystemUniverse (data) {
+  return request({ url: '/api/universes/admin/system', method: 'post', data })
+}
+
+export function updateSystemUniverse (universeId, data) {
+  return request({ url: `/api/universes/admin/system/${universeId}`, method: 'put', data })
+}
+
+export function setSystemUniverseVisibility (universeId, visible) {
+  return request({ url: `/api/universes/admin/system/${universeId}/visibility`, method: 'put', data: { visible } })
+}
+
+export function deleteSystemUniverse (universeId) {
+  return request({ url: `/api/universes/admin/system/${universeId}`, method: 'delete' })
 }

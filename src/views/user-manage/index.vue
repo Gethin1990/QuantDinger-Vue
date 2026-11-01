@@ -1,13 +1,5 @@
 <template>
   <div class="user-manage-page qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
-    <div class="page-header">
-      <h2 class="page-title">
-        <a-icon type="team" />
-        <span>{{ $t('userManage.title') || 'User Management' }}</span>
-      </h2>
-      <p class="page-desc">{{ $t('userManage.description') || 'Manage system users, roles and permissions' }}</p>
-    </div>
-
     <!-- Tabs -->
     <a-tabs :activeKey="activeTab" @change="handleTabChange" class="manage-tabs">
       <!-- Tab 1: User Management -->
@@ -21,7 +13,7 @@
           </template>
           <template v-if="userStats">
             <div class="summary-card">
-              <div class="summary-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+              <div class="summary-icon summary-icon-primary">
                 <a-icon type="team" />
               </div>
               <div class="summary-info">
@@ -30,7 +22,7 @@
               </div>
             </div>
             <div class="summary-card">
-              <div class="summary-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d)">
+              <div class="summary-icon summary-icon-primary">
                 <a-icon type="user-add" />
               </div>
               <div class="summary-info">
@@ -45,7 +37,7 @@
               </div>
             </div>
             <div class="summary-card">
-              <div class="summary-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+              <div class="summary-icon summary-icon-primary">
                 <a-icon type="rise" />
               </div>
               <div class="summary-info">
@@ -57,7 +49,7 @@
               </div>
             </div>
             <div class="summary-card">
-              <div class="summary-icon" style="background: linear-gradient(135deg, #fa709a, #fee140)">
+              <div class="summary-icon summary-icon-primary">
                 <a-icon type="thunderbolt" />
               </div>
               <div class="summary-info">
@@ -69,7 +61,7 @@
               </div>
             </div>
             <div class="summary-card">
-              <div class="summary-icon" style="background: linear-gradient(135deg, #f6d365, #fda085)">
+              <div class="summary-icon summary-icon-warning">
                 <a-icon type="crown" />
               </div>
               <div class="summary-info">
@@ -81,7 +73,7 @@
               </div>
             </div>
             <div class="summary-card">
-              <div class="summary-icon" style="background: linear-gradient(135deg, #868f96, #596164)">
+              <div class="summary-icon summary-icon-neutral">
                 <a-icon type="stop" />
               </div>
               <div class="summary-info">
@@ -688,11 +680,11 @@
       </a-tab-pane>
 
       <!-- Tab 3: Order List -->
-      <a-tab-pane key="orders" :tab="$t('adminOrders.tabTitle') || 'Order List'">
+      <a-tab-pane v-if="billingEnabled" key="orders" :tab="$t('adminOrders.tabTitle') || 'Order List'">
         <!-- Order Summary Cards -->
         <div class="summary-cards" v-if="orderSummary">
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+            <div class="summary-icon summary-icon-primary">
               <a-icon type="file-text" />
             </div>
             <div class="summary-info">
@@ -701,7 +693,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d)">
+            <div class="summary-icon summary-icon-success">
               <a-icon type="check-circle" />
             </div>
             <div class="summary-info">
@@ -710,7 +702,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+            <div class="summary-icon summary-icon-warning">
               <a-icon type="clock-circle" />
             </div>
             <div class="summary-info">
@@ -719,7 +711,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #fa709a, #fee140)">
+            <div class="summary-icon summary-icon-primary">
               <a-icon type="dollar" />
             </div>
             <div class="summary-info">
@@ -930,10 +922,10 @@
         </a-modal>
       </a-tab-pane>
 
-      <a-tab-pane key="rewardWithdrawals" :tab="$t('adminReferralWithdrawals.tabTitle')">
+      <a-tab-pane v-if="billingEnabled" key="rewardWithdrawals" :tab="$t('adminReferralWithdrawals.tabTitle')">
         <div class="summary-cards" v-if="rewardWithdrawalSummary">
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+            <div class="summary-icon summary-icon-primary">
               <a-icon type="file-text" />
             </div>
             <div class="summary-info">
@@ -942,7 +934,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+            <div class="summary-icon summary-icon-warning">
               <a-icon type="clock-circle" />
             </div>
             <div class="summary-info">
@@ -952,7 +944,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #2193b0, #6dd5ed)">
+            <div class="summary-icon summary-icon-primary">
               <a-icon type="sync" />
             </div>
             <div class="summary-info">
@@ -961,7 +953,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d)">
+            <div class="summary-icon summary-icon-success">
               <a-icon type="check-circle" />
             </div>
             <div class="summary-info">
@@ -1078,7 +1070,7 @@
         <!-- AI Stats Summary Cards -->
         <div class="summary-cards" v-if="aiStatsSummary">
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+            <div class="summary-icon summary-icon-primary">
               <a-icon type="thunderbolt" />
             </div>
             <div class="summary-info">
@@ -1088,7 +1080,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d)">
+            <div class="summary-icon summary-icon-primary">
               <a-icon type="team" />
             </div>
             <div class="summary-info">
@@ -1098,7 +1090,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+            <div class="summary-icon summary-icon-primary">
               <a-icon type="stock" />
             </div>
             <div class="summary-info">
@@ -1107,7 +1099,7 @@
             </div>
           </div>
           <div class="summary-card">
-            <div class="summary-icon" style="background: linear-gradient(135deg, #fa709a, #fee140)">
+            <div class="summary-icon summary-icon-success">
               <a-icon type="like" />
             </div>
             <div class="summary-info">
@@ -1567,6 +1559,9 @@ export default {
     }
   },
   computed: {
+    billingEnabled () {
+      return this.$store.state.features.config.billing_enabled !== false
+    },
     ...mapGetters(['userInfo']),
     isZh () {
       const locale = this.$i18n ? String(this.$i18n.locale || '') : 'zh-CN'
@@ -2449,6 +2444,10 @@ export default {
     _chartTooltipBg () {
       return this.isDarkTheme ? 'rgba(20,20,20,0.92)' : 'rgba(255,255,255,0.96)'
     },
+    _chartPrimaryColor () {
+      if (typeof window === 'undefined') return '#1890ff'
+      return window.getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#1890ff'
+    },
 
     renderCharts () {
       if (!this.userStats) return
@@ -2516,6 +2515,7 @@ export default {
       const cumSeries = data.map(d => d.cumulative || 0)
       const axisColor = this._chartAxisColor()
       const textColor = this._chartTextColor()
+      const primaryColor = this._chartPrimaryColor()
       inst.setOption({
         grid: { left: 56, right: 56, top: 36, bottom: 36 },
         tooltip: {
@@ -2563,11 +2563,9 @@ export default {
             yAxisIndex: 0,
             barMaxWidth: 18,
             itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#667eea' },
-                { offset: 1, color: '#764ba2' }
-              ]),
-              borderRadius: [4, 4, 0, 0]
+              color: primaryColor,
+              opacity: 0.42,
+              borderRadius: [2, 2, 0, 0]
             },
             data: newSeries
           },
@@ -2575,17 +2573,10 @@ export default {
             name: this.$t('userManage.legendTotal') || 'Cumulative',
             type: 'line',
             yAxisIndex: 1,
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 5,
-            lineStyle: { color: '#11998e', width: 2 },
-            itemStyle: { color: '#11998e' },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(17,153,142,0.35)' },
-                { offset: 1, color: 'rgba(17,153,142,0.02)' }
-              ])
-            },
+            smooth: false,
+            symbol: 'none',
+            lineStyle: { color: primaryColor, width: 2 },
+            itemStyle: { color: primaryColor },
             data: cumSeries
           }
         ]
@@ -2603,6 +2594,7 @@ export default {
       const data = this.userStats.activity || []
       const axisColor = this._chartAxisColor()
       const textColor = this._chartTextColor()
+      const primaryColor = this._chartPrimaryColor()
       inst.setOption({
         grid: { left: 40, right: 16, top: 20, bottom: 28 },
         tooltip: {
@@ -2628,11 +2620,9 @@ export default {
           barMaxWidth: 14,
           data: data.map(d => d.active_users || 0),
           itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#f093fb' },
-              { offset: 1, color: '#f5576c' }
-            ]),
-            borderRadius: [4, 4, 0, 0]
+            color: primaryColor,
+            opacity: 0.68,
+            borderRadius: [2, 2, 0, 0]
           }
         }]
       }, true)
@@ -3414,33 +3404,7 @@ export default {
 .user-manage-page {
   padding: 16px !important;
   min-height: calc(100vh - 120px);
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-
-  .page-header {
-    margin-bottom: 24px;
-    max-width: 720px;
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      color: #1e3a5f;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .anticon {
-        font-size: 28px;
-        color: var(--primary-color, #1890ff);
-      }
-    }
-
-    .page-desc {
-      color: #64748b;
-      font-size: 14px;
-      margin: 0;
-    }
-  }
+  background: var(--qd-surface-subtle);
 
   .manage-tabs {
     ::v-deep .ant-tabs-bar {
@@ -3525,40 +3489,73 @@ export default {
     margin-bottom: 20px;
 
     .summary-card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
       display: flex;
       align-items: center;
       gap: 16px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-      transition: transform 0.2s, box-shadow 0.2s;
+      padding: 18px;
+      border: 1px solid var(--qd-border);
+      border-radius: var(--qd-radius);
+      background: var(--qd-surface);
+      box-shadow: var(--qd-shadow-card);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
 
       &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 28%, var(--qd-border));
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
       }
 
       .summary-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
         display: flex;
+        flex-shrink: 0;
         align-items: center;
         justify-content: center;
-        flex-shrink: 0;
+        width: 42px;
+        height: 42px;
+        border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, transparent);
+        color: var(--primary-color, #1890ff);
 
         .anticon {
-          font-size: 22px;
-          color: #fff;
+          color: currentColor;
+          font-size: 18px;
         }
       }
 
-      .summary-icon-v2 { background: #6657d9; }
-      .summary-icon-running { background: #16a37a; }
-      .summary-icon-capital { background: #d84f91; }
-      .summary-icon-profit { background: #16a37a; }
-      .summary-icon-loss { background: #e5484d; }
+      .summary-icon-primary,
+      .summary-icon-v2,
+      .summary-icon-capital {
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, transparent);
+        color: var(--primary-color, #1890ff);
+      }
+
+      .summary-icon-success,
+      .summary-icon-running,
+      .summary-icon-profit {
+        border-color: color-mix(in srgb, #16a37a 20%, transparent);
+        background: color-mix(in srgb, #16a37a 9%, transparent);
+        color: #168460;
+      }
+
+      .summary-icon-warning {
+        border-color: color-mix(in srgb, #d48806 22%, transparent);
+        background: color-mix(in srgb, #d48806 9%, transparent);
+        color: #ad6800;
+      }
+
+      .summary-icon-danger,
+      .summary-icon-loss {
+        border-color: color-mix(in srgb, #e5484d 20%, transparent);
+        background: color-mix(in srgb, #e5484d 9%, transparent);
+        color: #cf3036;
+      }
+
+      .summary-icon-neutral {
+        border-color: color-mix(in srgb, var(--qd-text-secondary) 18%, transparent);
+        background: color-mix(in srgb, var(--qd-text-secondary) 8%, transparent);
+        color: var(--qd-text-secondary);
+      }
 
       .summary-info {
         flex: 1;
@@ -3754,6 +3751,7 @@ export default {
 
   .section-card-title-icon {
     flex-shrink: 0;
+    color: var(--primary-color, #1890ff);
   }
 
   .user-table-card {
@@ -4052,15 +4050,6 @@ export default {
       color: #8b949e;
     }
 
-    .page-header {
-      .page-title {
-        color: #e0e6ed;
-      }
-      .page-desc {
-        color: #8b949e;
-      }
-    }
-
     .manage-tabs {
       ::v-deep .ant-tabs-bar {
         border-bottom-color: #2a2a2a;
@@ -4080,6 +4069,26 @@ export default {
       border: 1px solid rgba(255, 255, 255, 0.08);
       background: #111;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+
+      &:hover {
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 30%, #30343b);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+      }
+
+      .summary-icon-success,
+      .summary-icon-running,
+      .summary-icon-profit {
+        color: #45c49a;
+      }
+
+      .summary-icon-warning {
+        color: #e6a843;
+      }
+
+      .summary-icon-danger,
+      .summary-icon-loss {
+        color: #ff6b70;
+      }
 
       .summary-info {
         .summary-value {
@@ -4296,14 +4305,15 @@ export default {
     margin-bottom: 20px;
 
     .chart-card {
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-      background: #fff;
-      overflow: hidden;
-      min-width: 0;
-      width: 100%;
       display: flex;
       flex-direction: column;
+      width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--qd-border);
+      border-radius: var(--qd-radius);
+      background: var(--qd-surface);
+      box-shadow: var(--qd-shadow-card);
 
       ::v-deep .ant-card-body {
         padding: 16px 18px;
@@ -4468,22 +4478,6 @@ export default {
       grid-template-columns: 1fr;
     }
 
-    .page-header {
-      margin-bottom: 16px;
-
-      .page-title {
-        font-size: 20px;
-
-        .anticon {
-          font-size: 22px;
-        }
-      }
-
-      .page-desc {
-        font-size: 13px;
-      }
-    }
-
     .summary-cards {
       grid-template-columns: 1fr;
       gap: 12px;
@@ -4565,10 +4559,6 @@ export default {
 
   @media (max-width: 480px) {
     padding: 12px 8px;
-
-    .page-header .page-title {
-      font-size: 18px;
-    }
 
     .toolbar .toolbar-left {
       flex-direction: column;

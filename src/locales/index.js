@@ -26,12 +26,27 @@ import backtestRangeOverrides from './backtest-range-overrides'
 import settingsResearchOverrides from './settings-research-overrides'
 import settingsRuntimeOverrides from './settings-runtime-overrides'
 import strategyBuilderOverrides from './strategy-builder-overrides'
-import eventRadarMessages from './lang/event-radar'
 import currentFeatureOverrides from './lang/current-feature-overrides'
 import strategyEvolutionMessages from './lang/strategy-evolution'
 import quickTradeSpotSellMessages from './lang/quick-trade-spot-sell'
 import talibFactorMessages from './lang/talib-factors'
 import factorResearchMessages from './lang/factor-research-factors'
+import factorLibraryEnhancementMessages from './lang/factor-library-enhancements'
+import backtestWorkbenchMessages from './lang/backtest-workbench'
+import strategyReviewMessages from './lang/strategy-review'
+import quickTradeFloatingMessages from './lang/quick-trade-floating'
+import quickTradeWorkflowMessages from './lang/quick-trade-workflow'
+import settingsFeatureMessages from './settings-feature-overrides'
+import zhTwProductMessages from './zh-tw-product-overrides'
+import navigationMessages from './navigation-overrides'
+import bitgetAccountModeMessages from './lang/bitget-account-mode'
+import aiSkillsTaxonomyMessages from './lang/ai-skills-taxonomy'
+import factorResearchUniverseMessages from './lang/factor-research-universe'
+import aiAnalysisWorkbenchMessages from './ai-analysis-workbench-overrides'
+import settingsUniverseManagementMessages from './settings-universe-management-overrides'
+import tradingVenueSettingsMessages from './lang/trading-venue-settings'
+import indicatorWorkspaceLayoutMessages from './lang/indicator-workspace-layout'
+import venueResearchCopyOverrides from './venue-research-copy-overrides'
 
 Vue.use(VueI18n)
 
@@ -56,7 +71,6 @@ const messages = {
     ...(aiDecisionFilterMessages[defaultLang] || {}),
     ...(uxOverrides[defaultLang] || {}),
     ...(copilotCallsiteOverrides[defaultLang] || {}),
-    ...(generatedLocaleOverrides[defaultLang] || {}),
     ...(reviewedUiOverrides[defaultLang] || {}),
     ...(professionalReportOverrides[defaultLang] || {}),
     ...(backtestRangeOverrides[defaultLang] || {}),
@@ -64,11 +78,27 @@ const messages = {
     ...(settingsRuntimeOverrides[defaultLang] || {}),
     ...(strategyBuilderOverrides[defaultLang] || {}),
     ...(currentFeatureOverrides[defaultLang] || {}),
-    ...(eventRadarMessages[defaultLang] || {}),
     ...(strategyEvolutionMessages[defaultLang] || {}),
     ...(quickTradeSpotSellMessages[defaultLang] || {}),
     ...(talibFactorMessages[defaultLang] || {}),
-    ...(factorResearchMessages[defaultLang] || {})
+    ...(factorResearchMessages[defaultLang] || {}),
+    ...(factorLibraryEnhancementMessages[defaultLang] || {}),
+    ...(backtestWorkbenchMessages[defaultLang] || {}),
+    ...(strategyReviewMessages[defaultLang] || {}),
+    ...(quickTradeFloatingMessages[defaultLang] || {}),
+    ...(quickTradeWorkflowMessages[defaultLang] || {}),
+    ...(settingsFeatureMessages[defaultLang] || {}),
+    ...(zhTwProductMessages[defaultLang] || {}),
+    ...(navigationMessages[defaultLang] || {}),
+    ...(bitgetAccountModeMessages[defaultLang] || {}),
+    ...(aiSkillsTaxonomyMessages[defaultLang] || {}),
+    ...(generatedLocaleOverrides[defaultLang] || {}),
+    ...(factorResearchUniverseMessages[defaultLang] || {}),
+    ...(aiAnalysisWorkbenchMessages[defaultLang] || {}),
+    ...(settingsUniverseManagementMessages[defaultLang] || {}),
+    ...(tradingVenueSettingsMessages[defaultLang] || {}),
+    ...(indicatorWorkspaceLayoutMessages[defaultLang] || {}),
+    ...(venueResearchCopyOverrides[defaultLang] || {})
   }
 }
 
@@ -152,7 +182,6 @@ function mergeLocaleOverrides (lang) {
     ...(aiDecisionFilterMessages[lang] || {}),
     ...(uxOverrides[lang] || {}),
     ...(copilotCallsiteOverrides[lang] || {}),
-    ...(generatedLocaleOverrides[lang] || {}),
     ...(reviewedUiOverrides[lang] || {}),
     ...(professionalReportOverrides[lang] || {}),
     ...(backtestRangeOverrides[lang] || {}),
@@ -160,11 +189,27 @@ function mergeLocaleOverrides (lang) {
     ...(settingsRuntimeOverrides[lang] || {}),
     ...(strategyBuilderOverrides[lang] || {}),
     ...(currentFeatureOverrides[lang] || {}),
-    ...(eventRadarMessages[lang] || {}),
     ...(strategyEvolutionMessages[lang] || {}),
     ...(quickTradeSpotSellMessages[lang] || {}),
     ...(talibFactorMessages[lang] || {}),
-    ...(factorResearchMessages[lang] || {})
+    ...(factorResearchMessages[lang] || {}),
+    ...(factorLibraryEnhancementMessages[lang] || {}),
+    ...(backtestWorkbenchMessages[lang] || {}),
+    ...(strategyReviewMessages[lang] || {}),
+    ...(quickTradeFloatingMessages[lang] || {}),
+    ...(quickTradeWorkflowMessages[lang] || {}),
+    ...(settingsFeatureMessages[lang] || {}),
+    ...(zhTwProductMessages[lang] || {}),
+    ...(navigationMessages[lang] || {}),
+    ...(bitgetAccountModeMessages[lang] || {}),
+    ...(aiSkillsTaxonomyMessages[lang] || {}),
+    ...(generatedLocaleOverrides[lang] || {}),
+    ...(factorResearchUniverseMessages[lang] || {}),
+    ...(aiAnalysisWorkbenchMessages[lang] || {}),
+    ...(settingsUniverseManagementMessages[lang] || {}),
+    ...(tradingVenueSettingsMessages[lang] || {}),
+    ...(indicatorWorkspaceLayoutMessages[lang] || {}),
+    ...(venueResearchCopyOverrides[lang] || {})
   }
   i18n.setLocaleMessage(lang, {
     ...(i18n.getLocaleMessage(lang) || {}),
@@ -202,7 +247,6 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(aiDecisionFilterMessages[lang] || {}),
       ...(uxOverrides[lang] || {}),
       ...(copilotCallsiteOverrides[lang] || {}),
-      ...(generatedLocaleOverrides[lang] || {}),
       ...(reviewedUiOverrides[lang] || {}),
       ...(professionalReportOverrides[lang] || {}),
       ...(backtestRangeOverrides[lang] || {}),
@@ -210,10 +254,24 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(settingsRuntimeOverrides[lang] || {}),
       ...(strategyBuilderOverrides[lang] || {}),
       ...(currentFeatureOverrides[lang] || {}),
-      ...(eventRadarMessages[lang] || {}),
       ...(quickTradeSpotSellMessages[lang] || {}),
       ...(talibFactorMessages[lang] || {}),
-      ...(factorResearchMessages[lang] || {})
+      ...(factorResearchMessages[lang] || {}),
+      ...(factorLibraryEnhancementMessages[lang] || {}),
+      ...(backtestWorkbenchMessages[lang] || {}),
+      ...(strategyReviewMessages[lang] || {}),
+      ...(quickTradeFloatingMessages[lang] || {}),
+      ...(quickTradeWorkflowMessages[lang] || {}),
+      ...(settingsFeatureMessages[lang] || {}),
+      ...(zhTwProductMessages[lang] || {}),
+      ...(navigationMessages[lang] || {}),
+      ...(generatedLocaleOverrides[lang] || {}),
+      ...(factorResearchUniverseMessages[lang] || {}),
+      ...(aiAnalysisWorkbenchMessages[lang] || {}),
+      ...(settingsUniverseManagementMessages[lang] || {}),
+      ...(tradingVenueSettingsMessages[lang] || {}),
+      ...(indicatorWorkspaceLayoutMessages[lang] || {}),
+      ...(venueResearchCopyOverrides[lang] || {})
     })
     i18n.setLocaleMessage(lang, locale)
     loadedLanguages.push(lang)

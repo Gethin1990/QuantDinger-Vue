@@ -36,10 +36,10 @@ test('account status requests carry the selected credential and ignore late resp
       return Promise.resolve({ data: { connected: true, account_id: 'account-B' } })
     }
   } })
-  state.alpacaCredentialId = 11
+  state.brokerCredentialIds.alpaca = 11
   const first = state.loadOne('alpaca')
   await new Promise(resolve => setImmediate(resolve))
-  state.alpacaCredentialId = 22
+  state.brokerCredentialIds.alpaca = 22
   await state.loadOne('alpaca')
   resolveFirst({ data: { connected: true, account_id: 'account-A' } })
   await first

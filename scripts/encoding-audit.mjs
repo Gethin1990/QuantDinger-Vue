@@ -48,7 +48,8 @@ const ignoredFiles = new Set([
 const mojibakePatterns = [
   /\uFFFD/u,
   /[\uE000-\uF8FF]/u,
-  /(?:\u00C3[\u0080-\u00BF]|\u00C2[\u0080-\u00BF]|\u00E2[\u0080-\u00BF]{1,2})/u
+  /(?:\u00C3[\u0080-\u00BF]|\u00C2[\u0080-\u00BF]|\u00E2[\u0080-\u00BF]{1,2})/u,
+  /(?:锟斤拷|鐠\?|銆|鈥|馃|鍐呯殑|鎵€鏈|澶村儚|閾炬帴|鍥炬爣|鏍峰紡)/u
 ]
 
 function shouldScan(filePath) {
@@ -199,7 +200,10 @@ for (const filePath of files) {
     continue
   }
 
-  const mojibake = displayPath === 'scripts\\encoding-audit.mjs' ? null : findMojibake(text)
+  // The audit lists the mojibake markers it looks for, so it always matches
+  // itself. Compare the basename so the guard works on POSIX and Windows.
+  const selfAudit = basename(filePath) === 'encoding-audit.mjs'
+  const mojibake = selfAudit ? null : findMojibake(text)
   if (mojibake) {
     failures.push(`${displayPath}: possible mojibake marker "${mojibake}"`)
   }

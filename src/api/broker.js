@@ -3,7 +3,7 @@ import request from '@/utils/request'
 /**
  * Unified broker API client.
  *
- * Wraps `/api/ibkr/*` and `/api/alpaca/*` behind one shape:
+ * Wraps all stock broker REST APIs behind one shape:
  *
  *   broker.<id>.status()
  *   broker.<id>.connect(payload)
@@ -11,6 +11,7 @@ import request from '@/utils/request'
  *   broker.<id>.account()
  *   broker.<id>.positions()
  *   broker.<id>.orders()
+ *   broker.<id>.tradeHistory()
  *   broker.<id>.placeOrder(payload)
  *   broker.<id>.cancelOrder(id)
  *   broker.<id>.quote(symbol, params)
@@ -37,8 +38,31 @@ const ENDPOINTS = {
     account: '/api/alpaca/account',
     positions: '/api/alpaca/positions',
     orders: '/api/alpaca/orders',
+    fills: '/api/alpaca/fills',
     order: '/api/alpaca/order',
     quote: '/api/alpaca/quote'
+  },
+  tiger: {
+    accounts: '/api/tiger/accounts',
+    status: '/api/tiger/status',
+    connect: '/api/tiger/connect',
+    disconnect: '/api/tiger/disconnect',
+    account: '/api/tiger/account',
+    positions: '/api/tiger/positions',
+    orders: '/api/tiger/orders',
+    fills: '/api/tiger/fills',
+    order: '/api/tiger/order'
+  },
+  webull: {
+    accounts: '/api/webull/accounts',
+    status: '/api/webull/status',
+    connect: '/api/webull/connect',
+    disconnect: '/api/webull/disconnect',
+    account: '/api/webull/account',
+    positions: '/api/webull/positions',
+    orders: '/api/webull/orders',
+    fills: '/api/webull/fills',
+    order: '/api/webull/order'
   }
 }
 
@@ -49,7 +73,7 @@ function makeBrokerClient (id) {
   return {
     id,
     accounts () {
-      return request({ url: '/api/alpaca/accounts', method: 'get' })
+      return request({ url: ep.accounts || `/api/${id}/accounts`, method: 'get' })
     },
     status (params = {}) {
       return request({ url: ep.status, method: 'get', params })
@@ -69,13 +93,14 @@ function makeBrokerClient (id) {
     orders (params = {}) {
       return request({ url: ep.orders, method: 'get', params })
     },
+    tradeHistory (params = {}) {
+      return request({ url: ep.fills || ep.orders, method: 'get', params })
+    },
     placeOrder (data = {}) {
       return request({ url: ep.order, method: 'post', data })
     },
     cancelOrder (orderId, params = {}) {
-      const url = id === 'alpaca'
-        ? `${ep.order}/${encodeURIComponent(orderId)}`
-        : `${ep.order}/${orderId}`
+      const url = `${ep.order}/${encodeURIComponent(orderId)}`
       return request({ url, method: 'delete', params })
     },
     quote (symbol, params = {}) {
@@ -89,10 +114,12 @@ function makeBrokerClient (id) {
 
 export const broker = {
   ibkr: makeBrokerClient('ibkr'),
-  alpaca: makeBrokerClient('alpaca')
+  alpaca: makeBrokerClient('alpaca'),
+  tiger: makeBrokerClient('tiger'),
+  webull: makeBrokerClient('webull')
 }
 
-export const BROKER_IDS = ['alpaca', 'ibkr']
+export const BROKER_IDS = ['alpaca', 'tiger', 'webull', 'ibkr']
 
 /**
  * Static descriptor for each broker (logo color, market focus, connect form
@@ -116,5 +143,23 @@ export const BROKER_META = {
     markets: ['USStock', 'Forex', 'Futures'],
     badges: ['tws_required', 'pro_features'],
     cloudFriendly: false
+  },
+  tiger: {
+    id: 'tiger',
+    icon: 'stock',
+    color: '#ff6b00',
+    accent: '#ff9a3c',
+    markets: ['USStock', 'HKStock'],
+    badges: ['direct_openapi', 'cloud_ready'],
+    cloudFriendly: true
+  },
+  webull: {
+    id: 'webull',
+    icon: 'stock',
+    color: '#2455f5',
+    accent: '#18a0fb',
+    markets: ['USStock'],
+    badges: ['direct_openapi', 'sandbox_available'],
+    cloudFriendly: true
   }
 }
